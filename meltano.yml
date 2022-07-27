@@ -1,0 +1,24 @@
+version: 1
+send_anonymous_usage_stats: true
+project_id: "tap-postgres"
+plugins:
+  extractors:
+  - name: "tap-postgres"
+    namespace: "tap_postgres"
+    pip_url: -e .
+    capabilities:
+    - state
+    - catalog
+    - discover
+    config:
+      sqlalchemy_url: "postgresql://postgres:postgres@localhost:5432/postgres"
+    settings:
+    - name: sqlalchemy_url
+      kind: password
+    select:
+    - autoidm-ad_bamboohr_match.delta
+    - autoidm-ad_bamboohr_match.stg_activedirectory_userprincipalname
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
