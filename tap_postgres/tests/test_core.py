@@ -6,12 +6,14 @@ from singer_sdk.testing import get_standard_tap_tests
 
 from tap_postgres.tap import TapPostgres
 from faker import Faker
+import pendulum
 import datetime
 import pytest
+import json
 from sqlalchemy import Table, Column, String, DateTime, Integer, MetaData
 
 SAMPLE_CONFIG = {
-    "start_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+    "start_date": pendulum.datetime(2022,11,1).to_iso8601_string(), 
     "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
 }
 
@@ -39,10 +41,10 @@ def tap():
 def fake():
     return Faker()
 
-def test_replication_key(sqlalchemy_connection, tap, fake):
+def test_replication_key(sqlalchemy_connection, tap:TapPostgres, fake):
     """Originally built to address https://github.com/MeltanoLabs/tap-postgres/issues/9"""
-    date1 = datetime.date(2022,12,1)
-    date2 = datetime.date(2022,12,30)
+    date1 = datetime.date(2022,11,1)
+    date2 = datetime.date(2022,11,30)
     metadata_obj = MetaData()
     table_name = "test_replication_key"
 
@@ -56,13 +58,30 @@ def test_replication_key(sqlalchemy_connection, tap, fake):
     metadata_obj.create_all(sqlalchemy_connection)
     sqlalchemy_connection.execute(f"TRUNCATE TABLE {table_name}")
 
-    for _ in range(10):
-        #TODO this is slow we could speed this up by bulk inserting
+    for _ in range(1000):
         insert = test_replication_key_table.insert().values(updated_at=fake.date_between(date1,date2), name=fake.name())
         sqlalchemy_connection.execute(insert)
 
     #Create sink for table
-    streams = tap.discover_streams()
-    test_replication_key_stream = next(stream for stream in streams if stream.name.split("-")[1] == table_name)
-    test_replication_key_stream.replication_key = "updated_at"
-    test_replication_key_stream.sync()
+    tap = TapPostgres(config=SAMPLE_CONFIG) #If first time running run_discovery won't see the new table
+    tap.run_discovery()
+    #TODO Switch this to using Catalog from _singerlib as it makes iterating over this stuff easier
+    tap_catalog = json.loads(tap.catalog_json_text)
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            stream["replication_key"] = "updated_at" #Without this the tap will not do an INCREMENTAL sync properly
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"]==[]:
+                    metadata["metadata"]["replication-method"]="INCREMENTAL"
+                    metadata["metadata"]["replication-key"]="updated_at"
+
+    #Handy for debugging
+    #with open('data.json', 'w', encoding='utf-8') as f:
+    #    json.dump(tap_catalog, f, indent=4)
+    
+    tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
+    tap.sync_all()
