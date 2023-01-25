@@ -1,22 +1,24 @@
 """Tests standard tap features using the built-in SDK tests library."""
-
 import datetime
-
+from faker import Faker
+from sqlalchemy import Table, Column, String, DateTime, Integer, MetaData
+import json
+import os
+import pendulum
+import pytest
 from singer_sdk.testing import get_standard_tap_tests
 
 from tap_postgres.tap import TapPostgres
-from faker import Faker
-import pendulum
-import datetime
-import pytest
-import json
-from sqlalchemy import Table, Column, String, DateTime, Integer, MetaData
+
 
 SAMPLE_CONFIG = {
-    "start_date": pendulum.datetime(2022,11,1).to_iso8601_string(), 
-    "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
+    "start_date": pendulum.datetime(2022,11,1).to_iso8601_string(),
+    "host": os.getenv("TAP_POSTGRES_HOST") or 'localhost',
+    "port": os.getenv("TAP_POSTGRES_PORT") or 5432,
+    "user": os.getenv("TAP_POSTGRES_USER") or 'postgres',
+    "password": os.getenv("TAP_POSTGRES_PASSWORD") or 'postgres',
+    "dbname": os.getenv("TAP_POSTGRES_DBNAME") or 'postgres',
 }
-
 
 # Run standard built-in tap tests from the SDK:
 def test_standard_tap_tests():
@@ -82,6 +84,6 @@ def test_replication_key(sqlalchemy_connection, tap:TapPostgres, fake):
     #Handy for debugging
     #with open('data.json', 'w', encoding='utf-8') as f:
     #    json.dump(tap_catalog, f, indent=4)
-    
+
     tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
     tap.sync_all()
