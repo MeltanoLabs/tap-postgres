@@ -4,15 +4,25 @@ This includes PostgresStream and PostgresConnector.
 """
 from __future__ import annotations
 
-import sqlalchemy
 import sys
-from typing import Optional, Iterable, Any, Dict, Union, Type
-from typing import Generic, Mapping, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterable,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
+
+import sqlalchemy
+from singer_sdk import SQLConnector, SQLStream
+from singer_sdk import typing as th
 from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, JSONB
 from sqlalchemy.types import TIMESTAMP
-from singer_sdk import typing as th
-
-from singer_sdk import SQLConnector, SQLStream
 
 
 class PostgresConnector(SQLConnector):
@@ -28,9 +38,13 @@ class PostgresConnector(SQLConnector):
     @staticmethod
     def to_jsonschema_type(
         sql_type: Union[
-            str, sqlalchemy.types.TypeEngine, Type[sqlalchemy.types.TypeEngine], sqlalchemy.dialects.postgresql.ARRAY, Any
+            str,
+            sqlalchemy.types.TypeEngine,
+            Type[sqlalchemy.types.TypeEngine],
+            sqlalchemy.dialects.postgresql.ARRAY,
+            Any,
         ]
-        ) -> dict:
+    ) -> dict:
         type_name = None
         if isinstance(sql_type, str):
             type_name = sql_type
@@ -40,16 +54,28 @@ class PostgresConnector(SQLConnector):
         if type_name is not None and type_name == "JSONB":
             return th.ObjectType().type_dict
 
-        if type_name is not None and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY) and type_name == "ARRAY":
+        if (
+            type_name is not None
+            and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY)
+            and type_name == "ARRAY"
+        ):
             array_type = PostgresConnector.sdk_typing_object(sql_type.item_type)
             return th.ArrayType(array_type).type_dict
         return PostgresConnector.sdk_typing_object(sql_type).type_dict
 
-
     @staticmethod
     def sdk_typing_object(
-        from_type: str | sqlalchemy.types.TypeEngine | type[sqlalchemy.types.TypeEngine],
-    ) -> (th.DateTimeType | th.NumberType | th.IntegerType | th.DateType | th.StringType | th.BooleanType) :
+        from_type: str
+        | sqlalchemy.types.TypeEngine
+        | type[sqlalchemy.types.TypeEngine],
+    ) -> (
+        th.DateTimeType
+        | th.NumberType
+        | th.IntegerType
+        | th.DateType
+        | th.StringType
+        | th.BooleanType
+    ):
         """Return the JSON Schema dict that describes the sql type.
 
         Args:
@@ -62,7 +88,15 @@ class PostgresConnector(SQLConnector):
         Returns:
             A compatible JSON Schema type definition.
         """
-        sqltype_lookup: dict[str, th.DateTimeType | th.NumberType | th.IntegerType | th.DateType | th.StringType | th.BooleanType] = {
+        sqltype_lookup: dict[
+            str,
+            th.DateTimeType
+            | th.NumberType
+            | th.IntegerType
+            | th.DateType
+            | th.StringType
+            | th.BooleanType,
+        ] = {
             # NOTE: This is an ordered mapping, with earlier mappings taking precedence.
             #       If the SQL-provided type contains the type name on the left, the mapping
             #       will return the respective singer type.
@@ -89,7 +123,9 @@ class PostgresConnector(SQLConnector):
         ):
             type_name = from_type.__name__
         else:
-            raise ValueError("Expected `str` or a SQLAlchemy `TypeEngine` object or type.")
+            raise ValueError(
+                "Expected `str` or a SQLAlchemy `TypeEngine` object or type."
+            )
 
         # Look for the type name within the known SQL type names:
         for sqltype, jsonschema_type in sqltype_lookup.items():
@@ -108,7 +144,9 @@ class PostgresConnector(SQLConnector):
         engine = self.create_sqlalchemy_engine()
         inspected = sqlalchemy.inspect(engine)
         for schema_name in self.get_schema_names(engine, inspected):
-            if (schema_name.lower() == "information_schema") and ignore_information_schema:
+            if (
+                schema_name.lower() == "information_schema"
+            ) and ignore_information_schema:
                 continue
             # Iterate through each table and view
             for table_name, is_view in self.get_object_names(
@@ -122,11 +160,11 @@ class PostgresConnector(SQLConnector):
         return result
 
 
-
 class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
+
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
 
