@@ -144,27 +144,6 @@ class PostgresConnector(SQLConnector):
 
         return sqltype_lookup["string"]  # safe failover to str
 
-    def discover_catalog_entries(self, ignore_information_schema=True) -> list[dict]:
-        """Return a list of catalog entries from discovery.
-
-        Returns:
-            The discovered catalog entries as a list.
-        """
-        result: list[dict] = []
-        engine = self.create_sqlalchemy_engine()
-        inspected = sqlalchemy.inspect(engine)
-        for schema_name in self.get_schema_names(engine, inspected):
-            # Iterate through each table and view
-            for table_name, is_view in self.get_object_names(
-                engine, inspected, schema_name
-            ):
-                catalog_entry = self.discover_catalog_entry(
-                    engine, inspected, schema_name, table_name, is_view
-                )
-                result.append(catalog_entry.to_dict())
-
-        return result
-
 
 class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
