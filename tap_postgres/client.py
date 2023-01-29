@@ -22,17 +22,27 @@ import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, JSONB
+from sqlalchemy.engine import URL
 from sqlalchemy.types import TIMESTAMP
 
 
 class PostgresConnector(SQLConnector):
     """Connects to the Postgres SQL source."""
 
-    def get_sqlalchemy_url(cls, config: dict) -> str:
-        """Concatenate a SQLAlchemy URL for use in connecting to the source."""
-        return (
-            f"postgresql://{config['user']}:{config['password']}"
-            f"@{config['host']}:{config['port']}/{config['dbname']}"
+    def get_sqlalchemy_url(self, config: dict) -> str:
+        """Generate a SQLAlchemy URL.
+        Args:
+            config: The configuration for the connector.
+        """
+        if config.get("sqlalchemy_url") is not None:
+            return str(config["sqlalchemy_url"])
+        return URL.create(
+            drivername=config["dialect+driver"],
+            username=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
+            database=config["database"],
         )
 
     @staticmethod
@@ -144,10 +154,6 @@ class PostgresConnector(SQLConnector):
         engine = self.create_sqlalchemy_engine()
         inspected = sqlalchemy.inspect(engine)
         for schema_name in self.get_schema_names(engine, inspected):
-            if (
-                schema_name.lower() == "information_schema"
-            ) and ignore_information_schema:
-                continue
             # Iterate through each table and view
             for table_name, is_view in self.get_object_names(
                 engine, inspected, schema_name
