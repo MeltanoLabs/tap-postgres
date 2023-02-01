@@ -1,15 +1,17 @@
 """Postgres tap class."""
 
-from typing import List
+from typing import List, Union
 
 from functools import cached_property
-from singer_sdk import SQLTap, SQLStream
+from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
+
 from tap_postgres.client import PostgresConnector, PostgresStream
 
 
 class TapPostgres(SQLTap):
     """Postgres tap class."""
+
     name = "tap-postgres"
     default_stream_class = PostgresStream
 
@@ -18,7 +20,7 @@ class TapPostgres(SQLTap):
             "sqlalchemy_url",
             th.StringType,
             required=True,
-            description="Example postgresql://postgres:postgres@localhost:5432/postgres"
+            description="Example postgresql://postgres:postgres@localhost:5432/postgres",
         ),
     ).to_dict()
 
@@ -27,14 +29,17 @@ class TapPostgres(SQLTap):
         """Get a configured connector for this Tap.
 
         Connector is a singleton (one instance is used by the Tap and Streams).
+
         """
         return PostgresConnector(self.config)
 
-    def discover_streams(self) -> List[PostgresStream]:
+    def discover_streams(self) -> List[Stream]:
         """Initialize all available streams and return them as a list.
 
-        Returns:
+        Returns
+        -------
             List of discovered Stream objects.
+
         """
         return [
             PostgresStream(self, catalog_entry, connector=self.connector)

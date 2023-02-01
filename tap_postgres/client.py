@@ -4,15 +4,11 @@ This includes PostgresStream and PostgresConnector.
 """
 from __future__ import annotations
 
-import sqlalchemy
-import sys
-from typing import Optional, Iterable, Any, Dict, Union, Type
-from typing import Generic, Mapping, TypeVar, Union, cast
-from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, JSONB
-from sqlalchemy.types import TIMESTAMP
-from singer_sdk import typing as th
+from typing import Any, Dict, Iterable, Optional, Type, Union
 
+import sqlalchemy  # type: ignore
 from singer_sdk import SQLConnector, SQLStream
+from singer_sdk import typing as th
 
 
 class PostgresConnector(SQLConnector):
@@ -20,14 +16,39 @@ class PostgresConnector(SQLConnector):
 
     def get_sqlalchemy_url(cls, config: dict) -> str:
         """Concatenate a SQLAlchemy URL for use in connecting to the source."""
-        return config['sqlalchemy_url']
-    
+        return config["sqlalchemy_url"]
+
     @staticmethod
     def to_jsonschema_type(
         sql_type: Union[
-            str, sqlalchemy.types.TypeEngine, Type[sqlalchemy.types.TypeEngine], sqlalchemy.dialects.postgresql.ARRAY, Any
+            str,
+            sqlalchemy.types.TypeEngine,
+            Type[sqlalchemy.types.TypeEngine],
+            sqlalchemy.dialects.postgresql.ARRAY,
+            Any,
         ]
-        ) -> dict:
+    ) -> dict:
+        """Return a JSON Schema representation of the provided type.
+
+        Overidden from SQLConnector to correctly handle JSONB and Arrays.
+
+        By default will call `typing.to_jsonschema_type()` for strings and SQLAlchemy
+        types.
+
+        Args
+        ----
+            sql_type: The string representation of the SQL type, a SQLAlchemy
+                TypeEngine class or object, or a custom-specified object.
+
+        Raises
+        ------
+            ValueError: If the type received could not be translated to jsonschema.
+
+        Returns
+        -------
+            The JSON Schema representation of the provided type.
+
+        """
         type_name = None
         if isinstance(sql_type, str):
             type_name = sql_type
@@ -36,30 +57,54 @@ class PostgresConnector(SQLConnector):
 
         if type_name is not None and type_name == "JSONB":
             return th.ObjectType().type_dict
-        
-        if type_name is not None and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY) and type_name == "ARRAY":
+
+        if (
+            type_name is not None
+            and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY)
+            and type_name == "ARRAY"
+        ):
             array_type = PostgresConnector.sdk_typing_object(sql_type.item_type)
             return th.ArrayType(array_type).type_dict
         return PostgresConnector.sdk_typing_object(sql_type).type_dict
 
-
     @staticmethod
     def sdk_typing_object(
-        from_type: str | sqlalchemy.types.TypeEngine | type[sqlalchemy.types.TypeEngine],
-    ) -> (th.DateTimeType | th.NumberType | th.IntegerType | th.DateType | th.StringType | th.BooleanType) :
+        from_type: str
+        | sqlalchemy.types.TypeEngine
+        | type[sqlalchemy.types.TypeEngine],
+    ) -> (
+        th.DateTimeType
+        | th.NumberType
+        | th.IntegerType
+        | th.DateType
+        | th.StringType
+        | th.BooleanType
+    ):
         """Return the JSON Schema dict that describes the sql type.
-    
-        Args:
+
+        Args
+        ----
             from_type: The SQL type as a string or as a TypeEngine. If a TypeEngine is
                 provided, it may be provided as a class or a specific object instance.
-    
-        Raises:
+
+        Raises
+        ------
             ValueError: If the `from_type` value is not of type `str` or `TypeEngine`.
-    
-        Returns:
+
+        Returns
+        -------
             A compatible JSON Schema type definition.
+
         """
-        sqltype_lookup: dict[str, th.DateTimeType | th.NumberType | th.IntegerType | th.DateType | th.StringType | th.BooleanType] = {
+        sqltype_lookup: dict[
+            str,
+            th.DateTimeType
+            | th.NumberType
+            | th.IntegerType
+            | th.DateType
+            | th.StringType
+            | th.BooleanType,
+        ] = {
             # NOTE: This is an ordered mapping, with earlier mappings taking precedence.
             #       If the SQL-provided type contains the type name on the left, the mapping
             #       will return the respective singer type.
@@ -86,21 +131,23 @@ class PostgresConnector(SQLConnector):
         ):
             type_name = from_type.__name__
         else:
-            raise ValueError("Expected `str` or a SQLAlchemy `TypeEngine` object or type.")
-    
+            raise ValueError(
+                "Expected `str` or a SQLAlchemy `TypeEngine` object or type."
+            )
+
         # Look for the type name within the known SQL type names:
         for sqltype, jsonschema_type in sqltype_lookup.items():
             if sqltype.lower() in type_name.lower():
                 return jsonschema_type
-    
-        return sqltype_lookup["string"]  # safe failover to str
 
+        return sqltype_lookup["string"]  # safe failover to str
 
 
 class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
+
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
 
@@ -108,16 +155,20 @@ class PostgresStream(SQLStream):
         incremental key. If the stream also has an available starting bookmark, the
         records will be filtered for values greater than or equal to the bookmark value.
 
-        Args:
+        Args
+        ----
             context: If partition context is provided, will read specifically from this
                 data slice.
 
-        Yields:
+        Yields
+        ------
             One dict per record.
 
-        Raises:
+        Raises
+        ------
             NotImplementedError: If partition is passed in context and the stream does
                 not support partitioning.
+
         """
         if context:
             raise NotImplementedError(
