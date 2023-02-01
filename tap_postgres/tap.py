@@ -2,9 +2,10 @@
 
 from typing import List
 
+from functools import cached_property
 from singer_sdk import SQLTap, SQLStream
 from singer_sdk import typing as th  # JSON schema typing helpers
-from tap_postgres.client import PostgresStream
+from tap_postgres.client import PostgresConnector, PostgresStream
 
 
 class TapPostgres(SQLTap):
@@ -20,3 +21,22 @@ class TapPostgres(SQLTap):
             description="Example postgresql://postgres:postgres@localhost:5432/postgres"
         ),
     ).to_dict()
+
+    @cached_property
+    def connector(self) -> PostgresConnector:
+        """Get a configured connector for this Tap.
+
+        Connector is a singleton (one instance is used by the Tap and Streams).
+        """
+        return PostgresConnector(self.config)
+
+    def discover_streams(self) -> List[PostgresStream]:
+        """Initialize all available streams and return them as a list.
+
+        Returns:
+            List of discovered Stream objects.
+        """
+        return [
+            PostgresStream(self, catalog_entry, connector=self.connector)
+            for catalog_entry in self.catalog_dict["streams"]
+        ]
