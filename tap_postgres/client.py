@@ -105,9 +105,9 @@ class PostgresConnector(SQLConnector):
             | th.StringType
             | th.BooleanType,
         ] = {
-            # NOTE: This is an ordered mapping, with earlier mappings taking precedence.
-            #       If the SQL-provided type contains the type name on the left, the mapping
-            #       will return the respective singer type.
+            # NOTE: This is an ordered mapping, with earlier mappings taking
+            # precedence. If the SQL-provided type contains the type name on
+            #  the left, the mapping will return the respective singer type.
             "timestamp": th.DateTimeType(),
             "datetime": th.DateTimeType(),
             "date": th.DateType(),

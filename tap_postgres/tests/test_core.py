@@ -45,7 +45,9 @@ def fake():
 
 
 def test_replication_key(sqlalchemy_connection, tap: TapPostgres, fake):
-    """Originally built to address https://github.com/MeltanoLabs/tap-postgres/issues/9"""
+    """Originally built to address
+    https://github.com/MeltanoLabs/tap-postgres/issues/9
+    """
     date1 = datetime.date(2022, 11, 1)
     date2 = datetime.date(2022, 11, 30)
     metadata_obj = MetaData()
@@ -72,16 +74,16 @@ def test_replication_key(sqlalchemy_connection, tap: TapPostgres, fake):
         config=SAMPLE_CONFIG
     )  # If first time running run_discovery won't see the new table
     tap.run_discovery()
-    # TODO Switch this to using Catalog from _singerlib as it makes iterating over this stuff easier
+    # TODO Switch this to using Catalog from _singerlib as it makes iterating
+    # over this stuff easier
     tap_catalog = json.loads(tap.catalog_json_text)
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
                 metadata["metadata"]["selected"] = False
         else:
-            stream[
-                "replication_key"
-            ] = "updated_at"  # Without this the tap will not do an INCREMENTAL sync properly
+            # Without this the tap will not do an INCREMENTAL sync properly
+            stream["replication_key"] = "updated_at"
             for metadata in stream["metadata"]:
                 metadata["metadata"]["selected"] = True
                 if metadata["breadcrumb"] == []:
