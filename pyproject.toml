@@ -12,19 +12,21 @@ license = "Apache 2.0"
 [tool.poetry.dependencies]
 python = "<3.11,>=3.7.1"
 requests = "^2.25.1"
-singer-sdk = "^0.7.0"
+singer-sdk = "^0.19.0"
 psycopg2-binary = "2.9.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
-tox = "^3.24.4"
+tox = "^3"
 flake8 = "^3.9.2"
-black = "^21.9b0"
+black = "^22.3.0"
 pydocstyle = "^6.1.1"
 mypy = "^0.910"
 types-requests = "^2.26.1"
 isort = "^5.10.1"
 faker = "^15.3.4"
+pre-commit = "^2.0.0"
+
 
 [tool.isort]
 profile = "black"
