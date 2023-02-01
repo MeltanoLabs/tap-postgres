@@ -19,3 +19,8 @@ repos:
   - id: poetry-check
   - id: poetry-lock
     args: [--no-update]
+
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 0.910
+    hooks:
+    -   id: mypy

@@ -50,10 +50,9 @@ jobs:
       run: |
         pipx install poetry
         poetry --version
-    - name: Install tox
+    - name: Install dependencies
       run: |
-        pipx install tox
-        tox --version
+        poetry install
     - name: Run lint command from tox.ini
       run: |
-        tox -e ${{ matrix.session }}
+        poetry run tox -e ${{ matrix.session }}
