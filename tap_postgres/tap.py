@@ -1,6 +1,5 @@
 """Postgres tap class."""
 
-from functools import cached_property
 from typing import List
 
 from singer_sdk import SQLTap, Stream
@@ -14,6 +13,7 @@ class TapPostgres(SQLTap):
 
     name = "tap-postgres"
     default_stream_class = PostgresStream
+    _connector = None
 
     config_jsonschema = th.PropertiesList(
         th.Property(
@@ -26,14 +26,16 @@ class TapPostgres(SQLTap):
         ),
     ).to_dict()
 
-    @cached_property
+    @property
     def connector(self) -> PostgresConnector:
         """Get a configured connector for this Tap.
 
         Connector is a singleton (one instance is used by the Tap and Streams).
 
         """
-        return PostgresConnector(dict(self.config))
+        if not self._connector:
+            self._connector = PostgresConnector(dict(self.config))
+        return self._connector
 
     def discover_streams(self) -> List[Stream]:
         """Initialize all available streams and return them as a list.

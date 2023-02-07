@@ -21,6 +21,6 @@ repos:
     args: [--no-update]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 0.910
+    rev: 'v0.991'
     hooks:
     -   id: mypy
