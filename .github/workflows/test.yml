@@ -26,11 +26,11 @@ jobs:
     strategy:
       matrix:
         include:
-        - {python-version: "3.10", session: "lint", os: "ubuntu-latest" }
-        - {python-version: "3.10", session: "pytest", os: "ubuntu-latest" }
-        - {python-version: "3.9", session: "pytest", os: "ubuntu-latest" }
-        - {python-version: "3.8", session: "pytest", os: "ubuntu-latest" }
-        - {python-version: "3.7", session: "pytest", os: "ubuntu-latest" }
+        - {python-version: "3.10", session: "lint"}
+        - {python-version: "3.10", session: "pytest"}
+        - {python-version: "3.9", session: "pytest"}
+        - {python-version: "3.8", session: "pytest"}
+        - {python-version: "3.7", session: "pytest"}
 
     steps:
 
@@ -48,7 +48,7 @@ jobs:
         pip --version
     - name: Install Poetry
       run: |
-        pipx install poetry
+        pip install poetry
         poetry --version
     - name: Install dependencies
       run: |
