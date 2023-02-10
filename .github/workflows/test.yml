@@ -27,11 +27,10 @@ jobs:
       matrix:
         include:
         - {python-version: "3.10", session: "lint"}
+        - {python-version: "3.11", session: "pytest"}
         - {python-version: "3.10", session: "pytest"}
         - {python-version: "3.9", session: "pytest"}
         - {python-version: "3.8", session: "pytest"}
-        - {python-version: "3.7", session: "pytest"}
-
     steps:
 
     - name: Checkout code
