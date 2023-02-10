@@ -16,8 +16,7 @@ plugins:
     - name: sqlalchemy_url
       kind: password
     select:
-    - autoidm-ad_bamboohr_match.delta
-    - autoidm-ad_bamboohr_match.stg_activedirectory_userprincipalname
+    - "*.*"
   loaders:
   - name: target-jsonl
     variant: andyh1203
