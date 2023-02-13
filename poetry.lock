@@ -326,8 +326,6 @@ files = [
     {file = "cryptography-39.0.1-cp36-abi3-win32.whl", hash = "sha256:fe913f20024eb2cb2f323e42a64bdf2911bb9738a15dba7d3cce48151034e3a8"},
     {file = "cryptography-39.0.1-cp36-abi3-win_amd64.whl", hash = "sha256:ced4e447ae29ca194449a3f1ce132ded8fcab06971ef5f618605aacaa612beac"},
     {file = "cryptography-39.0.1-pp38-pypy38_pp73-macosx_10_12_x86_64.whl", hash = "sha256:807ce09d4434881ca3a7594733669bd834f5b2c6d5c7e36f8c00f691887042ad"},
-    {file = "cryptography-39.0.1-pp38-pypy38_pp73-manylinux_2_28_aarch64.whl", hash = "sha256:c5caeb8188c24888c90b5108a441c106f7faa4c4c075a2bcae438c6e8ca73cef"},
-    {file = "cryptography-39.0.1-pp38-pypy38_pp73-manylinux_2_28_x86_64.whl", hash = "sha256:4789d1e3e257965e960232345002262ede4d094d1a19f4d3b52e48d4d8f3b885"},
     {file = "cryptography-39.0.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:96f1157a7c08b5b189b16b47bc9db2332269d6680a196341bf30046330d15388"},
     {file = "cryptography-39.0.1-pp39-pypy39_pp73-macosx_10_12_x86_64.whl", hash = "sha256:e422abdec8b5fa8462aa016786680720d78bdce7a30c652b7fadf83a4ba35336"},
     {file = "cryptography-39.0.1-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_24_aarch64.whl", hash = "sha256:b0afd054cd42f3d213bf82c629efb1ee5f22eba35bf0eec88ea9ea7304f511a2"},
@@ -392,14 +390,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "faker"
-version = "16.8.1"
+version = "16.9.0"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Faker-16.8.1-py3-none-any.whl", hash = "sha256:64dcf95eee9f00d2547f29f6762aec80fc3ccbe3752bfa2c45082a6e2cc4d74a"},
-    {file = "Faker-16.8.1.tar.gz", hash = "sha256:ad181f6f9cdc0f7d70ea6eaea35ab4b6549391fbaaea7629cc567aeb2757d296"},
+    {file = "Faker-16.9.0-py3-none-any.whl", hash = "sha256:1f76bd19a642e4af88e8139c6bf764294cfee0172e652d660777e4c570b0699b"},
+    {file = "Faker-16.9.0.tar.gz", hash = "sha256:b5dce93b50cd83278b4e6a47b80f0f1ab340f726e27a2b45ba93b814f0612752"},
 ]
 
 [package.dependencies]
@@ -534,14 +532,14 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "identify"
-version = "2.5.17"
+version = "2.5.18"
 description = "File identification library for Python"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "identify-2.5.17-py2.py3-none-any.whl", hash = "sha256:7d526dd1283555aafcc91539acc061d8f6f59adb0a7bba462735b0a318bff7ed"},
-    {file = "identify-2.5.17.tar.gz", hash = "sha256:93cc61a861052de9d4c541a7acb7e3dcc9c11b398a2144f6e52ae5285f5f4f06"},
+    {file = "identify-2.5.18-py2.py3-none-any.whl", hash = "sha256:93aac7ecf2f6abf879b8f29a8002d3c6de7086b8c28d88e1ad15045a15ab63f9"},
+    {file = "identify-2.5.18.tar.gz", hash = "sha256:89e144fa560cc4cffb6ef2ab5e9fb18ed9f9b3cb054384bab4b95c12f6c309fe"},
 ]
 
 [package.extras]
@@ -1357,41 +1355,47 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.19.0"
+version = "0.20.0"
 description = "A framework for building Singer taps"
 category = "main"
 optional = false
-python-versions = ">=3.7.1,<3.12"
-files = [
-    {file = "singer_sdk-0.19.0-py3-none-any.whl", hash = "sha256:6925687a8510116a54325704cdf981bad37f1be6fd2e038c4a13a1d99a71bb28"},
-    {file = "singer_sdk-0.19.0.tar.gz", hash = "sha256:7730d4012e85e16df884e0a763a211d2791b759ad052b6458ad09c2ab4f4de7c"},
-]
+python-versions = "<3.12,>=3.7.1"
+files = []
+develop = false
 
 [package.dependencies]
 backoff = ">=2.0.0,<3.0"
-click = ">=8.0,<9.0"
+click = "~=8.0"
 cryptography = ">=3.4.6,<40.0.0"
-fs = ">=2.4.16,<3.0.0"
+fs = "^2.4.16"
 importlib-resources = {version = "5.10.2", markers = "python_version < \"3.9\""}
-inflection = ">=0.5.1,<0.6.0"
-joblib = ">=1.0.1,<2.0.0"
-jsonpath-ng = ">=1.5.3,<2.0.0"
-jsonschema = ">=4.16.0,<5.0.0"
+inflection = "^0.5.1"
+joblib = "^1.0.1"
+jsonpath-ng = "^1.5.3"
+jsonschema = "^4.16.0"
 memoization = ">=0.3.2,<0.5.0"
-pendulum = ">=2.1.0,<3.0.0"
-PyJWT = ">=2.4,<3.0"
+pendulum = "^2.1.0"
+PyJWT = "~=2.4"
 python-dotenv = ">=0.20,<0.22"
-pytz = ">=2022.2.1,<2023.0.0"
-PyYAML = ">=6.0,<7.0"
-requests = ">=2.25.1,<3.0.0"
-simplejson = ">=3.17.6,<4.0.0"
-sqlalchemy = ">=1.4,<2.0"
-typing-extensions = ">=4.2.0,<5.0.0"
+pytz = "^2022.2.1"
+PyYAML = "^6.0"
+requests = "^2.25.1"
+simplejson = "^3.17.6"
+sqlalchemy = "^1.4"
+typing-extensions = "^4.2.0"
 
 [package.extras]
-docs = ["myst-parser (>=0.17.2,<0.19.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-rtd-theme (>=0.5.2,<1.2.0)"]
+debugging = []
+docs = ["furo (>=2022.12.7,<2023.0.0)", "myst-parser (>=0.17.2,<0.19.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
 s3 = ["fs-s3fs (>=1.1.1,<2.0.0)"]
+samples = []
 testing = ["pytest (>=7.2.1,<8.0.0)", "pytest-durations (>=1.2.0,<2.0.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/meltano/sdk.git"
+reference = "main"
+resolved_reference = "f953a0d1b551f1584de1d5b99e26f20dae7a5ab3"
 
 [[package]]
 name = "six"
@@ -1473,7 +1477,7 @@ greenlet = {version = "!=0.4.17", markers = "python_version >= \"3\" and (platfo
 
 [package.extras]
 aiomysql = ["aiomysql", "greenlet (!=0.4.17)"]
-aiosqlite = ["aiosqlite", "greenlet (!=0.4.17)", "typing-extensions (!=3.10.0.1)"]
+aiosqlite = ["aiosqlite", "greenlet (!=0.4.17)", "typing_extensions (!=3.10.0.1)"]
 asyncio = ["greenlet (!=0.4.17)"]
 asyncmy = ["asyncmy (>=0.2.3,!=0.2.4)", "greenlet (!=0.4.17)"]
 mariadb-connector = ["mariadb (>=1.0.1,!=1.1.2)"]
@@ -1483,14 +1487,14 @@ mssql-pyodbc = ["pyodbc"]
 mypy = ["mypy (>=0.910)", "sqlalchemy2-stubs"]
 mysql = ["mysqlclient (>=1.4.0)", "mysqlclient (>=1.4.0,<2)"]
 mysql-connector = ["mysql-connector-python"]
-oracle = ["cx-oracle (>=7)", "cx-oracle (>=7,<8)"]
+oracle = ["cx_oracle (>=7)", "cx_oracle (>=7,<8)"]
 postgresql = ["psycopg2 (>=2.7)"]
 postgresql-asyncpg = ["asyncpg", "greenlet (!=0.4.17)"]
 postgresql-pg8000 = ["pg8000 (>=1.16.6,!=1.29.0)"]
 postgresql-psycopg2binary = ["psycopg2-binary"]
 postgresql-psycopg2cffi = ["psycopg2cffi"]
 pymysql = ["pymysql", "pymysql (<1)"]
-sqlcipher = ["sqlcipher3-binary"]
+sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "tomli"
@@ -1626,4 +1630,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "4ea442b003c6e1e895c8c6f0def037654a99fdade4348ce38c48a32e05710e8d"
+content-hash = "582ed12a474530c05d39f1199d091d4e1a06c733bafa91539e53f87ea3c76ba5"

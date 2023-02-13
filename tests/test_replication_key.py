@@ -3,56 +3,28 @@ import datetime
 import json
 
 import pendulum
-import pytest
 from faker import Faker
-from singer_sdk.testing import get_standard_tap_tests
+from singer_sdk.testing.templates import TapTestTemplate
+import sqlalchemy
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
 
 from tap_postgres.tap import TapPostgres
 
+TABLE_NAME = "test_replication_key"
 SAMPLE_CONFIG = {
     "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
     "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
 }
 
 
-# Run standard built-in tap tests from the SDK:
-def test_standard_tap_tests():
-    """Run standard tap tests from the SDK."""
-    tests = get_standard_tap_tests(TapPostgres, config=SAMPLE_CONFIG)
-    for test in tests:
-        test()
+def setup_test_table(table_name, sqlalchemy_url):
+    """setup any state specific to the execution of the given module."""
+    engine = sqlalchemy.create_engine(sqlalchemy_url)
+    fake = Faker()
 
-
-@pytest.fixture()
-def sqlalchemy_connection(tap):
-    # Used this function to avoid server side cursors which don't work with DDL
-    return (
-        tap.default_stream_class.connector_class(dict(tap.config))
-        .create_sqlalchemy_engine()
-        .connect()
-    )
-
-
-@pytest.fixture()
-def tap():
-    return TapPostgres(config=SAMPLE_CONFIG)
-
-
-@pytest.fixture()
-def fake():
-    return Faker()
-
-
-def test_replication_key(sqlalchemy_connection, tap: TapPostgres, fake):
-    """Originally built to address
-    https://github.com/MeltanoLabs/tap-postgres/issues/9
-    """
     date1 = datetime.date(2022, 11, 1)
     date2 = datetime.date(2022, 11, 30)
     metadata_obj = MetaData()
-    table_name = "test_replication_key"
-
     test_replication_key_table = Table(
         table_name,
         metadata_obj,
@@ -60,19 +32,31 @@ def test_replication_key(sqlalchemy_connection, tap: TapPostgres, fake):
         Column("updated_at", DateTime(), nullable=False),
         Column("name", String()),
     )
-    metadata_obj.create_all(sqlalchemy_connection)
-    sqlalchemy_connection.execute(f"TRUNCATE TABLE {table_name}")
+    # metadata_obj.create_all(engine)
+    with engine.connect() as conn:
+        metadata_obj.create_all(conn)
+        conn.execute(f"TRUNCATE TABLE {table_name}")
+        for _ in range(1000):
+            insert = test_replication_key_table.insert().values(
+                updated_at=fake.date_between(date1, date2), name=fake.name()
+            )
+            conn.execute(insert)
 
-    for _ in range(1000):
-        insert = test_replication_key_table.insert().values(
-            updated_at=fake.date_between(date1, date2), name=fake.name()
-        )
-        sqlalchemy_connection.execute(insert)
 
+def teardown_test_table(table_name, sqlalchemy_url):
+    engine = sqlalchemy.create_engine(sqlalchemy_url)
+    with engine.connect() as conn:
+        conn.execute(f"DROP TABLE {table_name}")
+
+
+def replication_key_test(tap, table_name):
+    """Originally built to address
+    https://github.com/MeltanoLabs/tap-postgres/issues/9
+    """
     # Create sink for table
-    tap = TapPostgres(
-        config=SAMPLE_CONFIG
-    )  # If first time running run_discovery won't see the new table
+    # tap = TapPostgres(
+    #     config=SAMPLE_CONFIG
+    # )  # If first time running run_discovery won't see the new table
     tap.run_discovery()
     # TODO Switch this to using Catalog from _singerlib as it makes iterating
     # over this stuff easier
@@ -96,3 +80,11 @@ def test_replication_key(sqlalchemy_connection, tap: TapPostgres, fake):
 
     tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
     tap.sync_all()
+
+
+class TapTestReplicationKey(TapTestTemplate):
+    name = "replication_key"
+    table_name = TABLE_NAME
+
+    def test(self):
+        replication_key_test(self.tap, self.table_name)
