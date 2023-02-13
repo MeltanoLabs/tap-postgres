@@ -1,13 +1,12 @@
 import pendulum
 import pytest
-import sqlalchemy
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.templates import TapTestTemplate
 from test_replication_key import (
+    TABLE_NAME,
     TapTestReplicationKey,
     setup_test_table,
     teardown_test_table,
-    TABLE_NAME
 )
 
 from tap_postgres.tap import TapPostgres

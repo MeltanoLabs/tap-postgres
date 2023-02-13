@@ -3,9 +3,9 @@ import datetime
 import json
 
 import pendulum
+import sqlalchemy
 from faker import Faker
 from singer_sdk.testing.templates import TapTestTemplate
-import sqlalchemy
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
 
 from tap_postgres.tap import TapPostgres
@@ -32,7 +32,6 @@ def setup_test_table(table_name, sqlalchemy_url):
         Column("updated_at", DateTime(), nullable=False),
         Column("name", String()),
     )
-    # metadata_obj.create_all(engine)
     with engine.connect() as conn:
         metadata_obj.create_all(conn)
         conn.execute(f"TRUNCATE TABLE {table_name}")
