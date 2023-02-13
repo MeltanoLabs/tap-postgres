@@ -1,6 +1,10 @@
 name: Test tap-postgres
 
-on: [push]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 jobs:
   tests:
