@@ -25,7 +25,7 @@ mypy = "1.0.0"
 types-requests = "^2.26.1"
 isort = "^5.10.1"
 faker = "^16.8.1"
-pre-commit = "^2.0.0"
+pre-commit = "^3.0.4"
 
 
 [tool.isort]
