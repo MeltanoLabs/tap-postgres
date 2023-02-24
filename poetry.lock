@@ -599,14 +599,14 @@ files = [
 
 [[package]]
 name = "importlib-resources"
-version = "5.10.2"
+version = "5.12.0"
 description = "Read resources from Python packages"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "importlib_resources-5.10.2-py3-none-any.whl", hash = "sha256:7d543798b0beca10b6a01ac7cafda9f822c54db9e8376a6bf57e0cbd74d486b6"},
-    {file = "importlib_resources-5.10.2.tar.gz", hash = "sha256:e4a96c8cc0339647ff9a5e0550d9f276fc5a01ffa276012b58ec108cfd7b8484"},
+    {file = "importlib_resources-5.12.0-py3-none-any.whl", hash = "sha256:7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"},
+    {file = "importlib_resources-5.12.0.tar.gz", hash = "sha256:4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"},
 ]
 
 [package.dependencies]
@@ -1418,14 +1418,14 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.20.0"
+version = "0.21.0"
 description = "A framework for building Singer taps"
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.12"
 files = [
-    {file = "singer_sdk-0.20.0-py3-none-any.whl", hash = "sha256:7c1fe33a2de5aad771a739961c0f8be93c18bd7eba31363eaa70ed8f4000b851"},
-    {file = "singer_sdk-0.20.0.tar.gz", hash = "sha256:5871f5f691136bf00d2e4527f17f9b69b9ea1b9b62bd5984f5d350be8650548d"},
+    {file = "singer_sdk-0.21.0-py3-none-any.whl", hash = "sha256:b789e0ede3f6f2bdeac5d2554f6c176ccdcbe25c3c1bf7a91d2915b436980fe3"},
+    {file = "singer_sdk-0.21.0.tar.gz", hash = "sha256:33404cc7d49f4dc0151eb30278e33285262c5b5a911533a19327787f11c2934f"},
 ]
 
 [package.dependencies]
@@ -1433,7 +1433,7 @@ backoff = ">=2.0.0,<3.0"
 click = ">=8.0,<9.0"
 cryptography = ">=3.4.6,<40.0.0"
 fs = ">=2.4.16,<3.0.0"
-importlib-resources = {version = "5.10.2", markers = "python_version < \"3.9\""}
+importlib-resources = {version = "5.12.0", markers = "python_version < \"3.9\""}
 inflection = ">=0.5.1,<0.6.0"
 joblib = ">=1.0.1,<2.0.0"
 jsonpath-ng = ">=1.5.3,<2.0.0"
@@ -1664,4 +1664,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "50d6896d175df9b3ec57c64e7b00b0a63795bcb1ec429cdd19e48d576646952e"
+content-hash = "5fab8a9c1354c88a2a5a5589c3de12f2abfcab525a6c7e3883c279b3edb9ecc9"
