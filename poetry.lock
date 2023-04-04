@@ -1418,20 +1418,20 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.21.0"
+version = "0.23.0"
 description = "A framework for building Singer taps"
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.12"
 files = [
-    {file = "singer_sdk-0.21.0-py3-none-any.whl", hash = "sha256:b789e0ede3f6f2bdeac5d2554f6c176ccdcbe25c3c1bf7a91d2915b436980fe3"},
-    {file = "singer_sdk-0.21.0.tar.gz", hash = "sha256:33404cc7d49f4dc0151eb30278e33285262c5b5a911533a19327787f11c2934f"},
+    {file = "singer_sdk-0.23.0-py3-none-any.whl", hash = "sha256:bb032ad9cc3805c9f840e5ca06c6208e5dea472b23ef6d9a324513fb51fc57f9"},
+    {file = "singer_sdk-0.23.0.tar.gz", hash = "sha256:4bb62f23669568ea2f57a288d6c53e109bf945fb9e06c2ece4cb8331586415e3"},
 ]
 
 [package.dependencies]
 backoff = ">=2.0.0,<3.0"
 click = ">=8.0,<9.0"
-cryptography = ">=3.4.6,<40.0.0"
+cryptography = ">=3.4.6,<41.0.0"
 fs = ">=2.4.16,<3.0.0"
 importlib-resources = {version = "5.12.0", markers = "python_version < \"3.9\""}
 inflection = ">=0.5.1,<0.6.0"
@@ -1444,7 +1444,7 @@ PyJWT = ">=2.4,<3.0"
 pytest = {version = ">=7.2.1,<8.0.0", optional = true, markers = "extra == \"testing\""}
 pytest-durations = {version = ">=1.2.0,<2.0.0", optional = true, markers = "extra == \"testing\""}
 python-dotenv = ">=0.20,<0.22"
-pytz = ">=2022.2.1,<2023.0.0"
+pytz = ">=2022.2.1,<2024.0.0"
 PyYAML = ">=6.0,<7.0"
 requests = ">=2.25.1,<3.0.0"
 simplejson = ">=3.17.6,<4.0.0"
@@ -1452,7 +1452,7 @@ sqlalchemy = ">=1.4,<2.0"
 typing-extensions = ">=4.2.0,<5.0.0"
 
 [package.extras]
-docs = ["furo (>=2022.12.7,<2023.0.0)", "myst-parser (>=0.17.2,<0.19.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
+docs = ["furo (>=2022.12.7,<2024.0.0)", "myst-parser (>=0.17.2,<1.1.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
 s3 = ["fs-s3fs (>=1.1.1,<2.0.0)"]
 testing = ["pytest (>=7.2.1,<8.0.0)", "pytest-durations (>=1.2.0,<2.0.0)"]
 
@@ -1664,4 +1664,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "5fab8a9c1354c88a2a5a5589c3de12f2abfcab525a6c7e3883c279b3edb9ecc9"
+content-hash = "cdae7cecc83ea6336563fd1e1e82a32e33f3a0865ae7e5efb4c05ecc69ac9fdb"
