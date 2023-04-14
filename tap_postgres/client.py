@@ -14,10 +14,6 @@ from singer_sdk import typing as th
 class PostgresConnector(SQLConnector):
     """Connects to the Postgres SQL source."""
 
-    def get_sqlalchemy_url(cls, config: dict) -> str:
-        """Concatenate a SQLAlchemy URL for use in connecting to the source."""
-        return config["sqlalchemy_url"]
-
     @staticmethod
     def to_jsonschema_type(
         sql_type: Union[
