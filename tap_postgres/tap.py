@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import atexit
+import io
 import signal
 from functools import cached_property
 from pathlib import PurePath
 from typing import List
 
+import paramiko
 from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.helpers._secrets import SecretString, is_common_secret_key
@@ -64,7 +66,7 @@ class TapPostgres(SQLTap):
             "ssh_tunnel.private_key",
             th.StringType,
             required=False,
-            description=("Private Key for the bastian host"),
+            description=("Private Key for authentcation to the bastian host"),
         ),
         th.Property(
             "ssh_tunnel.private_key_password",
@@ -93,6 +95,20 @@ class TapPostgres(SQLTap):
             ),  # Sometimes we mutuate the url to use the ssh tunnel
         )
 
+    def guess_key_type(self, key_data):
+        for key_class in [
+            paramiko.DSSKey,
+            paramiko.ECDSAKey,
+            paramiko.RSAKey,
+            paramiko.Ed25519Key,
+        ]:
+            try:
+                key = key_class.from_private_key(io.StringIO(key_data))
+                return key
+            except paramiko.SSHException:
+                continue
+        raise ValueError("Could not determine the key type.")
+
     def ssh_tunnel_connect(self) -> None:
         self.ssh_tunnel: SSHTunnelForwarder = SSHTunnelForwarder(
             ssh_address_or_host=(
@@ -100,8 +116,7 @@ class TapPostgres(SQLTap):
                 self.config["ssh_tunnel.port"],
             ),
             ssh_username=self.config["ssh_tunnel.username"],
-            # TODO Update this to use the private_key from env instead of file
-            ssh_private_key=self.config["ssh_tunnel.private_key"],
+            ssh_private_key=self.guess_key_type(self.config["ssh_tunnel.private_key"]),
             ssh_private_key_password=self.config.get("ssh_tunnel.private_key_password"),
             remote_bind_address=(self.url.host, self.url.port),
         )
