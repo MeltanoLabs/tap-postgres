@@ -96,7 +96,7 @@ class TapPostgres(SQLTap):
         )
 
     def guess_key_type(self, key_data):
-        """ We are duplciating some logic from the ssh_tunnel package here, 
+        """We are duplciating some logic from the ssh_tunnel package here,
         we could try to use their function instead."""
         for key_class in [
             paramiko.RSAKey,

@@ -28,6 +28,10 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
+    - uses: isbang/compose-action@v1.4.1
+    - name: Docker compose
+      run: docker-compose up -d
+
     - name: Checkout code
       uses: actions/checkout@v3.3.0
 
