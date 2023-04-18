@@ -31,45 +31,57 @@ class TapPostgres(SQLTap):
                 "Example postgresql://postgres:postgres@localhost:5432/postgres"
             ),
         ),
-        th.Property(
-            "ssh_tunnel.enable",
-            th.BooleanType,
-            required=True,
-            default=False,
-            description=(
-                "Enable an ssh tunnel (also known as bastian host), see the the other ssh.* properties for more details"
+       th.Property(
+            "ssh_tunnel",
+            th.ObjectType(
+                th.Property(
+                    "enable",
+                    th.BooleanType,
+                    required=True,
+                    default=False,
+                    description=(
+                        "Enable an ssh tunnel (also known as bastion host), see the "
+                        "other ssh_tunnel.* properties for more details"
+                    ),
+                ),
+                th.Property(
+                    "host",
+                    th.StringType,
+                    required=True,
+                    description="Hostname of the bastion host",
+                ),
+                th.Property(
+                    "username",
+                    th.StringType,
+                    required=True,
+                    description="Username to connect to bastion host with",
+                ),
+                th.Property(
+                    "port",
+                    th.IntegerType,
+                    required=False,
+                    default=22,
+                    description="Default SSH port",
+                ),
+                th.Property(
+                    "private_key",
+                    th.StringType,
+                    required=True,
+                    secret=True,
+                    description="Private Key for authentication to the bastion host",
+                ),
+                th.Property(
+                    "private_key_password",
+                    th.StringType,
+                    required=True,
+                    secret=True,
+                    description=(
+                        "Private Key Password, leave None if no password is set"
+                    ),
+                ),
             ),
-        ),
-        th.Property(
-            "ssh_tunnel.host",
-            th.StringType,
             required=False,
-            description=("Hostname of the bastian host"),
-        ),
-        th.Property(
-            "ssh_tunnel.username",
-            th.StringType,
-            required=False,
-            description=("Username to connect to bastian host with"),
-        ),
-        th.Property(
-            "ssh_tunnel.port",
-            th.IntegerType,
-            required=False,
-            default=22,
-            description=("Default SSH port"),
-        ),
-        th.Property(
-            "ssh_tunnel.private_key",
-            th.StringType,
-            required=False,
-            description=("Private Key for authentcation to the bastian host"),
-        ),
-        th.Property(
-            "ssh_tunnel.private_key_password",
-            th.StringType,
-            required=False,
-            description=("Private Key Password, leave None if no password is set"),
+            description="SSH Tunnel Configuration",
         ),
     ).to_dict()
 
