@@ -5,14 +5,11 @@ import atexit
 import io
 import signal
 from functools import cached_property
-from pathlib import PurePath
 from typing import List
 
 import paramiko
 from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
-from singer_sdk.helpers._secrets import SecretString, is_common_secret_key
-from singer_sdk.helpers._util import read_json_file
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
