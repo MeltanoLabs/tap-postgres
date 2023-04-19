@@ -5,7 +5,7 @@ import atexit
 import io
 import signal
 from functools import cached_property
-from typing import List
+from typing import TYPE_CHECKING, Any, List
 
 import paramiko
 from singer_sdk import SQLTap, Stream
@@ -14,6 +14,9 @@ from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
 from tap_postgres.client import PostgresConnector, PostgresStream
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.url import URL
 
 
 class TapPostgres(SQLTap):
@@ -93,43 +96,51 @@ class TapPostgres(SQLTap):
 
         """
         # We mutate this url to use the ssh tunnel if enabled
-        self.url = make_url(self.config["sqlalchemy_url"])
+        url = make_url(self.config["sqlalchemy_url"])
+        ssh_config = self.config.get("ssh_tunnel", {})
 
-        if self.config["ssh_tunnel.enable"]:
-            self.ssh_tunnel_connect()
+        if ssh_config.get("enable", False):
+            # Return a new URL with SSH tunnel parameters
+            url = self.ssh_tunnel_connect(ssh_config=ssh_config, url=url)
+
         return PostgresConnector(
             config=dict(self.config),
-            sqlalchemy_url=str(
-                self.url
-            ),  # Sometimes we mutuate the url to use the ssh tunnel
+            sqlalchemy_url=url.render_as_string(hide_password=False),
         )
 
-    def guess_key_type(self, key_data):
+    def guess_key_type(self, key_data: str):
         """We are duplciating some logic from the ssh_tunnel package here,
         we could try to use their function instead."""
-        for key_class in [
+        for key_class in (
             paramiko.RSAKey,
             paramiko.DSSKey,
             paramiko.ECDSAKey,
             paramiko.Ed25519Key,
-        ]:
+        ):
             try:
                 key = key_class.from_private_key(io.StringIO(key_data))
-                return key
             except paramiko.SSHException:
                 continue
+            else:
+                return key
         raise ValueError("Could not determine the key type.")
 
-    def ssh_tunnel_connect(self) -> None:
+    def ssh_tunnel_connect(self, *, ssh_config: dict[str, Any], url: URL) -> URL:
+        """Connect to the SSH Tunnel and swap the URL to use the tunnel.
+
+        Args:
+            ssh_config: The SSH Tunnel configuration
+            url: The original URL to connect to.
+
+        Returns:
+            The new URL to connect to, using the tunnel.
+        """
         self.ssh_tunnel: SSHTunnelForwarder = SSHTunnelForwarder(
-            ssh_address_or_host=(
-                self.config["ssh_tunnel.host"],
-                self.config["ssh_tunnel.port"],
-            ),
-            ssh_username=self.config["ssh_tunnel.username"],
-            ssh_private_key=self.guess_key_type(self.config["ssh_tunnel.private_key"]),
-            ssh_private_key_password=self.config.get("ssh_tunnel.private_key_password"),
-            remote_bind_address=(self.url.host, self.url.port),
+            ssh_address_or_host=(ssh_config["host"], ssh_config["port"]),
+            ssh_username=ssh_config["username"],
+            ssh_private_key=self.guess_key_type(ssh_config["ssh_tunnel.private_key"]),
+            ssh_private_key_password=ssh_config.get("private_key_password"),
+            remote_bind_address=(url.host, url.port),
         )
         self.ssh_tunnel.start()
         self.logger.info("SSH Tunnel started")
@@ -138,9 +149,10 @@ class TapPostgres(SQLTap):
         signal.signal(signal.SIGTERM, self.catch_signal)
         signal.signal(signal.SIGINT, self.catch_signal)
 
-        #  Swap URL and Port to use tunnel
-        self.url = self.url.set(
-            host=self.ssh_tunnel.local_bind_host, port=self.ssh_tunnel.local_bind_port
+        # Swap the URL to use the tunnel
+        return url.set(
+            host=self.ssh_tunnel.local_bind_host,
+            port=self.ssh_tunnel.local_bind_port,
         )
 
     def clean_up(self):
