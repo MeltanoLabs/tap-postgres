@@ -34,7 +34,7 @@ class TapPostgres(SQLTap):
                 "Example postgresql://postgres:postgres@localhost:5432/postgres"
             ),
         ),
-       th.Property(
+        th.Property(
             "ssh_tunnel",
             th.ObjectType(
                 th.Property(
