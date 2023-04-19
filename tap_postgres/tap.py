@@ -108,9 +108,21 @@ class TapPostgres(SQLTap):
             sqlalchemy_url=url.render_as_string(hide_password=False),
         )
 
-    def guess_key_type(self, key_data: str):
-        """We are duplciating some logic from the ssh_tunnel package here,
-        we could try to use their function instead."""
+    def guess_key_type(self, key_data: str) -> paramiko.PKey:
+        """Guess the type of the private key.
+
+        We are duplicating some logic from the ssh_tunnel package here,
+        we could try to use their function instead.
+
+        Args:
+            key_data: The private key data to guess the type of.
+
+        Returns:
+            The private key object.
+
+        Raises:
+            ValueError: If the key type could not be determined.
+        """
         for key_class in (
             paramiko.RSAKey,
             paramiko.DSSKey,
@@ -123,7 +135,9 @@ class TapPostgres(SQLTap):
                 continue
             else:
                 return key
-        raise ValueError("Could not determine the key type.")
+
+        errmsg = "Could not determine the key type."
+        raise ValueError(errmsg)
 
     def ssh_tunnel_connect(self, *, ssh_config: dict[str, Any], url: URL) -> URL:
         """Connect to the SSH Tunnel and swap the URL to use the tunnel.
@@ -155,11 +169,18 @@ class TapPostgres(SQLTap):
             port=self.ssh_tunnel.local_bind_port,
         )
 
-    def clean_up(self):
+    def clean_up(self) -> None:
+        """Stop the SSH Tunnel."""
         self.logger.info("Shutting down SSH Tunnel")
         self.ssh_tunnel.stop()
 
-    def catch_signal(self, signum, frame):
+    def catch_signal(self, signum, frame) -> None:
+        """Catch signals and exit cleanly.
+
+        Args:
+            signum: The signal number
+            frame: The current stack frame
+        """
         exit(1)  # Be sure atexit is called, so clean_up gets called
 
     @property
