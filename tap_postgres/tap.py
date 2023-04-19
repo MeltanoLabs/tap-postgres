@@ -5,7 +5,7 @@ import atexit
 import io
 import signal
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 import paramiko
 from singer_sdk import SQLTap, Stream
@@ -130,7 +130,7 @@ class TapPostgres(SQLTap):
             paramiko.Ed25519Key,
         ):
             try:
-                key = key_class.from_private_key(io.StringIO(key_data))
+                key = key_class.from_private_key(io.StringIO(key_data))  # type: ignore[attr-defined]  # noqa: E501
             except paramiko.SSHException:
                 continue
             else:
@@ -190,8 +190,8 @@ class TapPostgres(SQLTap):
         Returns:
             The tap's catalog as a dict
         """
-        if self._catalog_dict:  # type: ignore
-            return self._catalog_dict  # type: ignore
+        if self._catalog_dict:
+            return self._catalog_dict
 
         if self.input_catalog:
             return self.input_catalog.to_dict()
@@ -202,13 +202,11 @@ class TapPostgres(SQLTap):
         self._catalog_dict = result
         return self._catalog_dict
 
-    def discover_streams(self) -> List[Stream]:
+    def discover_streams(self) -> list[Stream]:
         """Initialize all available streams and return them as a list.
 
-        Returns
-        -------
+        Returns:
             List of discovered Stream objects.
-
         """
         return [
             PostgresStream(self, catalog_entry, connector=self.connector)
