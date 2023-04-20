@@ -31,13 +31,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3.3.0
 
-    - name: Working Directory Setup for SSH Tunnel Docker Compose
-      run: cd ssh_tunnel
-
     - uses: isbang/compose-action@v1.4.1
-
-    - name: Working Directory Setup for tap-postgres
-      run: cd ..
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4.5.0

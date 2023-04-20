@@ -1,4 +1,5 @@
 ---
+# Can't put docker-compose in ssh_tunnel dir because of https://github.com/isbang/compose-action/issues/29 and its tie to our Github action. Easiest to just drop this file in the root directory
 version: "2.1" #Borrowed heavily from https://github.com/pahaz/sshtunnel/blob/master/e2e_tests/docker-compose.yaml
 services:
   ssh:
@@ -13,7 +14,7 @@ services:
       - PASSWORD_ACCESS=false
       - USER_NAME=melty
     volumes:
-      - ./ssh-server-config:/config/ssh_host_keys:ro
+      - ./ssh_tunnel/ssh-server-config:/config/ssh_host_keys:ro
     ports:
       - "127.0.0.1:2223:2222"
     networks:
