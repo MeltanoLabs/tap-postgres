@@ -51,20 +51,23 @@ class TapPostgres(SQLTap):
                     "host",
                     th.StringType,
                     required=True,
-                    description="Hostname of the bastion host",
+                    description=(
+                        "Host of the bastion host, this is the host "
+                        "we'll connect to via ssh"
+                    ),
                 ),
                 th.Property(
                     "username",
                     th.StringType,
                     required=True,
-                    description="Username to connect to bastion host with",
+                    description="Username to connect to bastion host",
                 ),
                 th.Property(
                     "port",
                     th.IntegerType,
-                    required=False,
+                    required=True,
                     default=22,
-                    description="Default SSH port",
+                    description="Port to connect to bastion host",
                 ),
                 th.Property(
                     "private_key",
@@ -85,7 +88,7 @@ class TapPostgres(SQLTap):
                 ),
             ),
             required=False,
-            description="SSH Tunnel Configuration",
+            description="SSH Tunnel Configuration, this is a json object",
         ),
     ).to_dict()
 
