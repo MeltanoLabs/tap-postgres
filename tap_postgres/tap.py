@@ -161,6 +161,7 @@ class TapPostgres(SQLTap):
         # On program exit clean up, want to also catch signals
         atexit.register(self.clean_up)
         signal.signal(signal.SIGTERM, self.catch_signal)
+        # Probably overkill to catch SIGINT, but needed for SIGTERM
         signal.signal(signal.SIGINT, self.catch_signal)
 
         # Swap the URL to use the tunnel
@@ -181,7 +182,7 @@ class TapPostgres(SQLTap):
             signum: The signal number
             frame: The current stack frame
         """
-        exit(1)  # Be sure atexit is called, so clean_up gets called
+        exit(1)  # Calling this to be sure atexit is called, so clean_up gets called
 
     @property
     def catalog_dict(self) -> dict:
@@ -199,7 +200,7 @@ class TapPostgres(SQLTap):
         result: dict[str, list[dict]] = {"streams": []}
         result["streams"].extend(self.connector.discover_catalog_entries())
 
-        self._catalog_dict = result
+        self._catalog_dict: dict = result
         return self._catalog_dict
 
     def discover_streams(self) -> list[Stream]:
