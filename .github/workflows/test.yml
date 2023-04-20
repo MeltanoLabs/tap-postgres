@@ -35,7 +35,7 @@ jobs:
 
     - name: Test ssh
       run: |
-        ssh melty@127.0.0.1 -i ./ssh_tunnel/ssh_host_rsa_key -p 2223
+        ssh melty@127.0.0.1 -i ./ssh_tunnel/ssh-server-config/ssh_host_rsa_key -p 2223
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4.5.0
