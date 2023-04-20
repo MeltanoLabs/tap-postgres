@@ -33,7 +33,7 @@ jobs:
 
     - uses: isbang/compose-action@v1.4.1
       with:
-        compose_file: ./ssh_tunnel/docker-compose.yml
+        compose-file: ./ssh_tunnel/docker-compose.yml
 
     - name: Docker compose
       run: docker-compose up -d
