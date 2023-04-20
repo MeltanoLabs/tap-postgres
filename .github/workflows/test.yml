@@ -31,14 +31,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3.3.0
 
-    - uses: isbang/compose-action@v1.4.1
-      with:
-        working-directory: ./ssh_tunnel
+    - name: Working Directory Setup for SSH Tunnel Docker Compose
+      run: cd ssh_tunnel
 
-    - name: Docker compose
-      run: |
-        cd ./ssh_tunnel
-        docker-compose up -d
+    - uses: isbang/compose-action@v1.4.1
+
+    - name: Working Directory Setup for tap-postgres
+      run: cd ..
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4.5.0
