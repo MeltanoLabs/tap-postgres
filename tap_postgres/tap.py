@@ -76,8 +76,9 @@ class TapPostgres(SQLTap):
                 th.Property(
                     "private_key_password",
                     th.StringType,
-                    required=True,
+                    required=False,
                     secret=True,
+                    default=None,
                     description=(
                         "Private Key Password, leave None if no password is set"
                     ),
@@ -152,7 +153,7 @@ class TapPostgres(SQLTap):
         self.ssh_tunnel: SSHTunnelForwarder = SSHTunnelForwarder(
             ssh_address_or_host=(ssh_config["host"], ssh_config["port"]),
             ssh_username=ssh_config["username"],
-            ssh_private_key=self.guess_key_type(ssh_config["ssh_tunnel.private_key"]),
+            ssh_private_key=self.guess_key_type(ssh_config["private_key"]),
             ssh_private_key_password=ssh_config.get("private_key_password"),
             remote_bind_address=(url.host, url.port),
         )
