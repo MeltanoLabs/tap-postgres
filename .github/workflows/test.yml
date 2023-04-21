@@ -37,6 +37,9 @@ jobs:
 
     - uses: isbang/compose-action@v1.4.1
 
+    - name: Test SSH File Permissiosn
+      run: docker exec openssh-server ls -lsa /config/ssh_host_keys
+
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4.5.0
