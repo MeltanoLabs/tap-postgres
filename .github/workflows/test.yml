@@ -34,7 +34,7 @@ jobs:
     - name: Fix Permissions
       run: |
         chmod 777 -R ./ssh_tunnel/ssh-server-config
-        chown -R $USER:$USER ./ssh_tunnel/ssh-server-config
+        sudo chown -R $USER:$USER ./ssh_tunnel/ssh-server-config
 
     - uses: isbang/compose-action@v1.4.1
 
