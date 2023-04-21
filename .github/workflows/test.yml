@@ -42,10 +42,8 @@ jobs:
     - name: Test SSH File Permissiosn
       run: |
         docker exec openssh-server ls -lsa /config/ssh_host_keys
-        sleep 10
         docker exec openssh-server cat  /config/logs/openssh/current
         docker exec openssh-server ps aux
-        ssh melty@127.0.0.1 -p 2223 -i ./ssh_tunnel/ssh-server-config/ssh_host_rsa_key
 
 
     - name: Set up Python ${{ matrix.python-version }}
