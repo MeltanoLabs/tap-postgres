@@ -42,6 +42,7 @@ jobs:
     - name: Test SSH File Permissiosn
       run: |
         docker exec openssh-server ls -lsa /config/ssh_host_keys
+        wait 50
         docker exec openssh-server cat  /config/logs/openssh/current
         docker exec openssh-server ps aux
 
