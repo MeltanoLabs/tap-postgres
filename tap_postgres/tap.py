@@ -160,7 +160,6 @@ class TapPostgres(SQLTap):
             ssh_private_key_password=ssh_config.get("private_key_password"),
             remote_bind_address=(url.host, url.port),
         )
-        self.logger.info(f"{self.ssh_tunnel=}")  # TODO Remove debug
         self.ssh_tunnel.start()
         self.logger.info("SSH Tunnel started")
         # On program exit clean up, want to also catch signals

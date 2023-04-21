@@ -34,17 +34,15 @@ jobs:
     - name: Fix Permissions
       run: |
         chmod 777 -R ./ssh_tunnel/ssh-server-config
-        whoami
-        sudo chown -R root:root ./ssh_tunnel/ssh-server-config
 
     - uses: isbang/compose-action@v1.4.1
 
-    - name: Test SSH File Permissiosn
-      run: |
-        docker exec openssh-server ls -lsa /config/ssh_host_keys
-        sleep 50
-        docker exec openssh-server cat  /config/logs/openssh/current
-        docker exec openssh-server ps aux
+ # Leaving comments as this makes testing the openssh docker image easier and should save someone some time later
+ #   - name: Test SSH File Permissiosn
+ #     run: |
+ #       docker exec openssh-server ls -lsa /config/ssh_host_keys
+ #       docker exec openssh-server cat  /config/logs/openssh/current
+ #       docker exec openssh-server ps aux
 
 
     - name: Set up Python ${{ matrix.python-version }}
