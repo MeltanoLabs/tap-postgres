@@ -16,7 +16,7 @@ services:
     volumes:
       - ./ssh_tunnel/ssh-server-config:/config/ssh_host_keys:ro
     ports:
-      - "2223:2222"
+      - "2223:22"
     networks:
       - inner
 
