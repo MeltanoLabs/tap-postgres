@@ -15,6 +15,9 @@ plugins:
     settings:
     - name: sqlalchemy_url
       kind: password
+    - name: ssh_tunnel.enable
+      kind: boolean
+      value: false
     - name: ssh_tunnel.private_key
       kind: password
     - name: ssh_tunnel.private_key_password
