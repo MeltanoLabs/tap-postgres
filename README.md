@@ -1,6 +1,6 @@
 # `tap-postgres`
 
-Postgres tap class.
+Singer tap for Postgres.
 
 Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 

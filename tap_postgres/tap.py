@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class TapPostgres(SQLTap):
-    """Postgres tap class."""
+    """Singer tap for Postgres."""
 
     name = "tap-postgres"
     default_stream_class = PostgresStream
