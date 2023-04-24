@@ -13,7 +13,7 @@ license = "Apache 2.0"
 python = "<3.12,>=3.8.1"
 requests = "^2.25.1"
 singer-sdk = {version = "^0.24.0", extras = ["testing"]}
-psycopg2-binary = "2.9.5"
+psycopg2-binary = "2.9.6"
 sshtunnel = "0.4.0"
 
 [tool.poetry.group.dev.dependencies]
