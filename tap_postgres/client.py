@@ -4,19 +4,18 @@ This includes PostgresStream and PostgresConnector.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 
-import sqlalchemy  # type: ignore
+import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
+
+if TYPE_CHECKING:
+    from sqlalchemy.dialects import postgresql
 
 
 class PostgresConnector(SQLConnector):
     """Connects to the Postgres SQL source."""
-
-    def get_sqlalchemy_url(cls, config: dict) -> str:
-        """Concatenate a SQLAlchemy URL for use in connecting to the source."""
-        return config["sqlalchemy_url"]
 
     @staticmethod
     def to_jsonschema_type(
@@ -24,7 +23,7 @@ class PostgresConnector(SQLConnector):
             str,
             sqlalchemy.types.TypeEngine,
             Type[sqlalchemy.types.TypeEngine],
-            sqlalchemy.dialects.postgresql.ARRAY,
+            postgresql.ARRAY,
             Any,
         ]
     ) -> dict:

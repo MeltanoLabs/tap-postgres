@@ -14,22 +14,34 @@ python = "<3.12,>=3.8.1"
 requests = "^2.25.1"
 singer-sdk = {version = "^0.24.0", extras = ["testing"]}
 psycopg2-binary = "2.9.5"
+sshtunnel = "0.4.0"
 
-[tool.poetry.dev-dependencies]
-tox = "^4"
-flake8 = "^6.0.0"
+[tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
-pydocstyle = "^6.1.1"
-mypy = "1.0.1"
-isort = "^5.10.1"
 faker = "^17.0.0"
+flake8 = "^6.0.0"
+isort = "^5.10.1"
+mypy = "1.0.1"
 pre-commit = "^3.0.4"
-
+pydocstyle = "^6.1.1"
+tox = "^4"
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3 # Vertical Hanging Indent
 src_paths = "tap_postgres"
+
+[tool.mypy]
+exclude = "tests"
+python_version = "3.9"
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = [
+    "sshtunnel",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.8"]
