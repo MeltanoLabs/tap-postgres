@@ -2,12 +2,17 @@ name: Upload Python Package
 
 on:
   release:
-    types: [created]
+    types: [published]
+
+permissions:
+  content: write
+  id-token: write
 
 jobs:
   build_deploy:
 
     runs-on: ubuntu-latest
+    environment: publishing
 
     steps:
     - uses: actions/checkout@v3
@@ -36,6 +41,4 @@ jobs:
         overwrite: true
         file_glob: true
     - name: Deploy to PyPI
-      run: |
-        poetry publish -r testpypi -u "__token__" -p "${{ secrets.TEST_PYPI_TOKEN }}"
-        poetry publish -u "__token__" -p "${{ secrets.POSTGRES_PYPI_TOKEN }}"
+      uses: pypa/gh-action-pypi-publish@v1.8.5
