@@ -67,7 +67,7 @@ meltanolabs-tap-postgres --config CONFIG --discover > ./catalog.json
 ```bash
 pipx install poetry pre-commit
 poetry install
-precommit install
+pre-commit install
 ```
 
 ### Create and Run Tests
