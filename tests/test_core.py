@@ -1,11 +1,14 @@
 import datetime
+import json
 
 import pendulum
 import pytest
 import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
+from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
+from sqlalchemy.dialects.postgresql import JSONB
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 
 from tap_postgres.tap import TapPostgres
@@ -69,3 +72,50 @@ class TestTapPostgres(TapPostgresTest):
         setup_test_table(self.table_name, self.sqlalchemy_url)
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
+
+
+def test_jsonb():
+    """JSONB Objects weren't being selected, make sure they are now"""
+    table_name = "test_jsonb"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("jsonb", JSONB),
+    )
+    with engine.connect() as conn:
+        metadata_obj.create_all(conn)
+        conn.execute(f"TRUNCATE TABLE {table_name}")
+        insert = table.insert().values(jsonb={"foo": "bar"})
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    assert test_runner.records[altered_table_name][0] == {"jsonb": {"foo": "bar"}}
+
+
+class PostgresTestRunner(TapTestRunner):
+    def run_sync_dry_run(self) -> bool:
+        """
+        Dislike this function and how TestRunner does this so just hacking it here.
+        Want to be able to run exactly the catalog given
+        """
+        new_tap = self.new_tap()
+        new_tap.sync_all()
+        return True
