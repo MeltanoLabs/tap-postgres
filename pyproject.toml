@@ -2,8 +2,8 @@
 name = "meltanolabs-tap-postgres"
 version = "0.0.0"
 description = "`tap-postgres` is a Singer tap for Postgres, built with the Meltano SDK for Singer Targets."
-authors = ["Meltano Team and Contributors"]
-maintainers = ["Meltano Team and Contributors"]
+authors = ["Meltano Team and Contributors <hello@meltano.com>"]
+maintainers = ["Meltano Team and Contributors <hello@meltano.com>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://meltano.com"
