@@ -83,12 +83,13 @@ def test_jsonb():
     table = Table(
         table_name,
         metadata_obj,
-        Column("jsonb", JSONB),
+        Column("column", JSONB),
     )
     with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
         metadata_obj.create_all(conn)
-        conn.execute(f"TRUNCATE TABLE {table_name}")
-        insert = table.insert().values(jsonb={"foo": "bar"})
+        insert = table.insert().values(column={"foo": "bar"})
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
@@ -107,7 +108,7 @@ def test_jsonb():
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
     )
     test_runner.sync_all()
-    assert test_runner.records[altered_table_name][0] == {"jsonb": {"foo": "bar"}}
+    assert test_runner.records[altered_table_name][0] == {"column": {"foo": "bar"}}
 
 
 class PostgresTestRunner(TapTestRunner):
