@@ -55,9 +55,9 @@ You can easily run `tap-postgres` by itself or in a pipeline using [Meltano](htt
 ### Executing the Tap Directly
 
 ```bash
-meltanolabs-tap-postgres --version
-meltanolabs-tap-postgres --help
-meltanolabs-tap-postgres --config CONFIG --discover > ./catalog.json
+tap-postgres --version
+tap-postgres --help
+tap-postgres --config CONFIG --discover > ./catalog.json
 ```
 
 ## Developer Resources
