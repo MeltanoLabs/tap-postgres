@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
+from singer_sdk.helpers._typing import TypeConformanceLevel
 
 if TYPE_CHECKING:
     from sqlalchemy.dialects import postgresql
@@ -146,6 +147,8 @@ class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
+    # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
+    TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
