@@ -10,12 +10,13 @@ from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
 from sqlalchemy.dialects.postgresql import JSONB
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
+from test_selected_schema import TapTestSelectedSchema
 
 from tap_postgres.tap import TapPostgres
 
 SAMPLE_CONFIG = {
     "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
-    "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
+    "sqlalchemy_url": "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
 }
 
 
@@ -54,16 +55,20 @@ custom_test_replication_key = suites.TestSuite(
     kind="tap", tests=[TapTestReplicationKey]
 )
 
+custom_test_selected_schema = suites.TestSuite(
+    kind="tap", tests=[TapTestSelectedSchema]
+)
+
+
 TapPostgresTest = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
     catalog="tests/resources/data.json",
-    custom_suites=[custom_test_replication_key],
+    custom_suites=[custom_test_replication_key, custom_test_selected_schema],
 )
 
 
 class TestTapPostgres(TapPostgresTest):
-
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
