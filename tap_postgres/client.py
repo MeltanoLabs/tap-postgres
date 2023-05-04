@@ -178,8 +178,9 @@ class PostgresStream(SQLStream):
             )
 
         selected_column_names = [k for k in self.get_selected_schema()['properties']]
-        table = self.connector.get_table(self.fully_qualified_name,
-                                         column_names=selected_column_names)        
+        table = self.connector.get_table(
+            self.fully_qualified_name, column_names=selected_column_names
+        )
         query = table.select()
         if self.replication_key:
             replication_key_col = table.columns[self.replication_key]
