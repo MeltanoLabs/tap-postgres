@@ -152,11 +152,15 @@ class PostgresStream(SQLStream):
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     def get_query(self, context: Optional[dict] = None) -> Any:
-        """Return a query with selected columns
+        """Return a query from table object with selected columns.
 
-        Args:
+        Args
         ----
-            context: context for partition.
+            context: context for future implementation.
+
+        Returns
+        -------
+            generated query
 
         """
         selected_column_names = [k for k in self.get_selected_schema()["properties"]]
