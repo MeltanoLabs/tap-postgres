@@ -30,8 +30,9 @@ class TapPostgres(SQLTap):
             "sqlalchemy_url",
             th.StringType,
             required=True,
+            secret=True,
             description=(
-                "Example postgresql://postgres:postgres@localhost:5432/postgres"
+                "Example postgresql://[username]:[password]@localhost:5432/[db_name]"
             ),
         ),
         th.Property(
