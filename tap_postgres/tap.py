@@ -30,8 +30,9 @@ class TapPostgres(SQLTap):
             "sqlalchemy_url",
             th.StringType,
             required=True,
+            secret=True,
             description=(
-                "Example postgresql://postgres:postgres@localhost:5432/postgres"
+                "Example postgresql://[username]:[password]@localhost:5432/[db_name]"
             ),
         ),
         th.Property(
@@ -40,7 +41,7 @@ class TapPostgres(SQLTap):
                 th.Property(
                     "enable",
                     th.BooleanType,
-                    required=True,
+                    required=False,
                     default=False,
                     description=(
                         "Enable an ssh tunnel (also known as bastion host), see the "
@@ -50,7 +51,7 @@ class TapPostgres(SQLTap):
                 th.Property(
                     "host",
                     th.StringType,
-                    required=True,
+                    required=False,
                     description=(
                         "Host of the bastion host, this is the host "
                         "we'll connect to via ssh"
@@ -59,20 +60,20 @@ class TapPostgres(SQLTap):
                 th.Property(
                     "username",
                     th.StringType,
-                    required=True,
+                    required=False,
                     description="Username to connect to bastion host",
                 ),
                 th.Property(
                     "port",
                     th.IntegerType,
-                    required=True,
+                    required=False,
                     default=22,
                     description="Port to connect to bastion host",
                 ),
                 th.Property(
                     "private_key",
                     th.StringType,
-                    required=True,
+                    required=False,
                     secret=True,
                     description="Private Key for authentication to the bastion host",
                 ),
