@@ -5,8 +5,7 @@ import atexit
 import io
 import signal
 from functools import cached_property
-from pathlib import PurePath
-from typing import TYPE_CHECKING, Any, Mapping, cast
+from typing import Any, Mapping, cast
 
 import paramiko
 from singer_sdk import SQLTap, Stream
@@ -29,9 +28,10 @@ class TapPostgres(SQLTap):
         *args,
         **kwargs,
     ) -> None:
+        """Constructor
+        Should use JSON Schema instead. See https://github.com/MeltanoLabs/tap-postgres/issues/141
+        """
         super().__init__(*args, **kwargs)
-        # There's a few ways to do this in JSON Schema but it is schema draft dependent.
-        # https://stackoverflow.com/questions/38717933/jsonschema-attribute-conditionally-required
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
             and self.config.get("port") is not None
