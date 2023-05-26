@@ -28,7 +28,8 @@ class TapPostgres(SQLTap):
         *args,
         **kwargs,
     ) -> None:
-        """Constructor
+        """Constructor.
+
         Should use JSON Schema instead
         See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
