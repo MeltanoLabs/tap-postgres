@@ -448,14 +448,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "faker"
-version = "18.5.1"
+version = "18.9.0"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Faker-18.5.1-py3-none-any.whl", hash = "sha256:137c6667583b0b458599b11305eed5a486e3932a14cb792b2b5b82ad1ad1a430"},
-    {file = "Faker-18.5.1.tar.gz", hash = "sha256:64e9ab619d75684cc0593aa9f336170b0b58fa77c07fc0ebc7b2b1258e53b67d"},
+    {file = "Faker-18.9.0-py3-none-any.whl", hash = "sha256:defe9ed618a67ebf0f3eb1895e198c2355a7128a09087a6dce342ef2253263ea"},
+    {file = "Faker-18.9.0.tar.gz", hash = "sha256:80a5ea1464556c06b98bf47ea3adc7f33811a1182518d847860b1874080bd3c9"},
 ]
 
 [package.dependencies]
@@ -964,14 +964,14 @@ files = [
 
 [[package]]
 name = "pre-commit"
-version = "3.2.2"
+version = "3.3.2"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pre_commit-3.2.2-py2.py3-none-any.whl", hash = "sha256:0b4210aea813fe81144e87c5a291f09ea66f199f367fa1df41b55e1d26e1e2b4"},
-    {file = "pre_commit-3.2.2.tar.gz", hash = "sha256:5b808fcbda4afbccf6d6633a56663fed35b6c2bc08096fd3d47ce197ac351d9d"},
+    {file = "pre_commit-3.3.2-py2.py3-none-any.whl", hash = "sha256:8056bc52181efadf4aac792b1f4f255dfd2fb5a350ded7335d251a68561e8cb6"},
+    {file = "pre_commit-3.3.2.tar.gz", hash = "sha256:66e37bec2d882de1f17f88075047ef8962581f83c234ac08da21a0c58953d1f0"},
 ]
 
 [package.dependencies]
@@ -1658,14 +1658,14 @@ files = [
 
 [[package]]
 name = "tox"
-version = "4.4.12"
+version = "4.5.1"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tox-4.4.12-py3-none-any.whl", hash = "sha256:d4be558809d86fad13f4553976b0500352630a8fbfa39ea4b1ce3bd945ba680b"},
-    {file = "tox-4.4.12.tar.gz", hash = "sha256:740f5209d0dec19451b951ee5b1cce4a207acdc7357af84dbc8ec35bcf2c454e"},
+    {file = "tox-4.5.1-py3-none-any.whl", hash = "sha256:d25a2e6cb261adc489604fafd76cd689efeadfa79709965e965668d6d3f63046"},
+    {file = "tox-4.5.1.tar.gz", hash = "sha256:5a2eac5fb816779dfdf5cb00fecbc27eb0524e4626626bb1de84747b24cacc56"},
 ]
 
 [package.dependencies]
@@ -1673,7 +1673,7 @@ cachetools = ">=5.3"
 chardet = ">=5.1"
 colorama = ">=0.4.6"
 filelock = ">=3.11"
-packaging = ">=23"
+packaging = ">=23.1"
 platformdirs = ">=3.2"
 pluggy = ">=1"
 pyproject-api = ">=1.5.1"
@@ -1681,8 +1681,8 @@ tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 virtualenv = ">=20.21"
 
 [package.extras]
-docs = ["furo (>=2023.3.27)", "sphinx (>=6.1.3)", "sphinx-argparse-cli (>=1.11)", "sphinx-autodoc-typehints (>=1.22,!=1.23.4)", "sphinx-copybutton (>=0.5.1)", "sphinx-inline-tabs (>=2022.1.2b11)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.12)"]
-testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.3)", "devpi-process (>=0.3)", "diff-cover (>=7.5)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.14)", "psutil (>=5.9.4)", "pytest (>=7.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest-xdist (>=3.2.1)", "re-assert (>=1.1)", "time-machine (>=2.9)", "wheel (>=0.40)"]
+docs = ["furo (>=2023.3.27)", "sphinx (>=6.1.3)", "sphinx-argparse-cli (>=1.11)", "sphinx-autodoc-typehints (>=1.23,!=1.23.4)", "sphinx-copybutton (>=0.5.2)", "sphinx-inline-tabs (>=2022.1.2b11)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.12)"]
+testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.3)", "devpi-process (>=0.3)", "diff-cover (>=7.5)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.14)", "psutil (>=5.9.4)", "pytest (>=7.3.1)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest-xdist (>=3.2.1)", "re-assert (>=1.1)", "time-machine (>=2.9)", "wheel (>=0.40)"]
 
 [[package]]
 name = "typing-extensions"
