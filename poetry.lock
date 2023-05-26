@@ -448,14 +448,14 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "faker"
-version = "18.5.1"
+version = "18.9.0"
 description = "Faker is a Python package that generates fake data for you."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Faker-18.5.1-py3-none-any.whl", hash = "sha256:137c6667583b0b458599b11305eed5a486e3932a14cb792b2b5b82ad1ad1a430"},
-    {file = "Faker-18.5.1.tar.gz", hash = "sha256:64e9ab619d75684cc0593aa9f336170b0b58fa77c07fc0ebc7b2b1258e53b67d"},
+    {file = "Faker-18.9.0-py3-none-any.whl", hash = "sha256:defe9ed618a67ebf0f3eb1895e198c2355a7128a09087a6dce342ef2253263ea"},
+    {file = "Faker-18.9.0.tar.gz", hash = "sha256:80a5ea1464556c06b98bf47ea3adc7f33811a1182518d847860b1874080bd3c9"},
 ]
 
 [package.dependencies]
@@ -964,14 +964,14 @@ files = [
 
 [[package]]
 name = "pre-commit"
-version = "3.2.2"
+version = "3.3.2"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pre_commit-3.2.2-py2.py3-none-any.whl", hash = "sha256:0b4210aea813fe81144e87c5a291f09ea66f199f367fa1df41b55e1d26e1e2b4"},
-    {file = "pre_commit-3.2.2.tar.gz", hash = "sha256:5b808fcbda4afbccf6d6633a56663fed35b6c2bc08096fd3d47ce197ac351d9d"},
+    {file = "pre_commit-3.3.2-py2.py3-none-any.whl", hash = "sha256:8056bc52181efadf4aac792b1f4f255dfd2fb5a350ded7335d251a68561e8cb6"},
+    {file = "pre_commit-3.3.2.tar.gz", hash = "sha256:66e37bec2d882de1f17f88075047ef8962581f83c234ac08da21a0c58953d1f0"},
 ]
 
 [package.dependencies]
@@ -1487,14 +1487,14 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.24.0"
+version = "0.25.0"
 description = "A framework for building Singer taps"
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.12"
 files = [
-    {file = "singer_sdk-0.24.0-py3-none-any.whl", hash = "sha256:9bd4c4cf809056951fc2dc125e465df35c991d388ea715ee11d7536819b47fba"},
-    {file = "singer_sdk-0.24.0.tar.gz", hash = "sha256:6cb384caf6b74425f2a1c48747cbb3b8a8844cfe442c06cb2cdd66ae91993df7"},
+    {file = "singer_sdk-0.25.0-py3-none-any.whl", hash = "sha256:447b682fd4d7499312feb7685dfedfc862676478d978d0f0052a98a6dac316cc"},
+    {file = "singer_sdk-0.25.0.tar.gz", hash = "sha256:3f4e8d135c222adce0148bf6e95bba3d7be8a65fffc23b17526d6b2a8fd8fa21"},
 ]
 
 [package.dependencies]
@@ -1753,4 +1753,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "693e3840ca78a12662aa1befca716cf3f1bdb3208218fed68a7fec76a7df7f1d"
+content-hash = "599e2dabb30d78fcc8a1a6b9e8f27535da2628966c2223bb73cf4b910cd49d06"

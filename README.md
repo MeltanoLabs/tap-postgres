@@ -44,10 +44,8 @@ This tap supports connecting to a Postgres database via an SSH tunnel (also know
 
 ## Installation
 
-- [ ] `Developer TODO:` Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPi repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
-
 ```bash
-pipx install tap-postgres
+pipx install meltanolabs-tap-postgres
 ```
 
 ## Usage
@@ -67,8 +65,9 @@ tap-postgres --config CONFIG --discover > ./catalog.json
 ### Initialize your Development Environment
 
 ```bash
-pipx install poetry
+pipx install poetry pre-commit
 poetry install
+pre-commit install
 ```
 
 ### Create and Run Tests
