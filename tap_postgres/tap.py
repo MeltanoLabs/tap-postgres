@@ -29,7 +29,8 @@ class TapPostgres(SQLTap):
         **kwargs,
     ) -> None:
         """Constructor
-        Should use JSON Schema instead. See https://github.com/MeltanoLabs/tap-postgres/issues/141
+        Should use JSON Schema instead
+        See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
         super().__init__(*args, **kwargs)
         assert (self.config.get("sqlalchemy_url") is not None) or (
