@@ -87,7 +87,6 @@ class TapPostgres(SQLTap):
         th.Property(
             "sqlalchemy_url",
             th.StringType,
-            required=True,
             secret=True,
             description=(
                 "Example postgresql://[username]:[password]@localhost:5432/[db_name]"
