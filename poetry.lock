@@ -1487,14 +1487,14 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.25.0"
+version = "0.27.0"
 description = "A framework for building Singer taps"
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.12"
 files = [
-    {file = "singer_sdk-0.25.0-py3-none-any.whl", hash = "sha256:447b682fd4d7499312feb7685dfedfc862676478d978d0f0052a98a6dac316cc"},
-    {file = "singer_sdk-0.25.0.tar.gz", hash = "sha256:3f4e8d135c222adce0148bf6e95bba3d7be8a65fffc23b17526d6b2a8fd8fa21"},
+    {file = "singer_sdk-0.27.0-py3-none-any.whl", hash = "sha256:98a23a197b1fd6f32949629399a452d14aae0167c1379cac1ab348da50dcf433"},
+    {file = "singer_sdk-0.27.0.tar.gz", hash = "sha256:2366bf1c5a54d7b86fe2782c402c1eae99057e813fcd781be64c051db5a4217c"},
 ]
 
 [package.dependencies]
@@ -1519,6 +1519,7 @@ requests = ">=2.25.1,<3.0.0"
 simplejson = ">=3.17.6,<4.0.0"
 sqlalchemy = ">=1.4,<2.0"
 typing-extensions = ">=4.2.0,<5.0.0"
+urllib3 = ">=1.26,<2"
 
 [package.extras]
 docs = ["furo (>=2022.12.7,<2024.0.0)", "myst-parser (>=0.17.2,<1.1.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
@@ -1753,4 +1754,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "754c9eab3271cddddd93d004bed4208d92c9c56c1f093b04ee38db7060359c53"
+content-hash = "7444b133ae0937bf193e125beb17880efe1132bc695344ed862d48acbac3feba"
