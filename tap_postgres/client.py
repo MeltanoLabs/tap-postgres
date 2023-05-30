@@ -151,32 +151,6 @@ class PostgresStream(SQLStream):
     # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
-    def get_query(self, context: Optional[dict] = None) -> Any:
-        """Return a query from table object with selected columns.
-
-        Args
-        ----
-            context: context for future implementation.
-
-        Returns
-        -------
-            generated query
-
-        """
-        selected_column_names = [k for k in self.get_selected_schema()["properties"]]
-        table = self.connector.get_table(
-            self.fully_qualified_name, column_names=selected_column_names
-        )
-        query = table.select()
-        if self.replication_key:
-            replication_key_col = table.columns[self.replication_key]
-            query = query.order_by(replication_key_col)
-
-            start_val = self.get_starting_replication_key_value(context)
-            if start_val:
-                query = query.filter(replication_key_col >= start_val)
-        return query
-
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
 
@@ -204,7 +178,19 @@ class PostgresStream(SQLStream):
                 f"Stream '{self.name}' does not support partitioning."
             )
 
-        query = self.get_query(context)
+        # pulling rows with only selected columns from stream
+        selected_column_names = [k for k in self.get_selected_schema()["properties"]]
+        table = self.connector.get_table(
+            self.fully_qualified_name, column_names=selected_column_names
+        )
+        query = table.select()
+        if self.replication_key:
+            replication_key_col = table.columns[self.replication_key]
+            query = query.order_by(replication_key_col)
+
+            start_val = self.get_starting_replication_key_value(context)
+            if start_val:
+                query = query.filter(replication_key_col >= start_val)
 
         for row in self.connector.connection.execute(query):
             yield dict(row)

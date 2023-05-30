@@ -1,18 +1,17 @@
-"""Tests standard tap features using the built-in SDK tests library."""
+"""Tests selected columns only from stream """
 import json
 
-import pendulum
 from singer_sdk.testing.templates import TapTestTemplate
 
 from tap_postgres.tap import TapPostgres
 
-TABLE_NAME = "test_replication_key"
+TABLE_NAME_SELECTED_COLUMNS_ONLY = "test_selected_columns_only"
 SAMPLE_CONFIG = {
     "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
 }
 
 
-def selected_schema_test(tap, table_name):
+def selected_columns_only_test(tap, table_name):
     """excluding one column from stream and check if it is not present in query"""
     column_to_exclude = "name"
     tap.run_discovery()
@@ -32,12 +31,13 @@ def selected_schema_test(tap, table_name):
     streams = tap.discover_streams()
     selected_stream = [s for s in streams if s.selected is True][0]
 
-    assert not column_to_exclude in str(selected_stream.get_query())
+    for row in selected_stream.get_records(context=None):
+        assert column_to_exclude not in row.keys()
 
 
-class TapTestSelectedSchema(TapTestTemplate):
-    name = "selected_schema"
-    table_name = TABLE_NAME
+class TapTestSelectedColumnsOnly(TapTestTemplate):
+    name = "selected_columns_only"
+    table_name = TABLE_NAME_SELECTED_COLUMNS_ONLY
 
     def test(self):
-        selected_schema_test(self.tap, self.table_name)
+        selected_columns_only_test(self.tap, self.table_name)

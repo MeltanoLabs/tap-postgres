@@ -1,0 +1,87 @@
+{
+    "streams": [
+        {
+            "tap_stream_id": "public-test_selected_columns_only",
+            "table_name": "test_selected_columns_only",
+            "replication_method": "",
+            "key_properties": [
+                "id"
+            ],
+            "schema": {
+                "properties": {
+                    "id": {
+                        "type": [
+                            "integer"
+                        ]
+                    },
+                    "updated_at": {
+                        "format": "date-time",
+                        "type": [
+                            "string"
+                        ]
+                    },
+                    "name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "updated_at"
+                ]
+            },
+            "is_view": false,
+            "stream": "public-test_selected_columns_only",
+            "metadata": [
+                {
+                    "breadcrumb": [
+                        "properties",
+                        "id"
+                    ],
+                    "metadata": {
+                        "inclusion": "automatic",
+                        "selected": true
+                    }
+                },
+                {
+                    "breadcrumb": [
+                        "properties",
+                        "updated_at"
+                    ],
+                    "metadata": {
+                        "inclusion": "available",
+                        "selected": true
+                    }
+                },
+                {
+                    "breadcrumb": [
+                        "properties",
+                        "name"
+                    ],
+                    "metadata": {
+                        "inclusion": "available",
+                        "selected": true
+                    }
+                },
+                {
+                    "breadcrumb": [],
+                    "metadata": {
+                        "inclusion": "available",
+                        "table-key-properties": [
+                            "id"
+                        ],
+                        "forced-replication-method": "",
+                        "schema-name": "public",
+                        "selected": true,
+                        "replication-method": "INCREMENTAL",
+                        "replication-key": "updated_at"
+                    }
+                }
+            ],
+            "replication_key": "updated_at"
+        }
+    ]
+}
