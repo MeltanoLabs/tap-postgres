@@ -128,6 +128,7 @@ class TapPostgres(SQLTap):
         Raises:
             ValueError: If the key type could not be determined.
         """
+        self.logger.info(f"{key_data=}")
         for key_class in (
             paramiko.RSAKey,
             paramiko.DSSKey,
