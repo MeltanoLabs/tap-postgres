@@ -73,6 +73,7 @@ class TapPostgres(SQLTap):
         th.Property(
             "password",
             th.StringType,
+            secret=True,
             description=(
                 "Password used to authenticate. "
                 "Note if sqlalchemy_url is set this will be ignored."
