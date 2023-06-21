@@ -2,12 +2,34 @@
 import json
 
 import pendulum
+import pytest
 from singer_sdk.testing.templates import TapTestTemplate
 
 from tap_postgres.tap import TapPostgres
 
 TABLE_NAME = "test_replication_key"
-SAMPLE_CONFIG = {
+# Didn't test DSA keys as the generated keys wasn't working for me, and they aren't used heavily anymore that I know of
+SAMPLE_CONFIG_ECDSA = {
+    "sqlalchemy_url": "postgresql://postgres:postgres@10.5.0.5:5432/main",
+    "ssh_tunnel": {
+        "enable": True,
+        "host": "127.0.0.1",
+        "port": 2223,
+        "username": "melty",
+        "private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAaAAAABNlY2RzYS\n1zaGEyLW5pc3RwMjU2AAAACG5pc3RwMjU2AAAAQQS9T8ajwjHV1Xl705ShFqry77rS7wrh\nlCN0a4Hf33yapuCBKCRDr+/Y7gISoiER3rez56TQCvIFuKUEgCUsTMSWAAAAsFXWKa1V1i\nmtAAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBL1PxqPCMdXVeXvT\nlKEWqvLvutLvCuGUI3Rrgd/ffJqm4IEoJEOv79juAhKiIRHet7PnpNAK8gW4pQSAJSxMxJ\nYAAAAhAOe2L6cmoGh4gZ++o+GiqMQ2WQ3RUfle/gc0G1nhLPhWAAAAE3Jvb3RAb3BlbnNz\naC1zZXJ2ZXIBAgME\n-----END OPENSSH PRIVATE KEY-----",
+    },
+}
+SAMPLE_CONFIG_ED25519 = {
+    "sqlalchemy_url": "postgresql://postgres:postgres@10.5.0.5:5432/main",
+    "ssh_tunnel": {
+        "enable": True,
+        "host": "127.0.0.1",
+        "port": 2223,
+        "username": "melty",
+        "private_key": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW\nQyNTUxOQAAACCjD/qc+T3Cc/k2pbjOUFW0OobeLnoWUAoaBhTQchI26wAAAJgismUyIrJl\nMgAAAAtzc2gtZWQyNTUxOQAAACCjD/qc+T3Cc/k2pbjOUFW0OobeLnoWUAoaBhTQchI26w\nAAAECV2axXFduGtP3RS1f97smocwVLphmETzpWdwi89jWrJaMP+pz5PcJz+TaluM5QVbQ6\nht4uehZQChoGFNByEjbrAAAAE3Jvb3RAb3BlbnNzaC1zZXJ2ZXIBAg==\n-----END OPENSSH PRIVATE KEY-----",
+    },
+}
+SAMPLE_CONFIG_RSA = {
     "sqlalchemy_url": "postgresql://postgres:postgres@10.5.0.5:5432/main",
     "ssh_tunnel": {
         "enable": True,
@@ -19,7 +41,10 @@ SAMPLE_CONFIG = {
 }
 
 
-def test_ssh_tunnel():
+@pytest.mark.parametrize(
+    "config", [(SAMPLE_CONFIG_ECDSA), (SAMPLE_CONFIG_ED25519), (SAMPLE_CONFIG_RSA)]
+)
+def test_ssh_tunnel(config):
     """We expect the SSH environment to already be up"""
-    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap = TapPostgres(config=config)
     tap.sync_all()
