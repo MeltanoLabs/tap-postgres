@@ -10,6 +10,10 @@ from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
 from sqlalchemy.dialects.postgresql import JSONB
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
+from test_selected_columns_only import (
+    TABLE_NAME_SELECTED_COLUMNS_ONLY,
+    TapTestSelectedColumnsOnly,
+)
 
 from tap_postgres.tap import TapPostgres
 
@@ -54,6 +58,10 @@ custom_test_replication_key = suites.TestSuite(
     kind="tap", tests=[TapTestReplicationKey]
 )
 
+custom_test_selected_columns_only = suites.TestSuite(
+    kind="tap", tests=[TapTestSelectedColumnsOnly]
+)
+
 TapPostgresTest = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
@@ -62,9 +70,30 @@ TapPostgresTest = get_tap_test_class(
 )
 
 
+# creating testing instance for isolated table in postgres
+TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
+    tap_class=TapPostgres,
+    config=SAMPLE_CONFIG,
+    catalog="tests/resources/data_selected_columns_only.json",
+    custom_suites=[custom_test_selected_columns_only],
+)
+
+
 class TestTapPostgres(TapPostgresTest):
 
     table_name = TABLE_NAME
+    sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
+
+    @pytest.fixture(scope="class")
+    def resource(self):
+        setup_test_table(self.table_name, self.sqlalchemy_url)
+        yield
+        teardown_test_table(self.table_name, self.sqlalchemy_url)
+
+
+class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
+
+    table_name = TABLE_NAME_SELECTED_COLUMNS_ONLY
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
     @pytest.fixture(scope="class")
