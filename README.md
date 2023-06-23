@@ -38,9 +38,6 @@ This Singer tap will automatically import any environment variables within the w
 `.env` if the `--config=ENV` is provided, such that config values will be considered if a matching
 environment variable is set either in the terminal context or in the `.env` file.
 
-### SSH Tunnels (Bastion Hosts)
-
-This tap supports connecting to a Postgres database via an SSH tunnel (also known as a bastion host). This is useful if you need to connect to a database that is not publicly accessible. This is the same as using `ssh -L` and `ssh -R`, but this is done inside the tap itself.
 
 ## Installation
 
@@ -115,3 +112,27 @@ meltano elt tap-postgres target-jsonl
 
 See the [dev guide](https://sdk.meltano.com/en/latest/dev_guide.html) for more instructions on how to use the SDK to
 develop your own taps and targets.
+
+# SSH Tunnels (Bastion Hosts)
+
+This tap supports connecting to a Postgres database via an SSH tunnel (also known as a bastion host). This is useful if you need to connect to a database that is not publicly accessible. This is the same as using `ssh -L` and `ssh -R`, but this is done inside the tap itself.
+
+## Explanation
+
+An SSH tunnel is a method to securely forward network traffic. It uses the SSH protocol to encapsulate other protocols like HTTP, MySQL, Postgres, etc. This is particularly useful in scenarios where you need to access a service that is behind a firewall or in a network that you can't reach directly.
+
+Here's a basic illustration of how an SSH tunnel works:
++-----------+             +-------------+             +-------------+
+|   Local   |  SSH tunnel |   Bastion   |  Direct     |  Postgres   |
+|  Machine  |  <========> |   Server    |  <========> |  DB         |
++-----------+ (encrypted) +-------------+ (unsecured) +-------------+
+
+1. Local Machine: This is whereever this tap is running from, where you initiate the SSH tunnel. It's also referred to as the SSH client.
+1. Bastion Server: This is a secure server that you have SSH access to, and that can connect to the remote server. All traffic in the SSH tunnel between your local machine and the bastion server is encrypted.
+1. Remote Server: This is the server you want to connect to, like a PostgreSQL server. The connection between the bastion server and the remote server is a normal, potentially unsecured connection. However, because the bastion server is trusted, and because all traffic between your local machine and the bastion server is encrypted, you can safely transmit data to and from the remote server.
+
+## Tutorial - How to setup the Keys needed for this to work
+
+Steps
+1. Bastian Host must be online (we're going to assume it's a linux box)
+2. Bastian Host needs to be able to access your Postgres database
