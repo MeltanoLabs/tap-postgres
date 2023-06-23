@@ -5,18 +5,16 @@ import atexit
 import io
 import signal
 from functools import cached_property
-from typing import TYPE_CHECKING, Any
+from typing import Any, Mapping, cast
 
 import paramiko
 from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
+from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
 from tap_postgres.client import PostgresConnector, PostgresStream
-
-if TYPE_CHECKING:
-    from sqlalchemy.engine.url import URL
 
 
 class TapPostgres(SQLTap):
@@ -25,11 +23,73 @@ class TapPostgres(SQLTap):
     name = "tap-postgres"
     default_stream_class = PostgresStream
 
+    def __init__(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        """Constructor.
+
+        Should use JSON Schema instead
+        See https://github.com/MeltanoLabs/tap-postgres/issues/141
+        """
+        super().__init__(*args, **kwargs)
+        assert (self.config.get("sqlalchemy_url") is not None) or (
+            self.config.get("host") is not None
+            and self.config.get("port") is not None
+            and self.config.get("user") is not None
+            and self.config.get("password") is not None
+        ), (
+            "Need either the sqlalchemy_url to be set or host, port, user,"
+            + " and password to be set"
+        )
+
     config_jsonschema = th.PropertiesList(
+        th.Property(
+            "host",
+            th.StringType,
+            description=(
+                "Hostname for postgres instance. "
+                + "Note if sqlalchemy_url is set this will be ignored."
+            ),
+        ),
+        th.Property(
+            "port",
+            th.IntegerType,
+            default=5432,
+            description=(
+                "The port on which postgres is awaiting connection. "
+                + "Note if sqlalchemy_url is set this will be ignored."
+            ),
+        ),
+        th.Property(
+            "user",
+            th.StringType,
+            description=(
+                "User name used to authenticate. "
+                + "Note if sqlalchemy_url is set this will be ignored."
+            ),
+        ),
+        th.Property(
+            "password",
+            th.StringType,
+            secret=True,
+            description=(
+                "Password used to authenticate. "
+                "Note if sqlalchemy_url is set this will be ignored."
+            ),
+        ),
+        th.Property(
+            "database",
+            th.StringType,
+            description=(
+                "Database name. "
+                + "Note if sqlalchemy_url is set this will be ignored."
+            ),
+        ),
         th.Property(
             "sqlalchemy_url",
             th.StringType,
-            required=True,
             secret=True,
             description=(
                 "Example postgresql://[username]:[password]@localhost:5432/[db_name]"
@@ -93,6 +153,26 @@ class TapPostgres(SQLTap):
         ),
     ).to_dict()
 
+    def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
+        """Generate a SQLAlchemy URL.
+
+        Args:
+            config: The configuration for the connector.
+        """
+        if config.get("sqlalchemy_url"):
+            return cast(str, config["sqlalchemy_url"])
+
+        else:
+            sqlalchemy_url = URL.create(
+                drivername="postgresql+psycopg2",
+                username=config["user"],
+                password=config["password"],
+                host=config["host"],
+                port=config["port"],
+                database=config["database"],
+            )
+            return cast(str, sqlalchemy_url)
+
     @cached_property
     def connector(self) -> PostgresConnector:
         """Get a configured connector for this Tap.
@@ -101,7 +181,7 @@ class TapPostgres(SQLTap):
 
         """
         # We mutate this url to use the ssh tunnel if enabled
-        url = make_url(self.config["sqlalchemy_url"])
+        url = make_url(self.get_sqlalchemy_url(config=self.config))
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):

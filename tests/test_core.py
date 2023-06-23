@@ -22,6 +22,15 @@ SAMPLE_CONFIG = {
     "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
 }
 
+NO_SQLALCHEMY_CONFIG = {
+    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "host": "localhost",
+    "port": 5432,
+    "user": "postgres",
+    "password": "postgres",
+    "database": "postgres",
+}
+
 
 def setup_test_table(table_name, sqlalchemy_url):
     """setup any state specific to the execution of the given module."""
@@ -69,6 +78,13 @@ TapPostgresTest = get_tap_test_class(
     custom_suites=[custom_test_replication_key],
 )
 
+TapPostgresTestNOSQLALCHEMY = get_tap_test_class(
+    tap_class=TapPostgres,
+    config=NO_SQLALCHEMY_CONFIG,
+    catalog="tests/resources/data.json",
+    custom_suites=[custom_test_replication_key],
+)
+
 
 # creating testing instance for isolated table in postgres
 TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
@@ -90,6 +106,16 @@ class TestTapPostgres(TapPostgresTest):
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
+class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
+
+    table_name = TABLE_NAME
+    sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
+
+    @pytest.fixture(scope="class")
+    def resource(self):
+        setup_test_table(self.table_name, self.sqlalchemy_url)
+        yield
+        teardown_test_table(self.table_name, self.sqlalchemy_url)
 
 class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
 
