@@ -30,6 +30,24 @@ services:
       inner:
         ipv4_address: 10.5.0.5
 
+  postgres_ssl:
+    image: postgres:latest
+    command: postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key -c ssl_ca_file=/var/lib/postgresql/ca.crt -c hba_file=/var/lib/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: cert clientcert=verify-full
+      POSTGRES_INITDB_ARGS: --auth-host=cert
+    # Not placed in the data directory (/var/lib/postgresql/data) because of https://gist.github.com/mrw34/c97bb03ea1054afb551886ffc8b63c3b?permalink_comment_id=2678568#gistcomment-2678568
+    volumes:
+      - ./ssl/server.crt:/var/lib/postgresql/server.crt # Certificate verifying the server's identity to the client.
+      - ./ssl/server.key:/var/lib/postgresql/server.key # Private key to verify the server's certificate is legitimate.
+      - ./ssl/ca.crt:/var/lib/postgresql/ca.crt # Certificate authority to use when verifying the client's identity to the server.
+      - ./ssl/pg_hba.conf:/var/lib/postgresql/pg_hba.conf # Configuration file to allow connection over SSL.
+    ports:
+      - "5433:5432"
+
 networks:
   inner:
     driver: bridge
