@@ -282,7 +282,7 @@ class TapPostgres(SQLTap):
                 host=config["host"],
                 port=config["port"],
                 database=config["database"],
-                query=self.get_sqlalchemy_query(config=config)
+                query=self.get_sqlalchemy_query(config=config),
             )
             return cast(str, sqlalchemy_url)
 
@@ -352,7 +352,7 @@ class TapPostgres(SQLTap):
             if restrict_permissions:
                 chmod(alternative_name, 0o600)
             return alternative_name
-    
+
     @cached_property
     def connector(self) -> PostgresConnector:
         """Get a configured connector for this Tap.
