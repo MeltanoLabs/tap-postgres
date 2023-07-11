@@ -7,12 +7,35 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 
 import sqlalchemy
+import datetime
+import singer_sdk.helpers._typing
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._typing import TypeConformanceLevel
 
 if TYPE_CHECKING:
     from sqlalchemy.dialects import postgresql
+
+unpatched_conform = singer_sdk.helpers._typing._conform_primitive_property
+
+
+def patched_conform(
+    elem: Any,
+    property_schema: dict,
+) -> Any:
+    """Overrides Singer SDK type conformance to prevent dates turning into datetimes.
+
+    Converts a primitive (i.e. not object or array) to a json compatible type.
+
+    Returns:
+        The appropriate json compatible type.
+    """
+    if isinstance(elem, datetime.date):
+        return elem.isoformat()
+    return unpatched_conform(elem=elem, property_schema=property_schema)
+
+
+singer_sdk.helpers._typing._conform_primitive_property = patched_conform
 
 
 class PostgresConnector(SQLConnector):

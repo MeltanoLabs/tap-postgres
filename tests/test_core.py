@@ -8,7 +8,7 @@ from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, DATE, TIME, TIMESTAMP
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
@@ -127,6 +127,70 @@ class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
         setup_test_table(self.table_name, self.sqlalchemy_url)
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
+
+
+def test_temporal_datatypes():
+    """Dates were being incorrectly parsed as date times (issue #171).
+
+    This test checks that dates are being parsed correctly, and additionally implements
+    schema checks, and performs similar tests on times and timestamps.
+    """
+    table_name = "test_date"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("column_date", DATE),
+        Column("column_time", TIME),
+        Column("column_timestamp", TIMESTAMP),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(
+            column_date="2022-03-19",
+            column_time="06:04:19.222",
+            column_timestamp="1918-02-03 13:00:01",
+        )
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert (
+                "date"
+                == schema_message["schema"]["properties"]["column_date"]["format"]
+            )
+            assert (
+                "date-time"
+                == schema_message["schema"]["properties"]["column_timestamp"]["format"]
+            )
+    assert test_runner.records[altered_table_name][0] == {
+        "column_date": "2022-03-19",
+        "column_time": "06:04:19.222000",
+        "column_timestamp": "1918-02-03T13:00:01",
+    }
 
 
 def test_jsonb():
