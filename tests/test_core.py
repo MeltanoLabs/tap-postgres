@@ -163,6 +163,12 @@ def test_jsonb():
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
     )
     test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert "object" in schema_message["schema"]["properties"]["column"]["type"]
     assert test_runner.records[altered_table_name][0] == {"column": {"foo": "bar"}}
 
 
