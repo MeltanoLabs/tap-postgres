@@ -8,8 +8,8 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Numeric
-from sqlalchemy.dialects.postgresql import JSONB, DATE, TIME, TIMESTAMP
+from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
+from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,

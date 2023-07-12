@@ -4,11 +4,11 @@ This includes PostgresStream and PostgresConnector.
 """
 from __future__ import annotations
 
+import datetime
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 
-import sqlalchemy
-import datetime
 import singer_sdk.helpers._typing
+import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._typing import TypeConformanceLevel
