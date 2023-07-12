@@ -135,7 +135,7 @@ class PostgresConnector(SQLConnector):
             "datetime": th.DateTimeType(),
             "date": th.DateType(),
             "int": th.IntegerType(),
-            "number": th.NumberType(),
+            "numeric": th.NumberType(),
             "decimal": th.NumberType(),
             "double": th.NumberType(),
             "float": th.NumberType(),
