@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import json
 
 import pendulum
@@ -7,7 +8,7 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Numeric
 from sqlalchemy.dialects.postgresql import JSONB
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
@@ -162,7 +163,59 @@ def test_jsonb():
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
     )
     test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert "object" in schema_message["schema"]["properties"]["column"]["type"]
     assert test_runner.records[altered_table_name][0] == {"column": {"foo": "bar"}}
+
+
+def test_decimal():
+    """Schema was wrong for Decimal objects. Check they are correctly selected."""
+    table_name = "test_decimal"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("column", Numeric()),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(column=decimal.Decimal("3.14"))
+        conn.execute(insert)
+        insert = table.insert().values(column=decimal.Decimal("12"))
+        conn.execute(insert)
+        insert = table.insert().values(column=decimal.Decimal("10000.00001"))
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert "number" in schema_message["schema"]["properties"]["column"]["type"]
 
 
 class PostgresTestRunner(TapTestRunner):
