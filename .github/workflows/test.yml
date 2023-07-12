@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs: {}
 
 jobs:
   tests:
@@ -34,6 +36,13 @@ jobs:
     - name: Fix Permissions
       run: |
         chmod 777 -R ./ssh_tunnel/ssh-server-config
+        chmod 600 ssl/server.key
+        sudo chown 999:999 ssl/server.key
+        chmod 600 ssl/pkey.key
+
+    - name: Set up Postgres container
+      run: |
+        docker compose -f docker-compose.yml up -d
 
     - uses: isbang/compose-action@v1.4.1
 
