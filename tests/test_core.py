@@ -96,7 +96,6 @@ TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
 
 
 class TestTapPostgres(TapPostgresTest):
-
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -105,9 +104,9 @@ class TestTapPostgres(TapPostgresTest):
         setup_test_table(self.table_name, self.sqlalchemy_url)
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
+
 
 class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
-
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -117,8 +116,8 @@ class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
-class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
 
+class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
     table_name = TABLE_NAME_SELECTED_COLUMNS_ONLY
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
