@@ -9,7 +9,7 @@ from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
-from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP
+from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP, JSON
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
@@ -193,22 +193,26 @@ def test_temporal_datatypes():
     }
 
 
-def test_jsonb():
-    """JSONB Objects weren't being selected, make sure they are now"""
-    table_name = "test_jsonb"
+def test_jsonb_json():
+    """JSONB and JSON Objects weren't being selected, make sure they are now"""
+    table_name = "test_jsonb_json"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
 
     metadata_obj = MetaData()
     table = Table(
         table_name,
         metadata_obj,
-        Column("column", JSONB),
+        Column("column_jsonb", JSONB),
+        Column("column_json", JSON),
     )
     with engine.connect() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
-        insert = table.insert().values(column={"foo": "bar"})
+        insert = table.insert().values(
+            column_jsonb={"foo": "bar"},
+            column_json={"baz": "foo"},
+        )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
@@ -232,8 +236,12 @@ def test_jsonb():
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert "object" in schema_message["schema"]["properties"]["column"]["type"]
-    assert test_runner.records[altered_table_name][0] == {"column": {"foo": "bar"}}
+            assert "object" in schema_message["schema"]["properties"]["column_jsonb"]["type"]
+            assert "object" in schema_message["schema"]["properties"]["column_json"]["type"]
+    assert test_runner.records[altered_table_name][0] == {
+        "column_jsonb": {"foo": "bar"},
+        "column_json": {"baz": "foo"}
+    }
 
 
 def test_decimal():

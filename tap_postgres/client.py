@@ -78,7 +78,7 @@ class PostgresConnector(SQLConnector):
         elif isinstance(sql_type, sqlalchemy.types.TypeEngine):
             type_name = type(sql_type).__name__
 
-        if type_name is not None and type_name == "JSONB":
+        if type_name is not None and type_name in ("JSONB", "JSON"):
             return th.ObjectType().type_dict
 
         if (
