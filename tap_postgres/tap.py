@@ -137,7 +137,7 @@ class TapPostgres(SQLTap):
                     required=False,
                     default=False,
                     description=(
-                        "Enable an ssh tunnel (also known as bastion host), see the "
+                        "Enable an ssh tunnel (also known as bastion server), see the "
                         "other ssh_tunnel.* properties for more details"
                     ),
                 ),
@@ -146,7 +146,7 @@ class TapPostgres(SQLTap):
                     th.StringType,
                     required=False,
                     description=(
-                        "Host of the bastion host, this is the host "
+                        "Host of the bastion server, this is the host "
                         "we'll connect to via ssh"
                     ),
                 ),
@@ -154,21 +154,21 @@ class TapPostgres(SQLTap):
                     "username",
                     th.StringType,
                     required=False,
-                    description="Username to connect to bastion host",
+                    description="Username to connect to bastion server",
                 ),
                 th.Property(
                     "port",
                     th.IntegerType,
                     required=False,
                     default=22,
-                    description="Port to connect to bastion host",
+                    description="Port to connect to bastion server",
                 ),
                 th.Property(
                     "private_key",
                     th.StringType,
                     required=False,
                     secret=True,
-                    description="Private Key for authentication to the bastion host",
+                    description="Private Key for authentication to the bastion server",
                 ),
                 th.Property(
                     "private_key_password",

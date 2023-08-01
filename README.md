@@ -24,11 +24,11 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 | database                     | False    | None    | Database name. Note if sqlalchemy_url is set this will be ignored. |
 | sqlalchemy_url               | False    | None    | Example postgresql://[username]:[password]@localhost:5432/[db_name] |
 | ssh_tunnel                   | False    | None    | SSH Tunnel Configuration, this is a json object |
-| ssh_tunnel.enable   | True (if ssh_tunnel set) | False   | Enable an ssh tunnel (also known as bastion host), see the other ssh_tunnel.* properties for more details.
-| ssh_tunnel.host | True (if ssh_tunnel set) | False   | Host of the bastion host, this is the host we'll connect to via ssh
-| ssh_tunnel.username | True (if ssh_tunnel set) | False   |Username to connect to bastion host
-| ssh_tunnel.port | True (if ssh_tunnel set) | 22 | Port to connect to bastion host
-| ssh_tunnel.private_key | True (if ssh_tunnel set) | None | Private Key for authentication to the bastion host
+| ssh_tunnel.enable   | True (if ssh_tunnel set) | False   | Enable an ssh tunnel (also known as bastion server), see the other ssh_tunnel.* properties for more details.
+| ssh_tunnel.host | True (if ssh_tunnel set) | False   | Host of the bastion server, this is the host we'll connect to via ssh
+| ssh_tunnel.username | True (if ssh_tunnel set) | False   |Username to connect to bastion server
+| ssh_tunnel.port | True (if ssh_tunnel set) | 22 | Port to connect to bastion server
+| ssh_tunnel.private_key | True (if ssh_tunnel set) | None | Private Key for authentication to the bastion server
 | ssh_tunnel.private_key_password | False | None | Private Key Password, leave None if no password is set
 | ssl_enable                   | False    |       0 | Whether or not to use ssl to verify the server's identity. Use ssl_certificate_authority and ssl_mode for further customization. To use a client certificate to authenticate yourself to the server, use ssl_client_certificate_enable instead. Note if sqlalchemy_url is set this will be ignored. |
 | ssl_client_certificate_enable| False    |       0 | Whether or not to provide client-side certificates as a method of authentication to the server. Use ssl_client_certificate and ssl_client_private_key for further customization. To use SSL to verify the server's identity, use ssl_enable instead. Note if sqlalchemy_url is set this will be ignored. |
@@ -49,10 +49,6 @@ A full list of supported settings and capabilities is available by running: `tap
 This Singer tap will automatically import any environment variables within the working directory's
 `.env` if the `--config=ENV` is provided, such that config values will be considered if a matching
 environment variable is set either in the terminal context or in the `.env` file.
-
-### SSH Tunnels (Bastion Hosts)
-
-This tap supports connecting to a Postgres database via an SSH tunnel (also known as a bastion host). This is useful if you need to connect to a database that is not publicly accessible. This is the same as using `ssh -L` and `ssh -R`, but this is done inside the tap itself.
 
 ## Installation
 
@@ -127,3 +123,66 @@ meltano elt tap-postgres target-jsonl
 
 See the [dev guide](https://sdk.meltano.com/en/latest/dev_guide.html) for more instructions on how to use the SDK to
 develop your own taps and targets.
+
+## SSH Tunnels
+
+This tap supports connecting to a Postgres database via an SSH tunnel (also known as a bastion server). This is useful if you need to connect to a database that is not publicly accessible. This is the same as using `ssh -L`, but this is done inside the tap itself.
+
+## What is an SSH Tunnel?
+
+An SSH tunnel is a method to securely forward network traffic. It uses the SSH protocol to encapsulate other protocols like HTTP, MySQL, Postgres, etc. This is particularly useful in scenarios where you need to access a service that is behind a firewall or in a network that you can't reach directly. In the context of this tap, you can use an SSH tunnel to access a Postgres database that's not accessible to the wider internet.
+
+Here's a basic illustration of how an SSH tunnel works:
+```
++-------------+             +-------------+             +-------------+
+|    Local    | SSH tunnel  |   Bastion   |   Direct    |  Postgres   |
+|   Machine   | <=========> |   Server    | <=========> |     DB      |
++-------------+ (encrypted) +-------------+ (unsecured) +-------------+
+```
+
+1. Local Machine: This is wherever this tap is running from, where you initiate the SSH tunnel. It's also referred to as the SSH client.
+1. Bastion Server: This is a secure server that you have SSH access to, and that can connect to the remote server. All traffic in the SSH tunnel between your local machine and the bastion server is encrypted.
+1. Remote Server: This is the server you want to connect to, in this case a PostgreSQL server. The connection between the bastion server and the remote server is a normal, potentially unsecured connection. However, because the bastion server is trusted, and because all traffic between your local machine and the bastion server is encrypted, you can safely transmit data to and from the remote server.
+
+### Obtaining Keys
+
+Setup
+1. Ensure your bastion server is online.
+1. Ensure you bastion server can access your Postgres database.
+1. Have some method of accessing your bastion server. This could either be through password-based SSH authentication or through a hardwired connection to the server.
+1. Install `ssh-keygen` on your client machine if it is not already installed.
+
+Creating Keys
+1. Run the command `ssh-keygen`.
+    1. Enter the directory where you would like to save your key. If you're in doubt, the default directory is probably fine.
+        - If you get a message similar to the one below asking if you wish to overwrite a previous key, enter `n`, then rerun `ssh-keygen` and manually specify the output_keyfile using the `-f` flag.
+            ```
+            /root/.ssh/id_rsa already exists.
+            Overwrite (y/n)?
+            ```
+    1. If you wish, enter a passphrase to provide additional protection to your private key. SSH-based authentication is generally considered secure even without a passphrase, but a passphrase can provide an additional layer of security.
+    1. You should now be presented with a message similar to the following, as well as a key fingerprint and ascii randomart image.
+        ```
+        Your identification has been saved in /root/.ssh/id_rsa
+        Your public key has been saved in /root/.ssh/id_rsa.pub
+        ```
+1. Navigate to the indicated directory and find the two keys that were just generated. The file named `id_rsa` is your private key. Keep it safe. The file named `id_rsa.pub` is your public key, and needs to be transferred to your bastion server for your private key to be used.
+
+Copying Keys
+1. Now that you have a pair of keys, the public key needs to be transferred to your bastion server.
+1. If you already have password-based SSH authentication configured, you can use the command `ssh-copy-id [user]@[host]` to copy your public key to the bastion server. Then you can move on to [using your keys](#using-your-keys)
+1. If not, you'll need some other way to access your bastion server. Once you've accessed it, copy the `id_rsa.pub` file onto the bastion server in the `~/.ssh/authorized_keys` file. You could do this using a tool such as `rsync` or with a cloud-based service.
+    - Keep in mind: it's okay if your public key is exposed to the internet through a file-share or something similar. It is useless without your private key.
+
+### Using Your Keys
+
+To connect through SSH, you will need to determine the following pieces of information. If you're missing something, go back to [the section on Obtaining Keys](#obtaining-keys) to gather all the relevant information.
+ - The connection details for your Postgres database, the same as any other tap-postgres run. This includes host, port, username, password and database.
+   - Alternatively, provide an sqlalchemy url. Keep in mind that many other configuration options are ignored when an sqlalchemy url is set, and ideally you should be able to accomplish everything through other configuration options. Consider making an issue in the [tap-postrges repository](https://github.com/MeltanoLabs/tap-postgres) if you find a reasonable use-case that is unsupported by current configuration options.
+   - Note that when your connection details are used, it will be from the perspective of the bastion server. This could change the meaning of local IP address or keywords such as "localhost".
+ - The hostname or ip address of the bastion server, provided in the `ssh.host` configuration option.
+ - The port for use with the bastion server, provided in the `ssh.port` configuration option.
+ - The username for authentication with the bastion server, provided in the `ssh.username` configuration option. This will require you to have setup an SSH login with the bastion server.
+ - The private key you use for authentication with the bastion server, provided in the `ssh.private_key` configuration option. If your private key is protected by a password (alternatively called a "private key passphrase"), provide it in the `ssh.private_key_password` configuration option. If your private key doesn't have a password, you can safely leave this field blank.
+
+After everything has been configured, be sure to indicate your use of an ssh tunnel to the tap by configuring the `ssh.enable` configuration option to be `True`. Then, you should be able to connect to your privately accessible Postgres database through the bastion server.
