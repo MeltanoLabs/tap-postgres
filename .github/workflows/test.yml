@@ -44,7 +44,7 @@ jobs:
       run: |
         docker compose -f docker-compose.yml up -d
 
-    - uses: isbang/compose-action@v1.4.1
+    - uses: isbang/compose-action@v1.5.1
 
  # Leaving comments as this makes testing the openssh docker image easier and should save someone some time later
  #   - name: Test SSH File Permissiosn
