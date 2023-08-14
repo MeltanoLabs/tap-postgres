@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import json
 
 import pendulum
@@ -7,8 +8,8 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
+from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP, JSON
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
@@ -96,7 +97,6 @@ TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
 
 
 class TestTapPostgres(TapPostgresTest):
-
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -105,9 +105,9 @@ class TestTapPostgres(TapPostgresTest):
         setup_test_table(self.table_name, self.sqlalchemy_url)
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
+
 
 class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
-
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -117,8 +117,8 @@ class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
         yield
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
-class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
 
+class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
     table_name = TABLE_NAME_SELECTED_COLUMNS_ONLY
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -129,22 +129,32 @@ class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
 
-def test_jsonb():
-    """JSONB Objects weren't being selected, make sure they are now"""
-    table_name = "test_jsonb"
+def test_temporal_datatypes():
+    """Dates were being incorrectly parsed as date times (issue #171).
+
+    This test checks that dates are being parsed correctly, and additionally implements
+    schema checks, and performs similar tests on times and timestamps.
+    """
+    table_name = "test_date"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
 
     metadata_obj = MetaData()
     table = Table(
         table_name,
         metadata_obj,
-        Column("column", JSONB),
+        Column("column_date", DATE),
+        Column("column_time", TIME),
+        Column("column_timestamp", TIMESTAMP),
     )
     with engine.connect() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
-        insert = table.insert().values(column={"foo": "bar"})
+        insert = table.insert().values(
+            column_date="2022-03-19",
+            column_time="06:04:19.222",
+            column_timestamp="1918-02-03 13:00:01",
+        )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
@@ -163,7 +173,121 @@ def test_jsonb():
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
     )
     test_runner.sync_all()
-    assert test_runner.records[altered_table_name][0] == {"column": {"foo": "bar"}}
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert (
+                "date"
+                == schema_message["schema"]["properties"]["column_date"]["format"]
+            )
+            assert (
+                "date-time"
+                == schema_message["schema"]["properties"]["column_timestamp"]["format"]
+            )
+    assert test_runner.records[altered_table_name][0] == {
+        "column_date": "2022-03-19",
+        "column_time": "06:04:19.222000",
+        "column_timestamp": "1918-02-03T13:00:01",
+    }
+
+
+def test_jsonb_json():
+    """JSONB and JSON Objects weren't being selected, make sure they are now"""
+    table_name = "test_jsonb_json"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("column_jsonb", JSONB),
+        Column("column_json", JSON),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(
+            column_jsonb={"foo": "bar"},
+            column_json={"baz": "foo"},
+        )
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert "object" in schema_message["schema"]["properties"]["column_jsonb"]["type"]
+            assert "object" in schema_message["schema"]["properties"]["column_json"]["type"]
+    assert test_runner.records[altered_table_name][0] == {
+        "column_jsonb": {"foo": "bar"},
+        "column_json": {"baz": "foo"}
+    }
+
+
+def test_decimal():
+    """Schema was wrong for Decimal objects. Check they are correctly selected."""
+    table_name = "test_decimal"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("column", Numeric()),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(column=decimal.Decimal("3.14"))
+        conn.execute(insert)
+        insert = table.insert().values(column=decimal.Decimal("12"))
+        conn.execute(insert)
+        insert = table.insert().values(column=decimal.Decimal("10000.00001"))
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert "number" in schema_message["schema"]["properties"]["column"]["type"]
 
 
 class PostgresTestRunner(TapTestRunner):

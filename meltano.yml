@@ -25,6 +25,17 @@ plugins:
     - name: ssh_tunnel.host
     - name: ssh_tunnel.username
     - name: ssh_tunnel.port
+    - name: ssl_enable
+      kind: boolean
+    - name: ssl_client_certificate_enable
+      kind: boolean
+    - name: ssl_mode
+    - name: ssl_certificate_authority
+      kind: password
+    - name: ssl_client_certificate
+      kind: password
+    - name: ssl_client_private_key
+      kind: password
     select:
     - "*.*"
   loaders:
