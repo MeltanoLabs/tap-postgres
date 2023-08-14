@@ -147,6 +147,7 @@ class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
+
     # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
@@ -177,7 +178,11 @@ class PostgresStream(SQLStream):
                 f"Stream '{self.name}' does not support partitioning."
             )
 
-        table = self.connector.get_table(self.fully_qualified_name)
+        # pulling rows with only selected columns from stream
+        selected_column_names = [k for k in self.get_selected_schema()["properties"]]
+        table = self.connector.get_table(
+            self.fully_qualified_name, column_names=selected_column_names
+        )
         query = table.select()
         if self.replication_key:
             replication_key_col = table.columns[self.replication_key]
