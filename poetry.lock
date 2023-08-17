@@ -1423,13 +1423,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.28.0"
+version = "0.31.1"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.7.1,<3.12"
 files = [
-    {file = "singer_sdk-0.28.0-py3-none-any.whl", hash = "sha256:04463f1f429cf1913de5890068b4cac300b25d2b84ca03a974f2414e7dd35ff4"},
-    {file = "singer_sdk-0.28.0.tar.gz", hash = "sha256:3cf50f91f0cb8e8bd1db3baf025ffe889a3f70d83a94f944b2a941ca5c7a7055"},
+    {file = "singer_sdk-0.31.1-py3-none-any.whl", hash = "sha256:c5e20a1b042ab49f8446c2db150f7f75e3e6a99a0d579f1a7ff9eed9abeda084"},
+    {file = "singer_sdk-0.31.1.tar.gz", hash = "sha256:cdd76f05259c1244ae91b4ac6fe44f7e3a182a3c480a29b60dfee9c51d498ea0"},
 ]
 
 [package.dependencies]
@@ -1443,6 +1443,7 @@ joblib = ">=1.0.1,<2.0.0"
 jsonpath-ng = ">=1.5.3,<2.0.0"
 jsonschema = ">=4.16.0,<5.0.0"
 memoization = ">=0.3.2,<0.5.0"
+packaging = ">=23.1"
 pendulum = ">=2.1.0,<3.0.0"
 PyJWT = ">=2.4,<3.0"
 pytest = {version = ">=7.2.1,<8.0.0", optional = true, markers = "extra == \"testing\""}
@@ -1452,12 +1453,12 @@ pytz = ">=2022.2.1,<2024.0.0"
 PyYAML = ">=6.0,<7.0"
 requests = ">=2.25.1,<3.0.0"
 simplejson = ">=3.17.6,<4.0.0"
-sqlalchemy = ">=1.4,<2.0"
+sqlalchemy = ">=1.4,<3.0"
 typing-extensions = ">=4.2.0,<5.0.0"
 urllib3 = ">=1.26,<2"
 
 [package.extras]
-docs = ["furo (>=2022.12.7,<2024.0.0)", "myst-parser (>=0.17.2,<1.1.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
+docs = ["furo (>=2022.12.7,<2024.0.0)", "myst-parser (>=0.17.2,<1.1.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
 s3 = ["fs-s3fs (>=1.1.1,<2.0.0)"]
 testing = ["pytest (>=7.2.1,<8.0.0)", "pytest-durations (>=1.2.0,<2.0.0)"]
 
@@ -1676,4 +1677,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "f3269cea3784a983738d38b0c2129b2c2cee8b075ba076c0487db49bdd693188"
+content-hash = "59e2b7ac6173a104ec8e76d4933618d5eae274dc98f070dba0b6f2cc7b434c88"
