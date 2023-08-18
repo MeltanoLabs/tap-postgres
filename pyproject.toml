@@ -35,7 +35,7 @@ packages = [
 python = "<3.12,>=3.8.1"
 singer-sdk = "~=0.31.0"
 psycopg2-binary = "2.9.7"
-sqlalchemy = "<2"
+sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
 [tool.poetry.group.dev.dependencies]
