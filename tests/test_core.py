@@ -8,7 +8,7 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
+from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP, JSON
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
@@ -50,7 +50,7 @@ def setup_test_table(table_name, sqlalchemy_url):
     )
     with engine.connect() as conn:
         metadata_obj.create_all(conn)
-        conn.execute(f"TRUNCATE TABLE {table_name}")
+        conn.execute(text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
             insert = test_replication_key_table.insert().values(
                 updated_at=fake.date_between(date1, date2), name=fake.name()
@@ -61,7 +61,7 @@ def setup_test_table(table_name, sqlalchemy_url):
 def teardown_test_table(table_name, sqlalchemy_url):
     engine = sqlalchemy.create_engine(sqlalchemy_url)
     with engine.connect() as conn:
-        conn.execute(f"DROP TABLE {table_name}")
+        conn.execute(text(f"DROP TABLE {table_name}"))
 
 
 custom_test_replication_key = suites.TestSuite(
@@ -137,6 +137,7 @@ def test_temporal_datatypes():
     """
     table_name = "test_date"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    inspector = sqlalchemy.inspect(engine)
 
     metadata_obj = MetaData()
     table = Table(
@@ -147,7 +148,7 @@ def test_temporal_datatypes():
         Column("column_timestamp", TIMESTAMP),
     )
     with engine.connect() as conn:
-        if table.exists(conn):
+        if inspector.has_table(table_name=table_name):
             table.drop(conn)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
@@ -197,6 +198,7 @@ def test_jsonb_json():
     """JSONB and JSON Objects weren't being selected, make sure they are now"""
     table_name = "test_jsonb_json"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    inspector = sqlalchemy.inspect(engine)
 
     metadata_obj = MetaData()
     table = Table(
@@ -206,7 +208,7 @@ def test_jsonb_json():
         Column("column_json", JSON),
     )
     with engine.connect() as conn:
-        if table.exists(conn):
+        if inspector.has_table(table_name=table_name):
             table.drop(conn)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
