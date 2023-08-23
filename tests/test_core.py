@@ -250,6 +250,7 @@ def test_decimal():
     """Schema was wrong for Decimal objects. Check they are correctly selected."""
     table_name = "test_decimal"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    inspector = sqlalchemy.inspect(engine)
 
     metadata_obj = MetaData()
     table = Table(
@@ -258,7 +259,7 @@ def test_decimal():
         Column("column", Numeric()),
     )
     with engine.connect() as conn:
-        if table.exists(conn):
+        if inspector.has_table(table_name=table_name):
             table.drop(conn)
         metadata_obj.create_all(conn)
         insert = table.insert().values(column=decimal.Decimal("3.14"))
