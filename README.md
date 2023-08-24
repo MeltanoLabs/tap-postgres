@@ -23,6 +23,7 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 | password                     | False    | None    | Password used to authenticate. Note if sqlalchemy_url is set this will be ignored. |
 | database                     | False    | None    | Database name. Note if sqlalchemy_url is set this will be ignored. |
 | sqlalchemy_url               | False    | None    | Example postgresql://[username]:[password]@localhost:5432/[db_name] |
+| filter_schemas               | False    | None    | If an array of schema names is provided, the tap will only process the specified Postgres schemas and ignore others. If left blank, the tap automatically determines ALL available Postgres schemas. |
 | ssh_tunnel                   | False    | None    | SSH Tunnel Configuration, this is a json object |
 | ssh_tunnel.enable   | True (if ssh_tunnel set) | False   | Enable an ssh tunnel (also known as bastion host), see the other ssh_tunnel.* properties for more details.
 | ssh_tunnel.host | True (if ssh_tunnel set) | False   | Host of the bastion host, this is the host we'll connect to via ssh
