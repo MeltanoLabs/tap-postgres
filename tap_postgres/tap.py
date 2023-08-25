@@ -129,6 +129,15 @@ class TapPostgres(SQLTap):
             ),
         ),
         th.Property(
+            "filter_schemas",
+            th.ArrayType(th.StringType),
+            description=(
+                "If an array of schema names is provided, the tap will only process "
+                "the specified Postgres schemas and ignore others. If left blank, the "
+                "tap automatically determines ALL available Postgres schemas."
+            ),
+        ),
+        th.Property(
             "ssh_tunnel",
             th.ObjectType(
                 th.Property(

@@ -12,6 +12,8 @@ import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._typing import TypeConformanceLevel
+from sqlalchemy.engine import Engine
+from sqlalchemy.engine.reflection import Inspector
 
 if TYPE_CHECKING:
     from sqlalchemy.dialects import postgresql
@@ -164,6 +166,20 @@ class PostgresConnector(SQLConnector):
                 return jsonschema_type
 
         return sqltype_lookup["string"]  # safe failover to str
+
+    def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
+        """Return a list of schema names in DB, or overrides with user-provided values.
+
+        Args:
+            engine: SQLAlchemy engine
+            inspected: SQLAlchemy inspector instance for engine
+
+        Returns:
+            List of schema names
+        """
+        if "filter_schemas" in self.config and len(self.config["filter_schemas"]) != 0:
+            return self.config["filter_schemas"]
+        return super().get_schema_names(engine, inspected)
 
 
 class PostgresStream(SQLStream):

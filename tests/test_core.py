@@ -1,3 +1,4 @@
+import copy
 import datetime
 import decimal
 import json
@@ -9,7 +10,7 @@ from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
-from sqlalchemy.dialects.postgresql import DATE, JSONB, TIME, TIMESTAMP, JSON
+from sqlalchemy.dialects.postgresql import BIGINT, DATE, JSON, JSONB, TIME, TIMESTAMP
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
@@ -288,6 +289,29 @@ def test_decimal():
             and schema_message["stream"] == altered_table_name
         ):
             assert "number" in schema_message["schema"]["properties"]["column"]["type"]
+
+
+def test_filter_schemas():
+    """Only return tables from a given schema"""
+    table_name = "test_filter_schemas"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
+
+    with engine.connect() as conn:
+        conn.execute("CREATE SCHEMA IF NOT EXISTS new_schema")
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+    filter_schemas_config = copy.deepcopy(SAMPLE_CONFIG)
+    filter_schemas_config.update({"filter_schemas": ["new_schema"]})
+    tap = TapPostgres(config=filter_schemas_config)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"new_schema-{table_name}"
+    # Check that the only stream in the catalog is the one table put into new_schema
+    assert len(tap_catalog["streams"]) == 1
+    assert tap_catalog["streams"][0]["stream"] == altered_table_name
 
 
 class PostgresTestRunner(TapTestRunner):
