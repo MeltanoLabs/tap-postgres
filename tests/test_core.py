@@ -424,6 +424,8 @@ def test_incremental():
         Column("name", String),
         Column("updated_at", DateTime),
     )
+    replication_key = "updated_at"
+
     with engine.connect() as conn:
         if table.exists(conn):
             table.drop(conn)
@@ -477,6 +479,7 @@ def test_incremental():
                 metadata["metadata"]["selected"] = True
                 if metadata["breadcrumb"] == []:
                     metadata["metadata"]["replication-method"] = "INCREMENTAL"
+                    metadata["metadata"]["replication-key"] = replication_key
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres,
@@ -489,7 +492,7 @@ def test_incremental():
         "value": {
             "bookmarks": {
                 altered_table_name: {
-                    "replication_key": "updated_at",
+                    "replication_key": replication_key,
                     "replication_key_value": "2022-10-01T00:00:00+00:00",
                 },
             },
