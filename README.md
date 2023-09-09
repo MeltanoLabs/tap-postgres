@@ -42,6 +42,11 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 | stream_map_config   | False    | None    | User-defined config values to be used within map expressions. |
 | flattening_enabled  | False    | None    | 'True' to enable schema flattening and automatically expand nested properties. |
 | flattening_max_depth| False    | None    | The max depth to flatten schemas. |
+| batch_config| False    | None    | JSON object containing information on data batching. |
+| batch_config.encoding.compression| False    | None    | Compression format to use for batch files. |
+| batch_config.encoding.format| False    | None    | Format to use for batch files. |
+| batch_config.storage.prefix| False    | None    | Prefix to use when writing batch files. |
+| batch_config.storage.root| False    | None    | Root path to use when writing batch files. |
 
 A full list of supported settings and capabilities is available by running: `tap-postgres --about`
 
