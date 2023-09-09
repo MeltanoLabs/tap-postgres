@@ -12,6 +12,7 @@ import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._typing import TypeConformanceLevel
+from sqlalchemy import nullsfirst
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
@@ -225,7 +226,10 @@ class PostgresStream(SQLStream):
         query = table.select()
         if self.replication_key:
             replication_key_col = table.columns[self.replication_key]
-            query = query.order_by(replication_key_col)
+
+            # Nulls first because the default is to have nulls as the "highest" value
+            # which incorrectly causes the tap to attempt to store null state.
+            query = query.order_by(nullsfirst(replication_key_col))
 
             start_val = self.get_starting_replication_key_value(context)
             if start_val:
