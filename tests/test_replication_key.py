@@ -92,7 +92,7 @@ def test_null_replication_key_with_start_date():
                     metadata["metadata"]["replication-method"] = "INCREMENTAL"
                     metadata["metadata"]["replication-key"] = "updated_at"
 
-    test_runner = PostgresTestRunner(
+    test_runner = TapTestRunner(
         tap_class=TapPostgres,
         config=SAMPLE_CONFIG,
         catalog=tap_catalog,
@@ -149,7 +149,7 @@ def test_null_replication_key_without_start_date():
                     metadata["metadata"]["replication-method"] = "INCREMENTAL"
                     metadata["metadata"]["replication-key"] = "updated_at"
 
-    test_runner = PostgresTestRunner(
+    test_runner = TapTestRunner(
         tap_class=TapPostgres,
         config=modified_config,
         catalog=tap_catalog,
@@ -164,14 +164,3 @@ class TapTestReplicationKey(TapTestTemplate):
 
     def test(self):
         replication_key_test(self.tap, self.table_name)
-
-
-class PostgresTestRunner(TapTestRunner):
-    def run_sync_dry_run(self) -> bool:
-        """
-        Dislike this function and how TestRunner does this so just hacking it here.
-        Want to be able to run exactly the catalog given
-        """
-        new_tap = self.new_tap()
-        new_tap.sync_all()
-        return True
