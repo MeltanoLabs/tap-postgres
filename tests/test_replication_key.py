@@ -1,8 +1,13 @@
 """Tests standard tap features using the built-in SDK tests library."""
+import copy
 import json
 
 import pendulum
+import sqlalchemy
+from singer_sdk.testing.runners import TapTestRunner
 from singer_sdk.testing.templates import TapTestTemplate
+from sqlalchemy import Column, MetaData, String, Table
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from tap_postgres.tap import TapPostgres
 
@@ -40,6 +45,117 @@ def replication_key_test(tap, table_name):
 
     tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
     tap.sync_all()
+
+
+def test_null_replication_key_with_start_date():
+    """Null replication keys cause weird behavior. Check for appropriate handling.
+
+    If a start date is provided, only non-null records with an replication key value
+    greater than the start date should be synced.
+    """
+    table_name = "test_null_replication_key_with_start_date"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("data", String()),
+        Column("updated_at", TIMESTAMP),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(
+            data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
+        )
+        conn.execute(insert)
+        insert = table.insert().values(
+            data="Bravo", updated_at=pendulum.datetime(2022, 11, 20).to_iso8601_string()
+        )
+        conn.execute(insert)
+        insert = table.insert().values(data="Zulu", updated_at=None)
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            stream["replication_key"] = "updated_at"
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "INCREMENTAL"
+                    metadata["metadata"]["replication-key"] = "updated_at"
+
+    test_runner = TapTestRunner(
+        tap_class=TapPostgres,
+        config=SAMPLE_CONFIG,
+        catalog=tap_catalog,
+    )
+    test_runner.sync_all()
+    assert len(test_runner.records[altered_table_name]) == 1  # Only record Bravo.
+
+
+def test_null_replication_key_without_start_date():
+    """Null replication keys cause weird behavior. Check for appropriate handling.
+
+    If a start date is not provided, sync all records, including those with a null value
+    for their replication key.
+    """
+    table_name = "test_null_replication_key_without_start_date"
+
+    modified_config = copy.deepcopy(SAMPLE_CONFIG)
+    modified_config["start_date"] = None
+    engine = sqlalchemy.create_engine(modified_config["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("data", String()),
+        Column("updated_at", TIMESTAMP),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(
+            data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
+        )
+        conn.execute(insert)
+        insert = table.insert().values(
+            data="Bravo", updated_at=pendulum.datetime(2022, 11, 20).to_iso8601_string()
+        )
+        conn.execute(insert)
+        insert = table.insert().values(data="Zulu", updated_at=None)
+        conn.execute(insert)
+    tap = TapPostgres(config=modified_config)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            stream["replication_key"] = "updated_at"
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "INCREMENTAL"
+                    metadata["metadata"]["replication-key"] = "updated_at"
+
+    test_runner = TapTestRunner(
+        tap_class=TapPostgres,
+        config=modified_config,
+        catalog=tap_catalog,
+    )
+    test_runner.sync_all()
+    assert len(test_runner.records[altered_table_name]) == 3  # All three records.
 
 
 class TapTestReplicationKey(TapTestTemplate):
