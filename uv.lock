@@ -614,7 +614,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "psycopg2-binary", specifier = "==2.9.10" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.47.0" },
+    { name = "singer-sdk", extras = ["faker"], git = "https://github.com/meltano/sdk.git" },
     { name = "sqlalchemy", specifier = "==2.0.41" },
     { name = "sshtunnel", specifier = "==0.4.0" },
 ]
@@ -625,7 +625,7 @@ dev = [
     { name = "mypy", specifier = ">=1.8.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = "~=0.11.0" },
-    { name = "singer-sdk", extras = ["testing"] },
+    { name = "singer-sdk", extras = ["testing"], git = "https://github.com/meltano/sdk.git" },
     { name = "types-jsonschema", specifier = ">=4.19.0.3" },
     { name = "types-paramiko", specifier = ">=3.3.0.0" },
     { name = "types-psycopg2", specifier = ">=2.9.21.20240118" },
@@ -636,7 +636,7 @@ lint = [{ name = "ruff", specifier = "~=0.11.0" }]
 testing = [
     { name = "hypothesis", specifier = ">=6.122.1" },
     { name = "pytest", specifier = ">=8" },
-    { name = "singer-sdk", extras = ["testing"] },
+    { name = "singer-sdk", extras = ["testing"], git = "https://github.com/meltano/sdk.git" },
 ]
 typing = [
     { name = "mypy", specifier = ">=1.8.0" },
@@ -1225,10 +1225,10 @@ wheels = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.47.4"
-source = { registry = "https://pypi.org/simple" }
+version = "0.47.5.dev47+gf3a0d028"
+source = { git = "https://github.com/meltano/sdk.git#f3a0d02844ced842358a228d9e8c8159945de70b" }
 dependencies = [
-    { name = "backoff", marker = "python_full_version < '4'" },
+    { name = "backoff" },
     { name = "backports-datetime-fromisoformat", marker = "python_full_version < '3.11'" },
     { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "click", version = "8.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1247,12 +1247,8 @@ dependencies = [
     { name = "simpleeval" },
     { name = "simplejson" },
     { name = "sqlalchemy" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
     { name = "universal-pathlib" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/5b/1b8e37d223e7651c30ecc45d5772950c5babb4f137494a444e314d160e2e/singer_sdk-0.47.4.tar.gz", hash = "sha256:d70642f2f5d55f794fe3b311ccacabb86a41c3a3bb37260b3119d3aadce0459c", size = 2450794, upload-time = "2025-06-25T00:49:58Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/06/00943f3da3998aa929a761286b8b84e7305083cc70d41cf88ecd9bf65186/singer_sdk-0.47.4-py3-none-any.whl", hash = "sha256:9522f92e7c14dc5773bc4d83dee456ad4760869957f718bc053f75c43121107e", size = 192387, upload-time = "2025-06-25T00:49:56.278Z" },
 ]
 
 [package.optional-dependencies]

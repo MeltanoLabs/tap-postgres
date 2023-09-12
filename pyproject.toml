@@ -129,3 +129,6 @@ convention = "google"
 
 [tool.pytest.ini_options]
 addopts = '--durations=10'
+
+[tool.uv.sources]
+singer-sdk = { git = "https://github.com/meltano/sdk.git" }
