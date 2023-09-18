@@ -237,8 +237,8 @@ def test_jsonb_json():
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert "object" in schema_message["schema"]["properties"]["column_jsonb"]["type"]
-            assert "object" in schema_message["schema"]["properties"]["column_json"]["type"]
+            assert schema_message["schema"]["properties"]["column_jsonb"] == {}
+            assert schema_message["schema"]["properties"]["column_json"] == {}
     assert test_runner.records[altered_table_name][0] == {
         "column_jsonb": {"foo": "bar"},
         "column_json": {"baz": "foo"}
