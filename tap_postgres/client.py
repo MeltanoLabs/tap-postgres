@@ -5,8 +5,10 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, Optional, Type, Union
 
+import psycopg2
 import singer_sdk.helpers._typing
 import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
@@ -44,19 +46,48 @@ singer_sdk.helpers._typing._conform_primitive_property = patched_conform
 class PostgresConnector(SQLConnector):
     """Connects to the Postgres SQL source."""
 
-    @staticmethod
+    def __init__(
+        self,
+        config: dict | None = None,
+        sqlalchemy_url: str | None = None,
+    ) -> None:
+        """Initialize the SQL connector.
+
+        Args:
+            config: The parent tap or target object's config.
+            sqlalchemy_url: Optional URL for the connection.
+        """
+
+        if config is not None and config["dates_as_string"] is True:
+            string_dates = psycopg2.extensions.new_type(
+                (1082, 1114, 1184), "STRING_DATES", psycopg2.STRING
+            )
+            string_date_arrays = psycopg2.extensions.new_array_type(
+                (1182, 1115, 1188), "STRING_DATE_ARRAYS[]", psycopg2.STRING
+            )
+            psycopg2.extensions.register_type(string_dates)
+            psycopg2.extensions.register_type(string_date_arrays)
+
+        super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
+
+    # Note super is static, we can get away with this because this is called once
+    # and is luckily referenced via the instance of the class
     def to_jsonschema_type(
+        self,
         sql_type: Union[
             str,
             sqlalchemy.types.TypeEngine,
             Type[sqlalchemy.types.TypeEngine],
             postgresql.ARRAY,
             Any,
-        ]
+        ],
     ) -> dict:
         """Return a JSON Schema representation of the provided type.
 
         Overidden from SQLConnector to correctly handle JSONB and Arrays.
+
+        Also Overridden in order to call our instance method `sdk_typing_object()`
+        instead of the static version
 
         By default will call `typing.to_jsonschema_type()` for strings and SQLAlchemy
         types.
@@ -89,12 +120,12 @@ class PostgresConnector(SQLConnector):
             and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY)
             and type_name == "ARRAY"
         ):
-            array_type = PostgresConnector.sdk_typing_object(sql_type.item_type)
+            array_type = self.sdk_typing_object(sql_type.item_type)
             return th.ArrayType(array_type).type_dict
-        return PostgresConnector.sdk_typing_object(sql_type).type_dict
+        return self.sdk_typing_object(sql_type).type_dict
 
-    @staticmethod
     def sdk_typing_object(
+        self,
         from_type: str
         | sqlalchemy.types.TypeEngine
         | type[sqlalchemy.types.TypeEngine],
@@ -148,6 +179,9 @@ class PostgresConnector(SQLConnector):
             "bool": th.BooleanType(),
             "variant": th.StringType(),
         }
+        if self.config["dates_as_string"] is True:
+            sqltype_lookup["date"] = th.StringType()
+            sqltype_lookup["datetime"] = th.StringType()
         if isinstance(from_type, str):
             type_name = from_type
         elif isinstance(from_type, sqlalchemy.types.TypeEngine):
@@ -235,5 +269,6 @@ class PostgresStream(SQLStream):
             if start_val:
                 query = query.filter(replication_key_col >= start_val)
 
-        for row in self.connector.connection.execute(query):
-            yield dict(row)
+        with self.connector._connect() as con:
+            for row in con.execute(query):
+                yield dict(row)
