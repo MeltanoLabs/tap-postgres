@@ -53,10 +53,10 @@ class PostgresConnector(SQLConnector):
         """Initialize the SQL connector.
 
         Args:
-            config: The parent tap or target object's config.
-            sqlalchemy_url: Optional URL for the connection.
-        """
+          config: The parent tap or target object's config.
+          sqlalchemy_url: Optional URL for the connection.
 
+        """
         # Dates in postgres don't all convert to python datetime objects, so we
         # need to register a custom type caster to convert these to a string
         # See https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date # noqa: E501
