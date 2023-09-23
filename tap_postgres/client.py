@@ -5,8 +5,7 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Iterator, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
 
 import psycopg2
 import singer_sdk.helpers._typing
@@ -58,6 +57,10 @@ class PostgresConnector(SQLConnector):
             sqlalchemy_url: Optional URL for the connection.
         """
 
+        # Dates in postgres don't all convert to python datetime objects, so we
+        # need to register a custom type caster to convert these to a string
+        # See https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date # noqa: E501
+        # For more information
         if config is not None and config["dates_as_string"] is True:
             string_dates = psycopg2.extensions.new_type(
                 (1082, 1114, 1184), "STRING_DATES", psycopg2.STRING

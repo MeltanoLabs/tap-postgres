@@ -6,7 +6,7 @@ import io
 import signal
 from functools import cached_property
 from os import chmod, path
-from typing import Any, Dict, Mapping, cast
+from typing import Any, Dict, cast
 
 import paramiko
 from singer_sdk import SQLTap, Stream
