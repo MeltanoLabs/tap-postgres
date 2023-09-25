@@ -1430,44 +1430,44 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.31.1"
+version = "0.32.0"
 description = "A framework for building Singer taps"
 optional = false
-python-versions = ">=3.7.1,<3.12"
+python-versions = ">=3.7.1,<4"
 files = [
-    {file = "singer_sdk-0.31.1-py3-none-any.whl", hash = "sha256:c5e20a1b042ab49f8446c2db150f7f75e3e6a99a0d579f1a7ff9eed9abeda084"},
-    {file = "singer_sdk-0.31.1.tar.gz", hash = "sha256:cdd76f05259c1244ae91b4ac6fe44f7e3a182a3c480a29b60dfee9c51d498ea0"},
+    {file = "singer_sdk-0.32.0-py3-none-any.whl", hash = "sha256:19b56e67bc9e6c7410e1830711894ae25d54609a72d06bef569d0c5a5a1b2b54"},
+    {file = "singer_sdk-0.32.0.tar.gz", hash = "sha256:af666788faa027869fa045859bd070b3d0df487c89fda18e7b683e8bb94b4ced"},
 ]
 
 [package.dependencies]
-backoff = ">=2.0.0,<3.0"
+backoff = ">=2.0.0"
 click = ">=8.0,<9.0"
 cryptography = ">=3.4.6,<42.0.0"
-fs = ">=2.4.16,<3.0.0"
-importlib-resources = {version = "5.12.0", markers = "python_version < \"3.9\""}
-inflection = ">=0.5.1,<0.6.0"
-joblib = ">=1.0.1,<2.0.0"
-jsonpath-ng = ">=1.5.3,<2.0.0"
-jsonschema = ">=4.16.0,<5.0.0"
+fs = ">=2.4.16"
+importlib-resources = {version = ">=5.12.0", markers = "python_version < \"3.9\""}
+inflection = ">=0.5.1"
+joblib = ">=1.0.1"
+jsonpath-ng = ">=1.5.3"
+jsonschema = ">=4.16.0"
 memoization = ">=0.3.2,<0.5.0"
 packaging = ">=23.1"
-pendulum = ">=2.1.0,<3.0.0"
+pendulum = ">=2.1.0"
 PyJWT = ">=2.4,<3.0"
-pytest = {version = ">=7.2.1,<8.0.0", optional = true, markers = "extra == \"testing\""}
-pytest-durations = {version = ">=1.2.0,<2.0.0", optional = true, markers = "extra == \"testing\""}
+pytest = {version = ">=7.2.1", optional = true, markers = "extra == \"testing\""}
+pytest-durations = {version = ">=1.2.0", optional = true, markers = "extra == \"testing\""}
 python-dotenv = ">=0.20,<0.22"
 pytz = ">=2022.2.1,<2024.0.0"
-PyYAML = ">=6.0,<7.0"
-requests = ">=2.25.1,<3.0.0"
-simplejson = ">=3.17.6,<4.0.0"
+PyYAML = ">=6.0"
+requests = ">=2.25.1"
+simplejson = ">=3.17.6"
 sqlalchemy = ">=1.4,<3.0"
-typing-extensions = ">=4.2.0,<5.0.0"
+typing-extensions = ">=4.2.0"
 urllib3 = ">=1.26,<2"
 
 [package.extras]
-docs = ["furo (>=2022.12.7,<2024.0.0)", "myst-parser (>=0.17.2,<1.1.0)", "sphinx (>=4.5,<6.0)", "sphinx-autobuild (>=2021.3.14,<2022.0.0)", "sphinx-copybutton (>=0.3.1,<0.6.0)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-reredirects (>=0.1.1,<0.2.0)"]
-s3 = ["fs-s3fs (>=1.1.1,<2.0.0)"]
-testing = ["pytest (>=7.2.1,<8.0.0)", "pytest-durations (>=1.2.0,<2.0.0)"]
+docs = ["furo (>=2022.12.7)", "myst-parser (>=1)", "sphinx (>=4.5)", "sphinx-autobuild (>=2021.3.14)", "sphinx-copybutton (>=0.3.1)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-reredirects (>=0.1.1)"]
+s3 = ["fs-s3fs (>=1.1.1)"]
+testing = ["pytest (>=7.2.1)", "pytest-durations (>=1.2.0)"]
 
 [[package]]
 name = "six"
@@ -1684,4 +1684,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "b39e752101e62abb4331d0cdbe36648bcd90d1f94c65cc71c6ab228dfbecef8d"
+content-hash = "eea7648f0853ea8fd3a4728de0ac63f3411ed6544df899a8d265fd45d030dd84"
