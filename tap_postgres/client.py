@@ -5,7 +5,12 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
+import json
+from json import JSONDecodeError
+import select
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
+import psycopg2
+from psycopg2 import extras
 
 import singer_sdk.helpers._typing
 import sqlalchemy
@@ -237,3 +242,122 @@ class PostgresStream(SQLStream):
 
         for row in self.connector.connection.execute(query):
             yield dict(row)
+
+
+class PostgresLogBasedStream(SQLStream):
+    """Stream class for Postgres streams."""
+
+    connector_class = PostgresConnector
+
+    # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
+    TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
+
+    replication_key = "_sdc_lsn"
+
+    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
+        """Return a generator of row-type dictionary objects.
+        """
+
+        status_interval = 5.0
+        start_lsn = self.standardize_lsn(self.stream_state.get("bookmarks", {}).get(self.tap_stream_id, {}).get("_sdc_lsn", None))
+        logical_replication_connection = self.logical_replication_connection()
+        logical_replication_cursor = logical_replication_connection.cursor()
+
+        logical_replication_cursor.start_replication(
+            slot_name="tappostgres",
+            decode=True,
+            start_lsn=start_lsn,
+            status_interval=status_interval,
+            options={
+                "format-version": 2,
+                "add-tables": self.standardized_name,
+            }
+        )
+
+        # Using scaffolding layout from: https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
+        while True:
+            message = logical_replication_cursor.read_message()
+            if message:
+                row = self.consume(message)
+                if row:
+                    yield row
+            else:
+                now = datetime.datetime.now()
+                timeout = status_interval - (now - logical_replication_cursor.feedback_timestamp).total_seconds()
+                try:
+                    # If the timeout has passed and the cursor still has no new 
+                    # messages, the sync has completed. 
+                    if select.select([logical_replication_cursor], [], [], max(0, timeout))[0] == []:
+                        break
+                except InterruptedError:
+                    pass
+
+        logical_replication_cursor.close()
+        logical_replication_connection.close()
+
+
+    def consume(self, message) -> dict | None:
+        try:
+            message_payload = json.loads(message.payload)
+        except JSONDecodeError:
+            self.logger.warning("A message payload of %s could not be converted to JSON", message.payload)
+            return
+
+        row = {}
+
+        upsert_actions = {"I","U"}
+        delete_actions = {"D"}
+        truncate_actions = {"T"}
+        transaction_actions = {"B","C"}
+
+        if message_payload["action"] in upsert_actions:
+            for column in message_payload["columns"]:
+                row.update({column["name"]: column["value"]})
+            row.update({"_sdc_deleted_at": None})
+            row.update({"_sdc_lsn": message.data_start})
+        elif message_payload["action"] in delete_actions:
+            for column in message_payload["identity"]:
+                row.update({column["name"]: column["value"]})
+            row.update({"_sdc_deleted_at": datetime.datetime.strftime(datetime.datetime.utcnow())})
+            row.update({"_sdc_lsn": message.data_start})
+        elif message_payload["action"] in truncate_actions:
+            self.logger.warning("A message payload of %s (corresponding to a truncate action) could not be processed.", message.payload)
+        elif message_payload["action"] in transaction_actions:
+            self.logger.info("A message payload of %s (corresponding to a transaction beginning or commit) could not be processed.", message.payload)
+        else:
+            raise RuntimeError("A message payload of %s (corresponding to an unknown action type) could not be processed.", message.payload)
+
+        return row
+
+    
+    def logical_replication_connection(self):
+        return psycopg2.connect(
+            f"dbname={self.config['database']} user={self.config['user']} password={self.config['password']} host={self.config['host']} port={self.config['port']}",
+            application_name="tappostgres",
+            connection_factory=extras.LogicalReplicationConnection,
+            )
+    
+
+    @property
+    def standardized_name(self):
+        table_name=self.catalog_entry["table_name"]
+        schema_name = None
+        for metadata in self.catalog_entry["metadata"]:
+            if metadata["breadcrumb"] == []:
+                schema_name = metadata["metadata"]["schema-name"]
+                break
+        
+        # TODO: escape special characters
+        return f"{schema_name}.{table_name}"
+    
+    def standardize_lsn(self, lsn_string: str | None) -> int:
+        if lsn_string is None or lsn_string is "":
+            return 0
+        components = lsn_string.split("/")
+        if len(components) == 2:
+            try:
+                return (int(components[0], 16) << 32) + int(components[1], 16)
+            except ValueError as e: # int() conversion had an invalid value
+                raise RuntimeError(f"{lsn_string=} can't be converted") from e
+        raise RuntimeError(f"{lsn_string=} can't be converted")
+

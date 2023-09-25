@@ -15,7 +15,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
-from tap_postgres.client import PostgresConnector, PostgresStream
+from tap_postgres.client import PostgresConnector, PostgresStream, PostgresLogBasedStream
 
 
 class TapPostgres(SQLTap):
@@ -484,6 +484,8 @@ class TapPostgres(SQLTap):
             List of discovered Stream objects.
         """
         return [
+            PostgresLogBasedStream(self, catalog_entry, connector=self.connector) if 
+            catalog_entry["replication_method"] == "LOG_BASED" else 
             PostgresStream(self, catalog_entry, connector=self.connector)
             for catalog_entry in self.catalog_dict["streams"]
         ]
