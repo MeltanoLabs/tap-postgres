@@ -6,7 +6,7 @@ import io
 import signal
 from functools import cached_property
 from os import chmod, path
-from typing import Any, Mapping, cast
+from typing import Any, Dict, cast
 
 import paramiko
 from singer_sdk import SQLTap, Stream
@@ -136,6 +136,16 @@ class TapPostgres(SQLTap):
                 "the specified Postgres schemas and ignore others. If left blank, the "
                 "tap automatically determines ALL available Postgres schemas."
             ),
+        ),
+        th.Property(
+            "dates_as_string",
+            th.BooleanType,
+            description=(
+                "Defaults to false, if true, date, and timestamp fields will be "
+                "Strings. If you see ValueError: Year is out of range, "
+                "try setting this to True."
+            ),
+            default=False,
         ),
         th.Property(
             "ssh_tunnel",
@@ -274,7 +284,7 @@ class TapPostgres(SQLTap):
         ),
     ).to_dict()
 
-    def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
+    def get_sqlalchemy_url(self, config: Dict[Any, Any]) -> str:
         """Generate a SQLAlchemy URL.
 
         Args:
