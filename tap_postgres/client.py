@@ -5,19 +5,25 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
+from functools import cached_property
 import json
-from json import JSONDecodeError
 import select
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Type, Union
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Type, Union
+import typing
 import psycopg2
 from psycopg2 import extras
 
 import psycopg2
+from singer_sdk.connectors import SQLConnector
 import singer_sdk.helpers._typing
+from singer_sdk.tap_base import Tap
 import sqlalchemy
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._typing import TypeConformanceLevel
+from singer_sdk.helpers._state import increment_state
+from singer_sdk._singerlib import CatalogEntry, MetadataMapping, Schema
 from sqlalchemy import nullsfirst
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -223,6 +229,83 @@ class PostgresConnector(SQLConnector):
         if "filter_schemas" in self.config and len(self.config["filter_schemas"]) != 0:
             return self.config["filter_schemas"]
         return super().get_schema_names(engine, inspected)
+    
+    def discover_catalog_entry(
+        self,
+        engine: Engine,  # noqa: ARG002
+        inspected: Inspector,
+        schema_name: str,
+        table_name: str,
+        is_view: bool,  # noqa: FBT001
+    ) -> CatalogEntry:
+        """Override to manually specify a replication key for LOG_BASED replication."""
+        # Initialize unique stream name
+        unique_stream_id = self.get_fully_qualified_name(
+            db_name=None,
+            schema_name=schema_name,
+            table_name=table_name,
+            delimiter="-",
+        )
+
+        # Detect key properties
+        possible_primary_keys: list[list[str]] = []
+        pk_def = inspected.get_pk_constraint(table_name, schema=schema_name)
+        if pk_def and "constrained_columns" in pk_def:
+            possible_primary_keys.append(pk_def["constrained_columns"])
+
+        possible_primary_keys.extend(
+            index_def["column_names"]
+            for index_def in inspected.get_indexes(table_name, schema=schema_name)
+            if index_def.get("unique", False)
+        )
+
+        key_properties = next(iter(possible_primary_keys), None)
+
+        # Initialize available replication methods
+        replication_method = self.config["replication_method"]
+
+        # Initialize columns list
+        table_schema = th.PropertiesList()
+        for column_def in inspected.get_columns(table_name, schema=schema_name):
+            column_name = column_def["name"]
+            is_nullable = column_def.get("nullable", False)
+            jsonschema_type: dict = self.to_jsonschema_type(
+                typing.cast(sqlalchemy.types.TypeEngine, column_def["type"]),
+            )
+            table_schema.append(
+                th.Property(
+                    name=column_name,
+                    wrapped=th.CustomType(jsonschema_type),
+                    required=False if replication_method == "LOG_BASED" else not is_nullable,
+                ),
+            )
+        schema = table_schema.to_dict()
+
+        replication_key = None
+        if replication_method == "LOG_BASED":
+            replication_key = "_sdc_lsn"
+
+        # Create the catalog entry object
+        return CatalogEntry(
+            tap_stream_id=unique_stream_id,
+            stream=unique_stream_id,
+            table=table_name,
+            key_properties=key_properties,
+            schema=Schema.from_dict(schema),
+            is_view=is_view,
+            replication_method=replication_method,
+            metadata=MetadataMapping.get_standard_metadata(
+                schema_name=schema_name,
+                schema=schema,
+                replication_method=replication_method,
+                key_properties=key_properties,
+                valid_replication_keys=[replication_key] if replication_key else None,
+            ),
+            database=None,  # Expects single-database context
+            row_count=None,
+            stream_alias=None,
+            replication_key=replication_key,
+        )
 
 
 class PostgresStream(SQLStream):
@@ -283,7 +366,7 @@ class PostgresStream(SQLStream):
 
 
 class PostgresLogBasedStream(SQLStream):
-    """Stream class for Postgres streams."""
+    """Stream class for Postgres log-based streams."""
 
     connector_class = PostgresConnector
 
@@ -292,14 +375,68 @@ class PostgresLogBasedStream(SQLStream):
 
     replication_key = "_sdc_lsn"
 
+    @property
+    def config(self) -> Mapping[str, Any]:
+        """Return a read-only config dictionary."""
+        return MappingProxyType(self._config)
+    
+    @cached_property
+    def schema(self) -> dict:
+        schema_dict = typing.cast(dict,self._singer_catalog_entry.schema.to_dict())
+        schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})
+        schema_dict["properties"].update({"_sdc_lsn": {"type": ["integer"]}})
+        return schema_dict
+    
+    def _increment_stream_state(
+        self,
+        latest_record: dict[str, Any],
+        *,
+        context: dict | None = None,
+    ) -> None:
+        """Update state of stream or partition with data from the provided record.
+
+        The default implementation does not advance any bookmarks unless
+        `self.replication_method == 'INCREMENTAL'`. For us, `self.replication_method ==
+        'LOG_BASED'`, so an override is required.
+        """
+        # This also creates a state entry if one does not yet exist:
+        state_dict = self.get_context_state(context)
+
+        # Advance state bookmark values if applicable
+        if latest_record: # This is the only line that has been overridden.
+            if not self.replication_key:
+                msg = (
+                    f"Could not detect replication key for '{self.name}' "
+                    f"stream(replication method={self.replication_method})"
+                )
+                raise ValueError(msg)
+            treat_as_sorted = self.is_sorted
+            if not treat_as_sorted and self.state_partitioning_keys is not None:
+                # Streams with custom state partitioning are not resumable.
+                treat_as_sorted = False
+            increment_state(
+                state_dict,
+                replication_key=self.replication_key,
+                latest_record=latest_record,
+                is_sorted=treat_as_sorted,
+                check_sorted=self.check_sorted,
+            )
+
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
         """
 
-        status_interval = 5.0
-        start_lsn = self.standardize_lsn(self.stream_state.get("bookmarks", {}).get(self.tap_stream_id, {}).get("_sdc_lsn", None))
+        status_interval = 5.0 # timeout, in seconds
+        start_lsn = self.get_starting_replication_key_value(context=context)
+        if start_lsn is None:
+            start_lsn = 0
         logical_replication_connection = self.logical_replication_connection()
         logical_replication_cursor = logical_replication_connection.cursor()
+
+        # Flush logs from the previous sync. send_feedback() will only flush LSNs before
+        # the value of flush_lsn, not including the value of flush_lsn, so this is safe
+        # even though we still want logs with an LSN == start_lsn.
+        logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
         logical_replication_cursor.start_replication(
             slot_name="tappostgres",
@@ -308,7 +445,8 @@ class PostgresLogBasedStream(SQLStream):
             status_interval=status_interval,
             options={
                 "format-version": 2,
-                "add-tables": self.standardized_name,
+                "include-transaction": False,
+                "add-tables": self.fully_qualified_name,
             }
         )
 
@@ -320,8 +458,7 @@ class PostgresLogBasedStream(SQLStream):
                 if row:
                     yield row
             else:
-                now = datetime.datetime.now()
-                timeout = status_interval - (now - logical_replication_cursor.feedback_timestamp).total_seconds()
+                timeout = status_interval - (datetime.datetime.now() - logical_replication_cursor.feedback_timestamp).total_seconds()
                 try:
                     # If the timeout has passed and the cursor still has no new 
                     # messages, the sync has completed. 
@@ -333,11 +470,10 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_cursor.close()
         logical_replication_connection.close()
 
-
     def consume(self, message) -> dict | None:
         try:
             message_payload = json.loads(message.payload)
-        except JSONDecodeError:
+        except json.JSONDecodeError:
             self.logger.warning("A message payload of %s could not be converted to JSON", message.payload)
             return
 
@@ -356,7 +492,7 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update({"_sdc_deleted_at": datetime.datetime.strftime(datetime.datetime.utcnow())})
+            row.update({"_sdc_deleted_at": datetime.datetime.utcnow().strftime(r"%Y-%m-%dT%H:%M:%SZ")})
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.warning("A message payload of %s (corresponding to a truncate action) could not be processed.", message.payload)
@@ -374,28 +510,4 @@ class PostgresLogBasedStream(SQLStream):
             application_name="tappostgres",
             connection_factory=extras.LogicalReplicationConnection,
             )
-    
-
-    @property
-    def standardized_name(self):
-        table_name=self.catalog_entry["table_name"]
-        schema_name = None
-        for metadata in self.catalog_entry["metadata"]:
-            if metadata["breadcrumb"] == []:
-                schema_name = metadata["metadata"]["schema-name"]
-                break
-        
-        # TODO: escape special characters
-        return f"{schema_name}.{table_name}"
-    
-    def standardize_lsn(self, lsn_string: str | None) -> int:
-        if lsn_string is None or lsn_string is "":
-            return 0
-        components = lsn_string.split("/")
-        if len(components) == 2:
-            try:
-                return (int(components[0], 16) << 32) + int(components[1], 16)
-            except ValueError as e: # int() conversion had an invalid value
-                raise RuntimeError(f"{lsn_string=} can't be converted") from e
-        raise RuntimeError(f"{lsn_string=} can't be converted")
 

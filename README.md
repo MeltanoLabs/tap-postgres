@@ -188,3 +188,41 @@ To connect through SSH, you will need to determine the following pieces of infor
  - The private key you use for authentication with the bastion server, provided in the `ssh.private_key` configuration option. If your private key is protected by a password (alternatively called a "private key passphrase"), provide it in the `ssh.private_key_password` configuration option. If your private key doesn't have a password, you can safely leave this field blank.
 
 After everything has been configured, be sure to indicate your use of an ssh tunnel to the tap by configuring the `ssh.enable` configuration option to be `True`. Then, you should be able to connect to your privately accessible Postgres database through the bastion server.
+
+## Log-Based Replication
+
+Log-based replication is an alternative to full-table or incremental syncs. It uses database logs to determine the recent changes to a table, then only syncs those changes.
+
+### Benefits of Log-Based Replication
+
+Compared to full-table replication, log-based replication has the advantage of producing far fewer records. This reduces network costs, eases computational stress on downstream systems, and improves sync time. It is notable that log-based replication shares all of these benefits with incremental replication, which might be a better fit for you if you don't have a need to capture when old data is deleted.
+ 
+Compared to incremental replication, log-based replication has the advantage of capturing when records are deleted. Whereas incremental replication is only able to detect additive (UPSERT) changes, log-based replication can additionally track when old records are deleted. This ensures that downstream processes always have fully accurate data.
+
+### Words of Warning
+
+Log-based replication can be a powerful tool, but it also has downsides. If a simpler method--such as full-table replication or incremental replication--would meet your needs, be sure to consider alternatives to log-based replication before committing.
+
+#### Increased Complexity
+
+Log-based replication can be difficult to set up and maintain due to the overhead required to manage replication slots and logs. This tap attempts to abstract away as much complexity as possible and allow you to focus on results, but log-based replication necessarily requires some additional work on your part.
+
+#### Increased Security Costs
+
+Setting up log-based replication requires a higher degree of access to the source database than other replication methods. This can cause problems if your database contains sensitive data or is under tight security protocols, in which case it's improtant to exercise additional caution when setting up log-based replication.
+
+#### Increased Storage Space
+
+By the nature of log-based replication, it requires that your database store logs of each change made to the database. These logs take up storage space, and in contrast to some other logging systems, will not automatically be rotated or deleted until they have been "consumed" by the tap (or another process). If this a consideration for you, it's important to run the tap frequently to ensure that old logs are flushed from the system.
+
+### This Tap's Implementation of Log-Based Replication
+
+When using this tap in particular for log-based replication, there a few important additional items to be aware of.
+
+Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
+
+TODO: discuss how we handle if the selected streams are modified.
+
+### How to Set Up Log-Based Replication
+
+TODO: add step-by-step instructions for installing wal2json and setting up a replication slot.

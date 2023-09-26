@@ -282,6 +282,16 @@ class TapPostgres(SQLTap):
                 + " configuration option determines where that file is created."
             ),
         ),
+        th.Property(
+            "replication_method",
+            th.StringType,
+            default="FULL_TABLE",
+            allowed_values=["FULL_TABLE", "INCREMENTAL", "LOG_BASED"],
+            description=(
+                "Replication method to use if there is not a catalog entry to override "
+                "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
+            ),
+        ),
     ).to_dict()
 
     def get_sqlalchemy_url(self, config: Dict[Any, Any]) -> str:
@@ -493,9 +503,11 @@ class TapPostgres(SQLTap):
         Returns:
             List of discovered Stream objects.
         """
-        return [
-            PostgresLogBasedStream(self, catalog_entry, connector=self.connector) if 
-            catalog_entry["replication_method"] == "LOG_BASED" else 
-            PostgresStream(self, catalog_entry, connector=self.connector)
-            for catalog_entry in self.catalog_dict["streams"]
-        ]
+
+        streams = []
+        for catalog_entry in self.catalog_dict["streams"]:
+            if catalog_entry["replication_method"] == "LOG_BASED":
+                streams.append(PostgresLogBasedStream(self, catalog_entry, connector=self.connector))
+            else:
+                streams.append(PostgresStream(self, catalog_entry, connector=self.connector))
+        return streams
