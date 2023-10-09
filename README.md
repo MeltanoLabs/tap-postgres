@@ -24,6 +24,7 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 | database                     | False    | None    | Database name. Note if sqlalchemy_url is set this will be ignored. |
 | sqlalchemy_url               | False    | None    | Example postgresql://[username]:[password]@localhost:5432/[db_name] |
 | filter_schemas               | False    | None    | If an array of schema names is provided, the tap will only process the specified Postgres schemas and ignore others. If left blank, the tap automatically determines ALL available Postgres schemas. |
+| dates_as_string              | False    |       0 | Defaults to false, if true, date, and timestamp fields will be Strings. If you see ValueError: Year is out of range, try setting this to True. [More Information](https://github.com/MeltanoLabs/tap-postgres/issues/171) |
 | ssh_tunnel                   | False    | None    | SSH Tunnel Configuration, this is a json object |
 | ssh_tunnel.enable   | True (if ssh_tunnel set) | False   | Enable an ssh tunnel (also known as bastion server), see the other ssh_tunnel.* properties for more details.
 | ssh_tunnel.host | True (if ssh_tunnel set) | False   | Host of the bastion server, this is the host we'll connect to via ssh
