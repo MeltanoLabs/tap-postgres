@@ -381,6 +381,7 @@ class PostgresLogBasedStream(SQLStream):
 
     @cached_property
     def schema(self) -> dict:
+        """Override schema for log-based replication adding _sdc columns."""
         schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})
         schema_dict["properties"].update({"_sdc_lsn": {"type": ["integer"]}})
@@ -423,7 +424,6 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects."""
-
         status_interval = 5.0  # timeout, in seconds
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:

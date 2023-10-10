@@ -512,7 +512,6 @@ class TapPostgres(SQLTap):
         Returns:
             List of discovered Stream objects.
         """
-
         streams = []
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
