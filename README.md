@@ -221,8 +221,53 @@ When using this tap in particular for log-based replication, there a few importa
 
 Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
 
-TODO: discuss how we handle if the selected streams are modified.
+Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.a
 
 ### How to Set Up Log-Based Replication
 
-TODO: add step-by-step instructions for installing wal2json and setting up a replication slot.
+1. Ensure you are using a recent version of PostgresSQL.
+  - Log-based replication may fail, or may have unintended consequences if your Postgres version is severely out-of-date.
+  - It is expected that the tap will function for Postgres 9.4 and higher, but has only been tested for Postgres 15.0 and higher.
+1. Ensure you have a connection to the master instance, and ensure you have appropriate credentials for that connection.
+  - A connection to the master instance is required for log-based replication.
+  - Many of the steps below require administrative access to your database.
+1. Install the wal2json plugin for your database. Example instructions are given below for a Postgres 15.0 database running on Ubuntu 22.04. For more information, or for alternative versions/operating systems, refer to the [wal2json documentation](https://github.com/eulerto/wal2json)
+  - Update and upgrade apt if necessary.
+    ```bash
+    sudo apt update
+    sudo apt upgrade -y
+    ```
+  - Prepare by making prerequisite installations.
+    ```bash
+    sudo apt install curl ca-certificates
+    sudo install -d /usr/share/postgresql-common/pgdg
+    ```
+  - Import the repository keys for the Postgres Apt repository
+    ```bash
+    sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    ```
+  - Create the pgdg.list file.
+    ```bash
+    sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+    ```
+  - Use the Postgres Apt repository to install wal2json
+    ```bash
+    sudo apt update
+    sudo apt-get install postgresql-server-dev-15
+    export PATH=/usr/lib/postgresql/15/bin:$PATH
+    sudo apt-get install postgresql-15-wal2json
+    ```
+1. Configure your database with wal2json enabled.
+  - Edit your `postgresql.conf` configuration file so the following parameters are appropriately set.
+    ```
+    wal_level = logical
+    max_replication_slots = 10
+    max_wal_senders = 10
+    ```
+  - Restart PostgresSQL
+  - Create a replication slot for tap-postgres.
+    ```sql
+    SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');
+    ```
+1. Ensure your configuration for tap-postgres specifies host, port, user, password, and database manually, without relying on an sqlalchemy url.
+1. You are now ready to run tap-postgres!

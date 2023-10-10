@@ -15,7 +15,11 @@ from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
-from tap_postgres.client import PostgresConnector, PostgresStream, PostgresLogBasedStream
+from tap_postgres.client import (
+    PostgresConnector,
+    PostgresLogBasedStream,
+    PostgresStream,
+)
 
 
 class TapPostgres(SQLTap):
@@ -44,6 +48,11 @@ class TapPostgres(SQLTap):
             "Need either the sqlalchemy_url to be set or host, port, user,"
             + " and password to be set"
         )
+
+        # If log-based replication is used, sqlalchemy_url can't be used.
+        assert (self.config.get("sqlalchemy_url") is None) or (
+            self.config.get("replication_mode") != "LOG_BASED"
+        ), "An sqlalchemy_url can't be used with log-based replication"
 
         # If sqlalchemy_url is not being used and ssl_enable is on, ssl_mode must have
         # one of six allowable values. If ssl_mode is verify-ca or verify-full, a
@@ -507,7 +516,13 @@ class TapPostgres(SQLTap):
         streams = []
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
-                streams.append(PostgresLogBasedStream(self, catalog_entry, connector=self.connector))
+                streams.append(
+                    PostgresLogBasedStream(
+                        self, catalog_entry, connector=self.connector
+                    )
+                )
             else:
-                streams.append(PostgresStream(self, catalog_entry, connector=self.connector))
+                streams.append(
+                    PostgresStream(self, catalog_entry, connector=self.connector)
+                )
         return streams

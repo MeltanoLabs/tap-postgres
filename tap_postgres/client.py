@@ -5,25 +5,22 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
-from functools import cached_property
 import json
 import select
+import typing
+from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Type, Union
-import typing
-import psycopg2
-from psycopg2 import extras
 
 import psycopg2
-from singer_sdk.connectors import SQLConnector
 import singer_sdk.helpers._typing
-from singer_sdk.tap_base import Tap
 import sqlalchemy
+from psycopg2 import extras
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
-from singer_sdk.helpers._typing import TypeConformanceLevel
-from singer_sdk.helpers._state import increment_state
 from singer_sdk._singerlib import CatalogEntry, MetadataMapping, Schema
+from singer_sdk.helpers._state import increment_state
+from singer_sdk.helpers._typing import TypeConformanceLevel
 from sqlalchemy import nullsfirst
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -229,7 +226,7 @@ class PostgresConnector(SQLConnector):
         if "filter_schemas" in self.config and len(self.config["filter_schemas"]) != 0:
             return self.config["filter_schemas"]
         return super().get_schema_names(engine, inspected)
-    
+
     def discover_catalog_entry(
         self,
         engine: Engine,  # noqa: ARG002
@@ -276,7 +273,9 @@ class PostgresConnector(SQLConnector):
                 th.Property(
                     name=column_name,
                     wrapped=th.CustomType(jsonschema_type),
-                    required=False if replication_method == "LOG_BASED" else not is_nullable,
+                    required=False
+                    if replication_method == "LOG_BASED"
+                    else not is_nullable,
                 ),
             )
         schema = table_schema.to_dict()
@@ -379,14 +378,14 @@ class PostgresLogBasedStream(SQLStream):
     def config(self) -> Mapping[str, Any]:
         """Return a read-only config dictionary."""
         return MappingProxyType(self._config)
-    
+
     @cached_property
     def schema(self) -> dict:
-        schema_dict = typing.cast(dict,self._singer_catalog_entry.schema.to_dict())
+        schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})
         schema_dict["properties"].update({"_sdc_lsn": {"type": ["integer"]}})
         return schema_dict
-    
+
     def _increment_stream_state(
         self,
         latest_record: dict[str, Any],
@@ -403,7 +402,7 @@ class PostgresLogBasedStream(SQLStream):
         state_dict = self.get_context_state(context)
 
         # Advance state bookmark values if applicable
-        if latest_record: # This is the only line that has been overridden.
+        if latest_record:  # This is the only line that has been overridden.
             if not self.replication_key:
                 msg = (
                     f"Could not detect replication key for '{self.name}' "
@@ -423,10 +422,9 @@ class PostgresLogBasedStream(SQLStream):
             )
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
-        """Return a generator of row-type dictionary objects.
-        """
+        """Return a generator of row-type dictionary objects."""
 
-        status_interval = 5.0 # timeout, in seconds
+        status_interval = 5.0  # timeout, in seconds
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
@@ -447,7 +445,7 @@ class PostgresLogBasedStream(SQLStream):
                 "format-version": 2,
                 "include-transaction": False,
                 "add-tables": self.fully_qualified_name,
-            }
+            },
         )
 
         # Using scaffolding layout from: https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
@@ -458,11 +456,22 @@ class PostgresLogBasedStream(SQLStream):
                 if row:
                     yield row
             else:
-                timeout = status_interval - (datetime.datetime.now() - logical_replication_cursor.feedback_timestamp).total_seconds()
+                timeout = (
+                    status_interval
+                    - (
+                        datetime.datetime.now()
+                        - logical_replication_cursor.feedback_timestamp
+                    ).total_seconds()
+                )
                 try:
-                    # If the timeout has passed and the cursor still has no new 
-                    # messages, the sync has completed. 
-                    if select.select([logical_replication_cursor], [], [], max(0, timeout))[0] == []:
+                    # If the timeout has passed and the cursor still has no new
+                    # messages, the sync has completed.
+                    if (
+                        select.select(
+                            [logical_replication_cursor], [], [], max(0, timeout)
+                        )[0]
+                        == []
+                    ):
                         break
                 except InterruptedError:
                     pass
@@ -471,18 +480,22 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_connection.close()
 
     def consume(self, message) -> dict | None:
+        """Converts a WAL message object to a json record."""
         try:
             message_payload = json.loads(message.payload)
         except json.JSONDecodeError:
-            self.logger.warning("A message payload of %s could not be converted to JSON", message.payload)
+            self.logger.warning(
+                "A message payload of %s could not be converted to JSON",
+                message.payload,
+            )
             return
 
         row = {}
 
-        upsert_actions = {"I","U"}
+        upsert_actions = {"I", "U"}
         delete_actions = {"D"}
         truncate_actions = {"T"}
-        transaction_actions = {"B","C"}
+        transaction_actions = {"B", "C"}
 
         if message_payload["action"] in upsert_actions:
             for column in message_payload["columns"]:
@@ -492,22 +505,53 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update({"_sdc_deleted_at": datetime.datetime.utcnow().strftime(r"%Y-%m-%dT%H:%M:%SZ")})
+            row.update(
+                {
+                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
+                        r"%Y-%m-%dT%H:%M:%SZ"
+                    )
+                }
+            )
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
-            self.logger.warning("A message payload of %s (corresponding to a truncate action) could not be processed.", message.payload)
+            self.logger.warning(
+                (
+                    "A message payload of %s (corresponding to a truncate action) "
+                    "could not be processed."
+                ),
+                message.payload,
+            )
         elif message_payload["action"] in transaction_actions:
-            self.logger.info("A message payload of %s (corresponding to a transaction beginning or commit) could not be processed.", message.payload)
+            self.logger.info(
+                (
+                    "A message payload of %s (corresponding to a transaction beginning "
+                    "or commit) could not be processed."
+                ),
+                message.payload,
+            )
         else:
-            raise RuntimeError("A message payload of %s (corresponding to an unknown action type) could not be processed.", message.payload)
+            raise RuntimeError(
+                (
+                    "A message payload of %s (corresponding to an unknown action type) "
+                    "could not be processed."
+                ),
+                message.payload,
+            )
 
         return row
 
-    
     def logical_replication_connection(self):
+        """A logical replication connection to the database.
+
+        Uses a direct psycopg2 implementation rather than through sqlalchemy.
+        """
+        connection_string = (
+            f"dbname={self.config['database']} user={self.config['user']} password="
+            f"{self.config['password']} host={self.config['host']} port="
+            f"{self.config['port']}"
+        )
         return psycopg2.connect(
-            f"dbname={self.config['database']} user={self.config['user']} password={self.config['password']} host={self.config['host']} port={self.config['port']}",
+            connection_string,
             application_name="tappostgres",
             connection_factory=extras.LogicalReplicationConnection,
-            )
-
+        )
