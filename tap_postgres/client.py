@@ -448,7 +448,8 @@ class PostgresLogBasedStream(SQLStream):
             },
         )
 
-        # Using scaffolding layout from: https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
+        # Using scaffolding layout from: 
+        # https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
         while True:
             message = logical_replication_cursor.read_message()
             if message:
