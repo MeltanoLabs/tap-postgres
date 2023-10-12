@@ -136,7 +136,7 @@ def test_temporal_datatypes():
     This test checks that dates are being parsed correctly, and additionally implements
     schema checks, and performs similar tests on times and timestamps.
     """
-    table_name = "test_date"
+    table_name = "test_temporal_datatypes"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
 
     metadata_obj = MetaData()
@@ -241,7 +241,7 @@ def test_jsonb_json():
             assert schema_message["schema"]["properties"]["column_json"] == {}
     assert test_runner.records[altered_table_name][0] == {
         "column_jsonb": {"foo": "bar"},
-        "column_json": {"baz": "foo"}
+        "column_json": {"baz": "foo"},
     }
 
 
@@ -323,3 +323,87 @@ class PostgresTestRunner(TapTestRunner):
         new_tap = self.new_tap()
         new_tap.sync_all()
         return True
+
+
+def test_invalid_python_dates():
+    """Some dates are invalid in python, but valid in Postgres
+
+    Check out https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date
+    for more information.
+
+    """
+    table_name = "test_invalid_python_dates"
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+
+    metadata_obj = MetaData()
+    table = Table(
+        table_name,
+        metadata_obj,
+        Column("date", DATE),
+        Column("datetime", DateTime),
+    )
+    with engine.connect() as conn:
+        if table.exists(conn):
+            table.drop(conn)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(
+            date="4713-04-03 BC",
+            datetime="4712-10-19 10:23:54 BC",
+        )
+        conn.execute(insert)
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+    # Alter config and then check the data comes through as a string
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    with pytest.raises(ValueError):
+        test_runner.sync_all()
+
+    copied_config = copy.deepcopy(SAMPLE_CONFIG)
+    # This should cause the same data to pass
+    copied_config["dates_as_string"] = True
+    tap = TapPostgres(config=copied_config)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"public-{table_name}"
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert ["string", "null"] == schema_message["schema"]["properties"]["date"][
+                "type"
+            ]
+            assert ["string", "null"] == schema_message["schema"]["properties"][
+                "datetime"
+            ]["type"]
+    assert test_runner.records[altered_table_name][0] == {
+        "date": "4713-04-03 BC",
+        "datetime": "4712-10-19 10:23:54 BC",
+    }
