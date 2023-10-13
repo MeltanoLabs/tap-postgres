@@ -515,7 +515,7 @@ class PostgresLogBasedStream(SQLStream):
             )
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
-            self.logger.warning(
+            self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a truncate action) "
                     "could not be processed."
