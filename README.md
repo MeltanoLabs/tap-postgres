@@ -198,44 +198,23 @@ After everything has been configured, be sure to indicate your use of an ssh tun
 
 Log-based replication is an alternative to full-table and incremental syncs and syncs all changes tot he database, including deletes. This feature is built based on [postgres replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS).
 
-### Benefits of Log-Based Replication
+### Negatives of Log Based Replication
 
-Compared to full-table replication, log-based replication has the advantage of producing far fewer records. This reduces network costs, eases computational stress on downstream systems, and improves sync time. It is notable that log-based replication shares all of these benefits with incremental replication, which might be a better fit for you if you don't have a need to capture when old data is deleted.
- 
-Compared to incremental replication, log-based replication has the advantage of capturing when records are deleted. Whereas incremental replication is only able to detect additive (UPSERT) changes, log-based replication can additionally track when old records are deleted. This ensures that downstream processes always have fully accurate data.
+1. Managing replication slots - Log-based replication has to be set up and maintained on the database. This tap attempts to abstract away as much complexity as possible, but there's still potentially manual effort needed
+2. Log Files - When a replication slot is setup the file that holds these logs will continue to grow until consumed, this can cause issues if the tap doesn't ingest these quickly enough due to outages, etc.
 
-### Words of Warning
-
-Log-based replication can be a powerful tool, but it also has downsides. If a simpler method--such as full-table replication or incremental replication--would meet your needs, be sure to consider alternatives to log-based replication before committing.
-
-#### Increased Complexity
-
-Log-based replication can be difficult to set up and maintain due to the overhead required to manage replication slots and logs. This tap attempts to abstract away as much complexity as possible and allow you to focus on results, but log-based replication necessarily requires some additional work on your part.
+If and when someone finds more please add them to this list!
 
 #### Increased Security Costs
-
-Setting up log-based replication requires a higher degree of access to the source database than other replication methods. This can cause problems if your database contains sensitive data or is under tight security protocols, in which case it's improtant to exercise additional caution when setting up log-based replication.
-
-#### Increased Storage Space
-
-By the nature of log-based replication, it requires that your database store logs of each change made to the database. These logs take up storage space, and in contrast to some other logging systems, will not automatically be rotated or deleted until they have been "consumed" by the tap (or another process). If this a consideration for you, it's important to run the tap frequently to ensure that old logs are flushed from the system.
-
-### This Tap's Implementation of Log-Based Replication
-
-When using this tap in particular for log-based replication, there a few important additional items to be aware of.
-
+### Implementation Details
 Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
 
-Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.a
+Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.
 
 ### How to Set Up Log-Based Replication
 
-1. Ensure you are using a recent version of PostgresSQL.
-  - Log-based replication may fail, or may have unintended consequences if your Postgres version is severely out-of-date.
-  - It is expected that the tap will function for Postgres 9.4 and higher, but has only been tested for Postgres 15.0 and higher.
-1. Ensure you have a connection to the master instance, and ensure you have appropriate credentials for that connection.
-  - A connection to the master instance is required for log-based replication.
-  - Many of the steps below require administrative access to your database.
+1. Ensure you are using  PostgresSQL 9.4 or higher.
+1. Need to access the master postgres instance
 1. Install the wal2json plugin for your database. Example instructions are given below for a Postgres 15.0 database running on Ubuntu 22.04. For more information, or for alternative versions/operating systems, refer to the [wal2json documentation](https://github.com/eulerto/wal2json)
   - Update and upgrade apt if necessary.
     ```bash
@@ -275,4 +254,3 @@ Note that changing what streams are selected after already beginning log-based r
     SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');
     ```
 1. Ensure your configuration for tap-postgres specifies host, port, user, password, and database manually, without relying on an sqlalchemy url.
-1. You are now ready to run tap-postgres!

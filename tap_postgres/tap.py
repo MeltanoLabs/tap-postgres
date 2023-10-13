@@ -292,7 +292,7 @@ class TapPostgres(SQLTap):
             ),
         ),
         th.Property(
-            "replication_method",
+            "default_replication_method",
             th.StringType,
             default="FULL_TABLE",
             allowed_values=["FULL_TABLE", "INCREMENTAL", "LOG_BASED"],

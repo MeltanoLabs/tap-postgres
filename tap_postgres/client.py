@@ -424,7 +424,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
         """Return a generator of row-type dictionary objects."""
-        status_interval = 5.0  # timeout, in seconds
+        status_interval = 5.0  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
@@ -481,7 +481,7 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_connection.close()
 
     def consume(self, message) -> dict | None:
-        """Converts a WAL message object to a json record."""
+        """Ingest WAL message."""
         try:
             message_payload = json.loads(message.payload)
         except json.JSONDecodeError:
@@ -553,6 +553,6 @@ class PostgresLogBasedStream(SQLStream):
         )
         return psycopg2.connect(
             connection_string,
-            application_name="tappostgres",
+            application_name="tap_postgres",
             connection_factory=extras.LogicalReplicationConnection,
         )
