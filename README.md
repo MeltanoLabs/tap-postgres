@@ -196,7 +196,7 @@ After everything has been configured, be sure to indicate your use of an ssh tun
 
 ## Log-Based Replication
 
-Log-based replication is an alternative to full-table or incremental syncs. It uses database logs to determine the recent changes to a table, then only syncs those changes.
+Log-based replication is an alternative to full-table and incremental syncs and syncs all changes tot he database, including deletes. This feature is built based on [postgres replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS).
 
 ### Benefits of Log-Based Replication
 
