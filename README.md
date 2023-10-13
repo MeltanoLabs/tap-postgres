@@ -205,7 +205,6 @@ Log-based replication is an alternative to full-table and incremental syncs and 
 
 If and when someone finds more please add them to this list!
 
-#### Increased Security Costs
 ### Implementation Details
 Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
 
