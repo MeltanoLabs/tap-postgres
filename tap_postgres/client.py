@@ -523,7 +523,7 @@ class PostgresLogBasedStream(SQLStream):
                 message.payload,
             )
         elif message_payload["action"] in transaction_actions:
-            self.logger.info(
+            self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a transaction beginning "
                     "or commit) could not be processed."
