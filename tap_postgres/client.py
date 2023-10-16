@@ -227,84 +227,84 @@ class PostgresConnector(SQLConnector):
             return self.config["filter_schemas"]
         return super().get_schema_names(engine, inspected)
 
-    def discover_catalog_entry(
-        self,
-        engine: Engine,  # noqa: ARG002
-        inspected: Inspector,
-        schema_name: str,
-        table_name: str,
-        is_view: bool,  # noqa: FBT001
-    ) -> CatalogEntry:
-        """Override to manually specify a replication key for LOG_BASED replication."""
-        # Initialize unique stream name
-        unique_stream_id = self.get_fully_qualified_name(
-            db_name=None,
-            schema_name=schema_name,
-            table_name=table_name,
-            delimiter="-",
-        )
+    # def discover_catalog_entry(
+    #     self,
+    #     engine: Engine,  # noqa: ARG002
+    #     inspected: Inspector,
+    #     schema_name: str,
+    #     table_name: str,
+    #     is_view: bool,  # noqa: FBT001
+    # ) -> CatalogEntry:
+    #     """Override to manually specify a replication key for LOG_BASED replication."""
+    #     # Initialize unique stream name
+    #     unique_stream_id = self.get_fully_qualified_name(
+    #         db_name=None,
+    #         schema_name=schema_name,
+    #         table_name=table_name,
+    #         delimiter="-",
+    #     )
 
-        # Detect key properties
-        possible_primary_keys: list[list[str]] = []
-        pk_def = inspected.get_pk_constraint(table_name, schema=schema_name)
-        if pk_def and "constrained_columns" in pk_def:
-            possible_primary_keys.append(pk_def["constrained_columns"])
+    #     # Detect key properties
+    #     possible_primary_keys: list[list[str]] = []
+    #     pk_def = inspected.get_pk_constraint(table_name, schema=schema_name)
+    #     if pk_def and "constrained_columns" in pk_def:
+    #         possible_primary_keys.append(pk_def["constrained_columns"])
 
-        possible_primary_keys.extend(
-            index_def["column_names"]
-            for index_def in inspected.get_indexes(table_name, schema=schema_name)
-            if index_def.get("unique", False)
-        )
+    #     possible_primary_keys.extend(
+    #         index_def["column_names"]
+    #         for index_def in inspected.get_indexes(table_name, schema=schema_name)
+    #         if index_def.get("unique", False)
+    #     )
 
-        key_properties = next(iter(possible_primary_keys), None)
+    #     key_properties = next(iter(possible_primary_keys), None)
 
-        # Initialize available replication methods
-        replication_method = self.config["replication_method"]
+    #     # Initialize available replication methods
+    #     replication_method = self.config["replication_method"]
 
-        # Initialize columns list
-        table_schema = th.PropertiesList()
-        for column_def in inspected.get_columns(table_name, schema=schema_name):
-            column_name = column_def["name"]
-            is_nullable = column_def.get("nullable", False)
-            jsonschema_type: dict = self.to_jsonschema_type(
-                typing.cast(sqlalchemy.types.TypeEngine, column_def["type"]),
-            )
-            table_schema.append(
-                th.Property(
-                    name=column_name,
-                    wrapped=th.CustomType(jsonschema_type),
-                    required=False
-                    if replication_method == "LOG_BASED"
-                    else not is_nullable,
-                ),
-            )
-        schema = table_schema.to_dict()
+    #     # Initialize columns list
+    #     table_schema = th.PropertiesList()
+    #     for column_def in inspected.get_columns(table_name, schema=schema_name):
+    #         column_name = column_def["name"]
+    #         is_nullable = column_def.get("nullable", False)
+    #         jsonschema_type: dict = self.to_jsonschema_type(
+    #             typing.cast(sqlalchemy.types.TypeEngine, column_def["type"]),
+    #         )
+    #         table_schema.append(
+    #             th.Property(
+    #                 name=column_name,
+    #                 wrapped=th.CustomType(jsonschema_type),
+    #                 required=False
+    #                 if replication_method == "LOG_BASED"
+    #                 else not is_nullable,
+    #             ),
+    #         )
+    #     schema = table_schema.to_dict()
 
-        replication_key = None
-        if replication_method == "LOG_BASED":
-            replication_key = "_sdc_lsn"
+    #     replication_key = None
+    #     if replication_method == "LOG_BASED":
+    #         replication_key = "_sdc_lsn"
 
-        # Create the catalog entry object
-        return CatalogEntry(
-            tap_stream_id=unique_stream_id,
-            stream=unique_stream_id,
-            table=table_name,
-            key_properties=key_properties,
-            schema=Schema.from_dict(schema),
-            is_view=is_view,
-            replication_method=replication_method,
-            metadata=MetadataMapping.get_standard_metadata(
-                schema_name=schema_name,
-                schema=schema,
-                replication_method=replication_method,
-                key_properties=key_properties,
-                valid_replication_keys=[replication_key] if replication_key else None,
-            ),
-            database=None,  # Expects single-database context
-            row_count=None,
-            stream_alias=None,
-            replication_key=replication_key,
-        )
+    #     # Create the catalog entry object
+    #     return CatalogEntry(
+    #         tap_stream_id=unique_stream_id,
+    #         stream=unique_stream_id,
+    #         table=table_name,
+    #         key_properties=key_properties,
+    #         schema=Schema.from_dict(schema),
+    #         is_view=is_view,
+    #         replication_method=replication_method,
+    #         metadata=MetadataMapping.get_standard_metadata(
+    #             schema_name=schema_name,
+    #             schema=schema,
+    #             replication_method=replication_method,
+    #             key_properties=key_properties,
+    #             valid_replication_keys=[replication_key] if replication_key else None,
+    #         ),
+    #         database=None,  # Expects single-database context
+    #         row_count=None,
+    #         stream_alias=None,
+    #         replication_key=replication_key,
+    #     )
 
 
 class PostgresStream(SQLStream):
@@ -383,6 +383,11 @@ class PostgresLogBasedStream(SQLStream):
     def schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
         schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
+        for property in schema_dict["properties"].values():
+            if "null" not in property["type"]:
+                property["type"].append("null")
+        if "required" in schema_dict:
+            schema_dict.pop("required")
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})
         schema_dict["properties"].update({"_sdc_lsn": {"type": ["integer"]}})
         return schema_dict

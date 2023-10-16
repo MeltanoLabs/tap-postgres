@@ -226,7 +226,9 @@ When using this tap in particular for log-based replication, there a few importa
 
 Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
 
-Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.a
+Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.
+
+Note also that using log-based replication will cause the replication key for all streams to be set to "_sdc_lsn", which is the Postgres LSN for the record in question.
 
 ### How to Set Up Log-Based Replication
 
