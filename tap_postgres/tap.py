@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import atexit
+import copy
 import io
 import signal
 from functools import cached_property
@@ -11,7 +12,7 @@ from typing import Any, Dict, cast
 import paramiko
 from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th
-from singer_sdk._singerlib import Catalog  # JSON schema typing helpers
+from singer_sdk._singerlib import Catalog, Metadata, Schema  # JSON schema typing helpers
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
@@ -492,61 +493,63 @@ class TapPostgres(SQLTap):
     def catalog_dict(self) -> dict:
         """Get catalog dictionary.
 
+        Override to prevent premature instantiation of the connector.
+
         Returns:
             The tap's catalog as a dict
         """
         if self._catalog_dict:
-            return self.modify_catalog(self._catalog_dict)
+            return self._catalog_dict
 
         if self.input_catalog:
-            return self.modify_catalog(self.input_catalog.to_dict())
+            return self.input_catalog.to_dict()
 
         result: dict[str, list[dict]] = {"streams": []}
         result["streams"].extend(self.connector.discover_catalog_entries())
 
         self._catalog_dict: dict = result
-        return self.modify_catalog(self._catalog_dict)
+        return self._catalog_dict
+
+    @property
+    def catalog(self) -> Catalog:
+        return self.modify_catalog(super().catalog)
     
-    def modify_catalog(self, catalog_dict: dict) -> dict:
-        catalog_modified = False
-        for stream in catalog_dict["streams"]:
-            if stream["replication_method"] == "LOG_BASED":
-                for property in stream["schema"]["properties"].values():
-                    if "null" not in property["type"]:
-                        catalog_modified = True
-                        property["type"].append("null")
-                if "required" in stream["schema"]:
-                    catalog_modified = True
-                    stream["schema"].pop("required")
-                if "_sdc_deleted_at" not in stream["schema"]["properties"]:
-                    catalog_modified = True
-                    stream["schema"]["properties"].update(
-                        {"_sdc_deleted_at": {"type": ["string"]}}
+    def modify_catalog(self, catalog: Catalog) -> dict:
+        new_catalog: Catalog = Catalog()
+        modified_streams: list = []
+        for stream in catalog.streams:
+            stream_modified = False
+            new_stream = copy.deepcopy(stream)
+            if new_stream.replication_method == "LOG_BASED":
+                for property in new_stream.schema.properties.values():
+                    if "null" not in property.type:
+                        stream_modified = True
+                        property.type.append("null")
+                if new_stream.schema.required:
+                    stream_modified = True
+                    new_stream.schema.required = None
+                if "_sdc_deleted_at" not in new_stream.schema.properties:
+                    stream_modified = True
+                    new_stream.schema.properties.update(
+                        {"_sdc_deleted_at": Schema(type=["string", "null"])}
                     )
-                    stream["metadata"].append(
-                        {
-                            "breadcrumb": ["properties", "_sdc_deleted_at"],
-                            "metadata": {"inclusion": "available", "selected": True},
-                        }
+                    new_stream.metadata.update({("properties", "_sdc_deleted_at"): Metadata(Metadata.InclusionType.AVAILABLE, True, None)})
+                if "_sdc_lsn" not in new_stream.schema.properties:
+                    stream_modified = True
+                    new_stream.schema.properties.update(
+                        {"_sdc_lsn": Schema(type=["integer", "null"])}
                     )
-                if "_sdc_lsn" not in stream["schema"]["properties"]:
-                    catalog_modified = True
-                    stream["schema"]["properties"].update(
-                        {"_sdc_lsn": {"type": ["integer"]}}
-                    )
-                    stream["metadata"].append(
-                        {
-                            "breadcrumb": ["properties", "_sdc_lsn"],
-                            "metadata": {"inclusion": "available", "selected": True},
-                        }
-                    )
-        if catalog_modified == True:
+                    new_stream.metadata.update({("properties", "_sdc_lsn"): Metadata(Metadata.InclusionType.AVAILABLE, True, None)})
+            if stream_modified:
+                modified_streams.append(new_stream.tap_stream_id)
+            new_catalog.add_stream(new_stream)
+        if modified_streams:
             self.logger.info(
-                f"A LOG_BASED catalog entry for stream {stream['tap_stream_id']} was "
-                "modified to allow nullability and include _sdc columns. See README "
-                "for further information."
+                "One or more LOG_BASED catalog entries were modified "
+                f"({modified_streams=}) to allow nullability and include _sdc columns. "
+                "See README for further information."
             )
-        return catalog_dict
+        return new_catalog
 
     def discover_streams(self) -> list[Stream]:
         """Initialize all available streams and return them as a list.
@@ -555,7 +558,6 @@ class TapPostgres(SQLTap):
             List of discovered Stream objects.
         """
         streams = []
-        # self.logger.info(f"{self.catalog_dict['streams']}"[-32000:])
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(
