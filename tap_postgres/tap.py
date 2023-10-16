@@ -516,12 +516,16 @@ class TapPostgres(SQLTap):
 
     @property
     def catalog(self) -> Catalog:
-        return self.modify_catalog(super().catalog)
+        """Get the tap's working catalog.
 
-    def modify_catalog(self, catalog: Catalog) -> dict:
+        Override to do LOG_BASED modifications.
+
+        Returns:
+            A Singer catalog object.
+        """
         new_catalog: Catalog = Catalog()
         modified_streams: list = []
-        for stream in catalog.streams:
+        for stream in super().catalog.streams:
             stream_modified = False
             new_stream = copy.deepcopy(stream)
             if new_stream.replication_method == "LOG_BASED":
