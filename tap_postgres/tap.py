@@ -12,7 +12,11 @@ from typing import Any, Dict, cast
 import paramiko
 from singer_sdk import SQLTap, Stream
 from singer_sdk import typing as th
-from singer_sdk._singerlib import Catalog, Metadata, Schema  # JSON schema typing helpers
+from singer_sdk._singerlib import (  # JSON schema typing helpers
+    Catalog,
+    Metadata,
+    Schema,
+)
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
@@ -513,7 +517,7 @@ class TapPostgres(SQLTap):
     @property
     def catalog(self) -> Catalog:
         return self.modify_catalog(super().catalog)
-    
+
     def modify_catalog(self, catalog: Catalog) -> dict:
         new_catalog: Catalog = Catalog()
         modified_streams: list = []
@@ -533,13 +537,25 @@ class TapPostgres(SQLTap):
                     new_stream.schema.properties.update(
                         {"_sdc_deleted_at": Schema(type=["string", "null"])}
                     )
-                    new_stream.metadata.update({("properties", "_sdc_deleted_at"): Metadata(Metadata.InclusionType.AVAILABLE, True, None)})
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_deleted_at"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
                 if "_sdc_lsn" not in new_stream.schema.properties:
                     stream_modified = True
                     new_stream.schema.properties.update(
                         {"_sdc_lsn": Schema(type=["integer", "null"])}
                     )
-                    new_stream.metadata.update({("properties", "_sdc_lsn"): Metadata(Metadata.InclusionType.AVAILABLE, True, None)})
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_lsn"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
             if stream_modified:
                 modified_streams.append(new_stream.tap_stream_id)
             new_catalog.add_stream(new_stream)
