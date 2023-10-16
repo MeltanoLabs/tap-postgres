@@ -53,7 +53,7 @@ class TapPostgres(SQLTap):
         # If log-based replication is used, sqlalchemy_url can't be used.
         assert (self.config.get("sqlalchemy_url") is None) or (
             self.config.get("replication_mode") != "LOG_BASED"
-        ), "An sqlalchemy_url can't be used with log-based replication"
+        ), "A sqlalchemy_url can't be used with log-based replication"
 
         # If sqlalchemy_url is not being used and ssl_enable is on, ssl_mode must have
         # one of six allowable values. If ssl_mode is verify-ca or verify-full, a
@@ -293,7 +293,7 @@ class TapPostgres(SQLTap):
             ),
         ),
         th.Property(
-            "replication_method",
+            "default_replication_method",
             th.StringType,
             default="FULL_TABLE",
             allowed_values=["FULL_TABLE", "INCREMENTAL", "LOG_BASED"],
