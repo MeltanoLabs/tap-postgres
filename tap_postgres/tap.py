@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import atexit
+import copy
 import io
 import signal
 from functools import cached_property
@@ -10,12 +11,21 @@ from typing import Any, Dict, cast
 
 import paramiko
 from singer_sdk import SQLTap, Stream
-from singer_sdk import typing as th  # JSON schema typing helpers
+from singer_sdk import typing as th
+from singer_sdk._singerlib import (  # JSON schema typing helpers
+    Catalog,
+    Metadata,
+    Schema,
+)
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
 
-from tap_postgres.client import PostgresConnector, PostgresStream
+from tap_postgres.client import (
+    PostgresConnector,
+    PostgresLogBasedStream,
+    PostgresStream,
+)
 
 
 class TapPostgres(SQLTap):
@@ -44,6 +54,11 @@ class TapPostgres(SQLTap):
             "Need either the sqlalchemy_url to be set or host, port, user,"
             + " and password to be set"
         )
+
+        # If log-based replication is used, sqlalchemy_url can't be used.
+        assert (self.config.get("sqlalchemy_url") is None) or (
+            self.config.get("replication_mode") != "LOG_BASED"
+        ), "A sqlalchemy_url can't be used with log-based replication"
 
         # If sqlalchemy_url is not being used and ssl_enable is on, ssl_mode must have
         # one of six allowable values. If ssl_mode is verify-ca or verify-full, a
@@ -282,6 +297,16 @@ class TapPostgres(SQLTap):
                 + " configuration option determines where that file is created."
             ),
         ),
+        th.Property(
+            "default_replication_method",
+            th.StringType,
+            default="FULL_TABLE",
+            allowed_values=["FULL_TABLE", "INCREMENTAL", "LOG_BASED"],
+            description=(
+                "Replication method to use if there is not a catalog entry to override "
+                "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
+            ),
+        ),
     ).to_dict()
 
     def get_sqlalchemy_url(self, config: Dict[Any, Any]) -> str:
@@ -472,6 +497,8 @@ class TapPostgres(SQLTap):
     def catalog_dict(self) -> dict:
         """Get catalog dictionary.
 
+        Override to prevent premature instantiation of the connector.
+
         Returns:
             The tap's catalog as a dict
         """
@@ -487,13 +514,79 @@ class TapPostgres(SQLTap):
         self._catalog_dict: dict = result
         return self._catalog_dict
 
+    @property
+    def catalog(self) -> Catalog:
+        """Get the tap's working catalog.
+
+        Override to do LOG_BASED modifications.
+
+        Returns:
+            A Singer catalog object.
+        """
+        new_catalog: Catalog = Catalog()
+        modified_streams: list = []
+        for stream in super().catalog.streams:
+            stream_modified = False
+            new_stream = copy.deepcopy(stream)
+            if new_stream.replication_method == "LOG_BASED":
+                for property in new_stream.schema.properties.values():
+                    if "null" not in property.type:
+                        stream_modified = True
+                        property.type.append("null")
+                if new_stream.schema.required:
+                    stream_modified = True
+                    new_stream.schema.required = None
+                if "_sdc_deleted_at" not in new_stream.schema.properties:
+                    stream_modified = True
+                    new_stream.schema.properties.update(
+                        {"_sdc_deleted_at": Schema(type=["string", "null"])}
+                    )
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_deleted_at"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
+                if "_sdc_lsn" not in new_stream.schema.properties:
+                    stream_modified = True
+                    new_stream.schema.properties.update(
+                        {"_sdc_lsn": Schema(type=["integer", "null"])}
+                    )
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_lsn"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
+            if stream_modified:
+                modified_streams.append(new_stream.tap_stream_id)
+            new_catalog.add_stream(new_stream)
+        if modified_streams:
+            self.logger.info(
+                "One or more LOG_BASED catalog entries were modified "
+                f"({modified_streams=}) to allow nullability and include _sdc columns. "
+                "See README for further information."
+            )
+        return new_catalog
+
     def discover_streams(self) -> list[Stream]:
         """Initialize all available streams and return them as a list.
 
         Returns:
             List of discovered Stream objects.
         """
-        return [
-            PostgresStream(self, catalog_entry, connector=self.connector)
-            for catalog_entry in self.catalog_dict["streams"]
-        ]
+        streams = []
+        for catalog_entry in self.catalog_dict["streams"]:
+            if catalog_entry["replication_method"] == "LOG_BASED":
+                streams.append(
+                    PostgresLogBasedStream(
+                        self, catalog_entry, connector=self.connector
+                    )
+                )
+            else:
+                streams.append(
+                    PostgresStream(self, catalog_entry, connector=self.connector)
+                )
+        return streams
