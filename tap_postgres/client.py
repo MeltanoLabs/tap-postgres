@@ -116,7 +116,7 @@ class PostgresConnector(SQLConnector):
             type_name = type(sql_type).__name__
 
         if type_name is not None and type_name in ("JSONB", "JSON"):
-            return th.ObjectType().type_dict
+            return {"type": ["object", "array"]}
 
         if (
             type_name is not None
