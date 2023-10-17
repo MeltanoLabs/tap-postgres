@@ -1344,6 +1344,17 @@ testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8 (<5)", "flake8-202
 testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
 
 [[package]]
+name = "simpleeval"
+version = "0.9.13"
+description = "A simple, safe single expression evaluator library."
+optional = false
+python-versions = "*"
+files = [
+    {file = "simpleeval-0.9.13-py2.py3-none-any.whl", hash = "sha256:22a2701a5006e4188d125d34accf2405c2c37c93f6b346f2484b6422415ae54a"},
+    {file = "simpleeval-0.9.13.tar.gz", hash = "sha256:4a30f9cc01825fe4c719c785e3762623e350c4840d5e6855c2a8496baaa65fac"},
+]
+
+[[package]]
 name = "simplejson"
 version = "3.19.1"
 description = "Simple, fast, extensible JSON encoder/decoder for Python"
@@ -1439,13 +1450,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.32.0"
+version = "0.33.0"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.7.1,<4"
 files = [
-    {file = "singer_sdk-0.32.0-py3-none-any.whl", hash = "sha256:19b56e67bc9e6c7410e1830711894ae25d54609a72d06bef569d0c5a5a1b2b54"},
-    {file = "singer_sdk-0.32.0.tar.gz", hash = "sha256:af666788faa027869fa045859bd070b3d0df487c89fda18e7b683e8bb94b4ced"},
+    {file = "singer_sdk-0.33.0-py3-none-any.whl", hash = "sha256:ed0f9c67ca79964a8f517e7360197d4ddb342f341448fb3b310214ce91e48ac5"},
+    {file = "singer_sdk-0.33.0.tar.gz", hash = "sha256:e2b43496b324ca9214b731c8d2c2711d9100b6238d20b1e3187c8ae3de1b0c9d"},
 ]
 
 [package.dependencies]
@@ -1468,6 +1479,7 @@ python-dotenv = ">=0.20,<0.22"
 pytz = ">=2022.2.1,<2024.0.0"
 PyYAML = ">=6.0"
 requests = ">=2.25.1"
+simpleeval = ">=0.9.13,<0.10.0"
 simplejson = ">=3.17.6"
 sqlalchemy = ">=1.4,<3.0"
 typing-extensions = ">=4.2.0"
@@ -1703,4 +1715,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.12,>=3.8.1"
-content-hash = "647de4249ce56a5549d64865729f681a710a8c2ef60b298b97ffdc3ff85d088c"
+content-hash = "f3493f64a2e52713c2a6bffbbad4b798b2e7ffdcfb4cf176ed07ecf1334b8b47"
