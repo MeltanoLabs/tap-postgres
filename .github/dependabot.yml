@@ -13,6 +13,7 @@ updates:
       time: "07:23"
     reviewers:
       - "visch"
+    versioning-strategy: increase-if-necessary
   - package-ecosystem: "pip"
     directory: "/.github/workflows"
     schedule:
