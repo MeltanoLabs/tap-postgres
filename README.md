@@ -193,3 +193,72 @@ To connect through SSH, you will need to determine the following pieces of infor
  - The private key you use for authentication with the bastion server, provided in the `ssh.private_key` configuration option. If your private key is protected by a password (alternatively called a "private key passphrase"), provide it in the `ssh.private_key_password` configuration option. If your private key doesn't have a password, you can safely leave this field blank.
 
 After everything has been configured, be sure to indicate your use of an ssh tunnel to the tap by configuring the `ssh.enable` configuration option to be `True`. Then, you should be able to connect to your privately accessible Postgres database through the bastion server.
+
+## Log-Based Replication
+
+Log-based replication is an alternative to full-table and incremental syncs and syncs all changes tot he database, including deletes. This feature is built based on [postgres replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS).
+
+### Negatives of Log Based Replication
+
+1. Managing replication slots - Log-based replication has to be set up and maintained on the database. This tap attempts to abstract away as much complexity as possible, but there's still potentially manual effort needed
+2. Log Files - When a replication slot is setup the file that holds these logs will continue to grow until consumed, this can cause issues if the tap doesn't ingest these quickly enough due to outages, etc.
+
+If and when someone finds more please add them to this list!
+
+### Implementation Details
+Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
+
+Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.
+
+Note also that using log-based replication will cause the replication key for all streams to be set to "_sdc_lsn", which is the Postgres LSN for the record in question.
+
+### How to Set Up Log-Based Replication
+
+1. Ensure you are using  PostgresSQL 9.4 or higher.
+1. Need to access the master postgres instance
+1. Install the wal2json plugin for your database. Example instructions are given below for a Postgres 15.0 database running on Ubuntu 22.04. For more information, or for alternative versions/operating systems, refer to the [wal2json documentation](https://github.com/eulerto/wal2json)
+    - Update and upgrade apt if necessary.
+      ```bash
+      sudo apt update
+      sudo apt upgrade -y
+      ```
+    - Prepare by making prerequisite installations.
+      ```bash
+      sudo apt install curl ca-certificates
+      sudo install -d /usr/share/postgresql-common/pgdg
+      ```
+    - Import the repository keys for the Postgres Apt repository
+      ```bash
+      sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+      ```
+    - Create the pgdg.list file.
+      ```bash
+      sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+      ```
+    - Use the Postgres Apt repository to install wal2json
+      ```bash
+      sudo apt update
+      sudo apt-get install postgresql-server-dev-15
+      export PATH=/usr/lib/postgresql/15/bin:$PATH
+      sudo apt-get install postgresql-15-wal2json
+      ```
+1. Configure your database with wal2json enabled.
+    - Edit your `postgresql.conf` configuration file so the following parameters are appropriately set.
+      ```
+      wal_level = logical
+      max_replication_slots = 10
+      max_wal_senders = 10
+      ```
+    - Restart PostgresSQL
+    - Create a replication slot for tap-postgres.
+      ```sql
+      SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');
+      ```
+1. Ensure your configuration for tap-postgres specifies host, port, user, password, and database manually, without relying on an sqlalchemy url.
+1. Use the following metadata modification in your `meltano.yml` for the streams you wish to have as log-based. Note that during log-based replication, we do not support any replication key other than `_sdc_lsn`.
+    ```yml
+    metadata:
+    "*":
+      replication_method: LOG_BASED
+      replication_key: _sdc_lsn
+    ```
