@@ -535,7 +535,7 @@ class TapPostgres(SQLTap):
                         if isinstance(property.type, list):
                             property.type.append("null")
                         else:
-                            property.type = [*property.type, "null"]
+                            property.type = [property.type, "null"]
                 if new_stream.schema.required:
                     stream_modified = True
                     new_stream.schema.required = None
