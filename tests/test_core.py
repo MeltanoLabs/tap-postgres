@@ -237,8 +237,18 @@ def test_jsonb_json():
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert schema_message["schema"]["properties"]["column_jsonb"] == {}
-            assert schema_message["schema"]["properties"]["column_json"] == {}
+            props = schema_message["schema"]["properties"]
+            all_types = [
+                {"type": "object"},
+                {"type": "array"},
+                {"type": "string"},
+                {"type": "number"},
+                {"type": "integer"},
+                {"type": "boolean"},
+                {"type": "null"},
+            ]
+            assert props["column_jsonb"]["anyOf"] == all_types
+            assert props["column_json"]["anyOf"] == all_types
     assert test_runner.records[altered_table_name][0] == {
         "column_jsonb": {"foo": "bar"},
         "column_json": {"baz": "foo"},
