@@ -2,6 +2,7 @@
 
 This includes PostgresStream and PostgresConnector.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -20,6 +21,7 @@ from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
+from singer_sdk.streams.core import REPLICATION_INCREMENTAL
 from sqlalchemy import nullsfirst
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
@@ -481,3 +483,10 @@ class PostgresLogBasedStream(SQLStream):
             application_name="tap_postgres",
             connection_factory=extras.LogicalReplicationConnection,
         )
+
+    # TODO: Make this change upstream in the SDK?
+    # I'm not sure if in general SQL databases don't guarantee order of records log
+    # replication, but at least Postgres does not.
+    def is_sorted(self) -> bool:
+        """Return True if the stream is sorted by the replication key."""
+        return self.replication_method == REPLICATION_INCREMENTAL
