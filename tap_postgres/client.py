@@ -12,8 +12,8 @@ import typing
 from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Type, Union
-import pendulum
 
+import pendulum
 import psycopg2
 import singer_sdk.helpers._typing
 import sqlalchemy
@@ -54,13 +54,19 @@ def patched_conform(
         epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
         timedelta_from_epoch = epoch + elem
         if timedelta_from_epoch.tzinfo is None:
-            timedelta_from_epoch = timedelta_from_epoch.replace(tzinfo=datetime.timezone.utc)
+            timedelta_from_epoch = timedelta_from_epoch.replace(
+                tzinfo=datetime.timezone.utc
+            )
         return timedelta_from_epoch.isoformat()
     if isinstance(elem, datetime.time):
         return str(elem)
     if isinstance(elem, bytes):
         # for BIT value, treat 0 as False and anything else as True
-        return elem != b"\x00" if singer_sdk.helpers._typing.is_boolean_type(property_schema) else elem.hex()
+        return (
+            elem != b"\x00"
+            if singer_sdk.helpers._typing.is_boolean_type(property_schema)
+            else elem.hex()
+        )
     return elem
 
 
@@ -139,13 +145,15 @@ class PostgresConnector(SQLConnector):
             type_name = sql_type
         elif isinstance(sql_type, sqlalchemy.types.TypeEngine):
             type_name = type(sql_type).__name__
-        
+
         # Should theoretically be th.AnyType().type_dict but that causes errors down
         # the line with an error like:
-        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from 
+        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from
         # empty type_dict. Did you forget to define a property in the stream schema?
         if type_name is not None and type_name in ("JSONB", "JSON"):
-            return {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            return {
+                "type": ["string", "number", "integer", "array", "object", "boolean"]
+            }
 
         if (
             type_name is not None

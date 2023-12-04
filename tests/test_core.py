@@ -212,8 +212,8 @@ def test_jsonb_json():
         {"column_jsonb": 3.14, "column_json": -9.3},
         {"column_jsonb": 22, "column_json": 10000000},
         {"column_jsonb": {}, "column_json": {}},
-        {"column_jsonb": ["bar","foo"], "column_json": ["foo", "baz"]},
-        {"column_jsonb": True, "column_json": False}
+        {"column_jsonb": ["bar", "foo"], "column_json": ["foo", "baz"]},
+        {"column_jsonb": True, "column_json": False},
     ]
 
     with engine.connect() as conn:
@@ -244,8 +244,28 @@ def test_jsonb_json():
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert schema_message["schema"]["properties"]["column_jsonb"] == {"type": ["string", "number", "integer", "array", "object", "boolean", "null"]}
-            assert schema_message["schema"]["properties"]["column_json"] == {"type": ["string", "number", "integer", "array", "object", "boolean", "null"]}
+            assert schema_message["schema"]["properties"]["column_jsonb"] == {
+                "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "array",
+                    "object",
+                    "boolean",
+                    "null",
+                ]
+            }
+            assert schema_message["schema"]["properties"]["column_json"] == {
+                "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "array",
+                    "object",
+                    "boolean",
+                    "null",
+                ]
+            }
     for i in range(len(rows)):
         assert test_runner.records[altered_table_name][i] == rows[i]
 
