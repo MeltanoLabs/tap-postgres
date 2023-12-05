@@ -9,7 +9,7 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
+from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import BIGINT, DATE, JSON, JSONB, TIME, TIMESTAMP
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
@@ -51,7 +51,7 @@ def setup_test_table(table_name, sqlalchemy_url):
     )
     with engine.connect() as conn:
         metadata_obj.create_all(conn)
-        conn.execute(f"TRUNCATE TABLE {table_name}")
+        conn.execute(text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
             insert = test_replication_key_table.insert().values(
                 updated_at=fake.date_between(date1, date2), name=fake.name()
@@ -62,7 +62,7 @@ def setup_test_table(table_name, sqlalchemy_url):
 def teardown_test_table(table_name, sqlalchemy_url):
     engine = sqlalchemy.create_engine(sqlalchemy_url)
     with engine.connect() as conn:
-        conn.execute(f"DROP TABLE {table_name}")
+        conn.execute(text(f"DROP TABLE {table_name}"))
 
 
 custom_test_replication_key = suites.TestSuite(
@@ -300,7 +300,7 @@ def test_filter_schemas():
     table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
 
     with engine.connect() as conn:
-        conn.execute("CREATE SCHEMA IF NOT EXISTS new_schema")
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
