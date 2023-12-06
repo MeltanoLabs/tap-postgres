@@ -49,7 +49,7 @@ def setup_test_table(table_name, sqlalchemy_url):
         Column("updated_at", DateTime(), nullable=False),
         Column("name", String()),
     )
-    with engine.connect() as conn, conn.begin():
+    with engine.begin() as conn:
         metadata_obj.create_all(conn)
         conn.execute(text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
@@ -61,7 +61,7 @@ def setup_test_table(table_name, sqlalchemy_url):
 
 def teardown_test_table(table_name, sqlalchemy_url):
     engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text(f"DROP TABLE {table_name}"))
 
 
@@ -147,7 +147,7 @@ def test_temporal_datatypes():
         Column("column_time", TIME),
         Column("column_timestamp", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -206,7 +206,7 @@ def test_jsonb_json():
         Column("column_jsonb", JSONB),
         Column("column_json", JSON),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -256,7 +256,7 @@ def test_decimal():
         metadata_obj,
         Column("column", Numeric()),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -299,7 +299,7 @@ def test_filter_schemas():
     metadata_obj = MetaData()
     table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
         if table.exists(conn):
             table.drop(conn)
@@ -342,7 +342,7 @@ def test_invalid_python_dates():
         Column("date", DATE),
         Column("datetime", DateTime),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)

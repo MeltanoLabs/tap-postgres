@@ -64,7 +64,7 @@ def test_null_replication_key_with_start_date():
         Column("data", String()),
         Column("updated_at", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -121,7 +121,7 @@ def test_null_replication_key_without_start_date():
         Column("data", String()),
         Column("updated_at", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
