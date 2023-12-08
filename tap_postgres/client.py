@@ -282,8 +282,8 @@ class PostgresStream(SQLStream):
                 query = query.filter(replication_key_col >= start_val)
 
         with self.connector._connect() as con:
-            for row in con.execute(query):
-                yield dict(row._mapping)
+            for row in con.execute(query).mappings().all():
+                yield dict(row)
 
 
 class PostgresLogBasedStream(SQLStream):
