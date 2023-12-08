@@ -9,7 +9,7 @@ import sqlalchemy
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table
+from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import BIGINT, DATE, JSON, JSONB, TIME, TIMESTAMP
 from test_replication_key import TABLE_NAME, TapTestReplicationKey
 from test_selected_columns_only import (
@@ -36,7 +36,7 @@ NO_SQLALCHEMY_CONFIG = {
 
 def setup_test_table(table_name, sqlalchemy_url):
     """setup any state specific to the execution of the given module."""
-    engine = sqlalchemy.create_engine(sqlalchemy_url)
+    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
     fake = Faker()
 
     date1 = datetime.date(2022, 11, 1)
@@ -49,9 +49,9 @@ def setup_test_table(table_name, sqlalchemy_url):
         Column("updated_at", DateTime(), nullable=False),
         Column("name", String()),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         metadata_obj.create_all(conn)
-        conn.execute(f"TRUNCATE TABLE {table_name}")
+        conn.execute(text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
             insert = test_replication_key_table.insert().values(
                 updated_at=fake.date_between(date1, date2), name=fake.name()
@@ -60,9 +60,9 @@ def setup_test_table(table_name, sqlalchemy_url):
 
 
 def teardown_test_table(table_name, sqlalchemy_url):
-    engine = sqlalchemy.create_engine(sqlalchemy_url)
-    with engine.connect() as conn:
-        conn.execute(f"DROP TABLE {table_name}")
+    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
+    with engine.begin() as conn:
+        conn.execute(text(f"DROP TABLE {table_name}"))
 
 
 custom_test_replication_key = suites.TestSuite(
@@ -137,7 +137,7 @@ def test_temporal_datatypes():
     schema checks, and performs similar tests on times and timestamps.
     """
     table_name = "test_temporal_datatypes"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -147,7 +147,7 @@ def test_temporal_datatypes():
         Column("column_time", TIME),
         Column("column_timestamp", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -197,7 +197,7 @@ def test_temporal_datatypes():
 def test_jsonb_json():
     """JSONB and JSON Objects weren't being selected, make sure they are now"""
     table_name = "test_jsonb_json"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -216,7 +216,7 @@ def test_jsonb_json():
         {"column_jsonb": True, "column_json": False},
     ]
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -273,7 +273,7 @@ def test_jsonb_json():
 def test_decimal():
     """Schema was wrong for Decimal objects. Check they are correctly selected."""
     table_name = "test_decimal"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -281,7 +281,7 @@ def test_decimal():
         metadata_obj,
         Column("column", Numeric()),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -319,13 +319,13 @@ def test_decimal():
 def test_filter_schemas():
     """Only return tables from a given schema"""
     table_name = "test_filter_schemas"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
 
-    with engine.connect() as conn:
-        conn.execute("CREATE SCHEMA IF NOT EXISTS new_schema")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -358,7 +358,7 @@ def test_invalid_python_dates():
 
     """
     table_name = "test_invalid_python_dates"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -367,7 +367,7 @@ def test_invalid_python_dates():
         Column("date", DATE),
         Column("datetime", DateTime),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
