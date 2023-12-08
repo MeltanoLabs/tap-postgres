@@ -283,7 +283,7 @@ class PostgresStream(SQLStream):
 
         with self.connector._connect() as con:
             for row in con.execute(query):
-                yield dict(row)
+                yield dict(row._mapping)
 
 
 class PostgresLogBasedStream(SQLStream):
