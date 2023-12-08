@@ -1,4 +1,5 @@
 """Tests standard tap features using the built-in SDK tests library."""
+
 import copy
 import json
 
@@ -54,7 +55,7 @@ def test_null_replication_key_with_start_date():
     greater than the start date should be synced.
     """
     table_name = "test_null_replication_key_with_start_date"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -63,7 +64,7 @@ def test_null_replication_key_with_start_date():
         Column("data", String()),
         Column("updated_at", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -111,7 +112,7 @@ def test_null_replication_key_without_start_date():
 
     modified_config = copy.deepcopy(SAMPLE_CONFIG)
     modified_config["start_date"] = None
-    engine = sqlalchemy.create_engine(modified_config["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(modified_config["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -120,7 +121,7 @@ def test_null_replication_key_without_start_date():
         Column("data", String()),
         Column("updated_at", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
