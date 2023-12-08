@@ -36,7 +36,7 @@ NO_SQLALCHEMY_CONFIG = {
 
 def setup_test_table(table_name, sqlalchemy_url):
     """setup any state specific to the execution of the given module."""
-    engine = sqlalchemy.create_engine(sqlalchemy_url)
+    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
     fake = Faker()
 
     date1 = datetime.date(2022, 11, 1)
@@ -49,7 +49,7 @@ def setup_test_table(table_name, sqlalchemy_url):
         Column("updated_at", DateTime(), nullable=False),
         Column("name", String()),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         metadata_obj.create_all(conn)
         conn.execute(text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
@@ -60,8 +60,8 @@ def setup_test_table(table_name, sqlalchemy_url):
 
 
 def teardown_test_table(table_name, sqlalchemy_url):
-    engine = sqlalchemy.create_engine(sqlalchemy_url)
-    with engine.connect() as conn:
+    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
+    with engine.begin() as conn:
         conn.execute(text(f"DROP TABLE {table_name}"))
 
 
@@ -137,7 +137,7 @@ def test_temporal_datatypes():
     schema checks, and performs similar tests on times and timestamps.
     """
     table_name = "test_temporal_datatypes"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -147,7 +147,7 @@ def test_temporal_datatypes():
         Column("column_time", TIME),
         Column("column_timestamp", TIMESTAMP),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -197,7 +197,7 @@ def test_temporal_datatypes():
 def test_jsonb_json():
     """JSONB and JSON Objects weren't being selected, make sure they are now"""
     table_name = "test_jsonb_json"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -206,7 +206,7 @@ def test_jsonb_json():
         Column("column_jsonb", JSONB),
         Column("column_json", JSON),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -248,7 +248,7 @@ def test_jsonb_json():
 def test_decimal():
     """Schema was wrong for Decimal objects. Check they are correctly selected."""
     table_name = "test_decimal"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -256,7 +256,7 @@ def test_decimal():
         metadata_obj,
         Column("column", Numeric()),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
@@ -294,12 +294,12 @@ def test_decimal():
 def test_filter_schemas():
     """Only return tables from a given schema"""
     table_name = "test_filter_schemas"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
         if table.exists(conn):
             table.drop(conn)
@@ -333,7 +333,7 @@ def test_invalid_python_dates():
 
     """
     table_name = "test_invalid_python_dates"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
     metadata_obj = MetaData()
     table = Table(
@@ -342,7 +342,7 @@ def test_invalid_python_dates():
         Column("date", DATE),
         Column("datetime", DateTime),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         if table.exists(conn):
             table.drop(conn)
         metadata_obj.create_all(conn)
