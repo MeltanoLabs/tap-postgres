@@ -44,6 +44,7 @@ faker = ">=18.5.1,<21.0.0"
 flake8 = "^6.0.0"
 isort = "^5.10.1"
 mypy = "1.7.1"
+pendulum = "~=2.1"
 pre-commit = "^3.0.4"
 pydocstyle = "^6.1.1"
 singer-sdk = {version = "*", extras = ["testing"]}
