@@ -2,12 +2,13 @@
 import json
 
 from singer_sdk.testing.templates import TapTestTemplate
+from tests.settings import DB_SQLALCHEMY_URL
 
 from tap_postgres.tap import TapPostgres
 
 TABLE_NAME_SELECTED_COLUMNS_ONLY = "test_selected_columns_only"
 SAMPLE_CONFIG = {
-    "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
+    "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 
