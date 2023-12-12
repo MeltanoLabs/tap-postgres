@@ -149,8 +149,7 @@ def test_temporal_datatypes():
         Column("column_timestamp", TIMESTAMP),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             column_date="2022-03-19",
@@ -208,8 +207,7 @@ def test_jsonb_json():
         Column("column_json", JSON),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             column_jsonb={"foo": "bar"},
@@ -258,8 +256,7 @@ def test_decimal():
         Column("column", Numeric()),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(column=decimal.Decimal("3.14"))
         conn.execute(insert)
@@ -302,8 +299,7 @@ def test_filter_schemas():
 
     with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
     filter_schemas_config = copy.deepcopy(SAMPLE_CONFIG)
     filter_schemas_config.update({"filter_schemas": ["new_schema"]})
@@ -344,8 +340,7 @@ def test_invalid_python_dates():
         Column("datetime", DateTime),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             date="4713-04-03 BC",
