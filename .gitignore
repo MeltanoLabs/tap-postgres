@@ -1,3 +1,4 @@
+.idea
 .vscode/**
 # Secrets and internal config files
 **/.secrets/*
