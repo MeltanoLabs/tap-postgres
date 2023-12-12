@@ -9,13 +9,14 @@ from singer_sdk.testing.runners import TapTestRunner
 from singer_sdk.testing.templates import TapTestTemplate
 from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.dialects.postgresql import TIMESTAMP
+from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 
 from tap_postgres.tap import TapPostgres
 
 TABLE_NAME = "test_replication_key"
 SAMPLE_CONFIG = {
     "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
-    "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
+    "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 
@@ -65,8 +66,7 @@ def test_null_replication_key_with_start_date():
         Column("updated_at", TIMESTAMP),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
@@ -80,7 +80,7 @@ def test_null_replication_key_with_start_date():
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
@@ -122,8 +122,7 @@ def test_null_replication_key_without_start_date():
         Column("updated_at", TIMESTAMP),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
@@ -137,7 +136,7 @@ def test_null_replication_key_without_start_date():
         conn.execute(insert)
     tap = TapPostgres(config=modified_config)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
