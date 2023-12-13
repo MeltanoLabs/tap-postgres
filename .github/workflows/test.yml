@@ -40,9 +40,10 @@ jobs:
         sudo chown 999:999 ssl/server.key
         chmod 600 ssl/pkey.key
 
-    - name: Set up Postgres container
+    - name: Build Postgres container
       run: |
         docker build . --tag meltano/log_based
+    - name: Compose Postgres container
         docker compose -f docker-compose.yml up -d
 
     - uses: isbang/compose-action@v1.5.1
@@ -71,10 +72,12 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Run pytest
+    - name: Debugging
       run: |
         docker ps -a
         docker logs tap-postgres-postgres_log_based-1
+    - name: Run pytest
+      run: |
         poetry run pytest
     - name: Run lint
       run: |
