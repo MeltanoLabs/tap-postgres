@@ -33,8 +33,7 @@ def test_null_append():
         Column("data", TEXT, nullable = True)
     )
     with engine.connect() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(id=123, data="hello world")
         conn.execute(insert)
