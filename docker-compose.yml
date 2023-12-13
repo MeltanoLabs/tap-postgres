@@ -49,13 +49,15 @@ services:
       - "5433:5432"
 
   postgres_log_based:
-    image: postgres:latest
+    image: meltano/log_based # Locally built
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
       - "5434:5432"
+    volumes:
+      - ./log_based:/docker-entrypoint-initdb.d
     command:
       - "postgres"
       - "-c"
