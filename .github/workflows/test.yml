@@ -47,34 +47,23 @@ jobs:
     - name: Set up log based replication A
       run: |
         docker exec tap-postgres-postgres_log_based-1 apt-get update
+        docker exec tap-postgres-postgres_log_based-1 apt-get upgrade -y
+        docker exec tap-postgres-postgres_log_based-1 apt-get install curl ca-certificates -y
+        docker exec tap-postgres-postgres_log_based-1 install -d /usr/share/postgresql-common/pgdg
+        docker exec tap-postgres-postgres_log_based-1 curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        docker exec tap-postgres-postgres_log_based-1 sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+        docker exec tap-postgres-postgres_log_based-1 apt-get update
+        docker exec tap-postgres-postgres_log_based-1 apt-get install postgresql-server-dev-15 -y
+        docker exec tap-postgres-postgres_log_based-1 apt-get install postgresql-15-wal2json -y
     - name: Set up log based replication B
       run: |
-        docker exec tap-postgres-postgres_log_based-1 apt-get upgrade -y
+        docker exec tap-postgres-postgres_log_based-1 sh -c 'export PATH=/usr/lib/postgresql/15/bin:$PATH'
     - name: Set up log based replication C
       run: |
-        docker exec tap-postgres-postgres_log_based-1 apt-get install curl ca-certificates -y
+        docker logs tap-postgres-postgres_log_based-1
+        docker exec tap-postgres-postgres_log_based-1 psql -U postgres -d postgres -c "\dx"
+        docker exec tap-postgres-postgres_log_based-1 ls -la /usr/lib/postgresql/15/bin
     - name: Set up log based replication D
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 install -d /usr/share/postgresql-common/pgdg
-    - name: Set up log based replication E
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
-    - name: Set up log based replication F
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-    - name: Set up log based replication G
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 apt-get update
-    - name: Set up log based replication H
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 apt-get install postgresql-server-dev-15 -y
-    - name: Set up log based replication I
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 apt-get install postgresql-15-wal2json -y
-    - name: Set up log based replication J
-      run: |
-        docker exec tap-postgres-postgres_log_based-1 sh -c 'export PATH=/usr/lib/postgresql/15/bin:$PATH'
-    - name: Set up log based replication K
       run: |
         docker exec tap-postgres-postgres_log_based-1 psql -U postgres -d postgres -c "SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');"
 
