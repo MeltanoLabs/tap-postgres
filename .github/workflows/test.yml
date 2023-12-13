@@ -73,6 +73,9 @@ jobs:
         docker exec tap-postgres-postgres_log_based-1 apt-get install postgresql-15-wal2json -y
     - name: Set up log based replication J
       run: |
+        docker exec tap-postgres-postgres_log_based-1 sh -c 'export PATH=/usr/lib/postgresql/15/bin:$PATH'
+    - name: Set up log based replication K
+      run: |
         docker exec tap-postgres-postgres_log_based-1 psql -U postgres -d postgres -c "SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');"
 
 
