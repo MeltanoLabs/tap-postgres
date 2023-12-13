@@ -42,7 +42,7 @@ jobs:
 
     - name: Set up Postgres container
       run: |
-        docker build . --tag log_based
+        docker build . --tag meltano/log_based
         docker compose -f docker-compose.yml up -d
         docker exec tap-postgres-postgres_log_based-1 psql -U postgres -d postgres -c "SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');"
 
