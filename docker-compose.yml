@@ -50,7 +50,7 @@ services:
 
   postgres_log_based:
     image: meltano/log_based # Locally built
-    command: postgres -c wal_level=logica -c max_replication_slots=10 -c max_wal_senders=10
+    command: postgres -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
