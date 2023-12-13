@@ -4,7 +4,7 @@ import sqlalchemy
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects.postgresql import BIGINT, TEXT
 from tap_postgres.tap import TapPostgres
-from test_core import PostgresTestRunner
+from tests.test_core import PostgresTestRunner
 
 
 LOG_BASED_CONFIG = {
