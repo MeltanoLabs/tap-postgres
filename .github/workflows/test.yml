@@ -44,6 +44,7 @@ jobs:
       run: |
         docker build . --tag meltano/log_based
     - name: Compose Postgres container
+      run: |
         docker compose -f docker-compose.yml up -d
 
     - uses: isbang/compose-action@v1.5.1
