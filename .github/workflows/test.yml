@@ -74,6 +74,7 @@ jobs:
     - name: Run pytest
       run: |
         docker ps -a
+        docker logs tap-postgres-postgres_log_based-1
         poetry run pytest
     - name: Run lint
       run: |
