@@ -515,7 +515,7 @@ class TapPostgres(SQLTap):
         return self._catalog_dict
 
     @property
-    def catalog(self) -> Catalog:
+    def catalog(self) -> Catalog:  # noqa: C901
         """Get the tap's working catalog.
 
         Override to do LOG_BASED modifications.

@@ -73,10 +73,6 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Debugging
-      run: |
-        docker ps -a
-        docker logs tap-postgres-postgres_log_based-1
     - name: Run pytest
       run: |
         poetry run pytest
