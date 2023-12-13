@@ -45,7 +45,7 @@ jobs:
         docker build . --tag meltano/log_based
     - name: Compose Postgres container
       run: |
-        docker compose -f docker-compose.yml up -d
+        docker compose -f docker-compose.yml up -d --wait --wait-timeout=30
 
     - uses: isbang/compose-action@v1.5.1
 
