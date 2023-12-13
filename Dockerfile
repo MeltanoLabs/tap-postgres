@@ -1,4 +1,4 @@
-FROM postgres:latest
+FROM postgres:15
 
 RUN apt-get update
 RUN apt-mark hold locales
