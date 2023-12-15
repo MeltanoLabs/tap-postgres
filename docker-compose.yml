@@ -20,6 +20,15 @@ services:
     networks:
       - inner
 
+  postgres_no_ssl:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+
   postgresdb:
     image: postgres:13.0
     environment:
@@ -31,7 +40,7 @@ services:
         ipv4_address: 10.5.0.5
 
   postgres_ssl:
-    image: postgres:latest
+    image: postgres:16
     command: postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key -c ssl_ca_file=/var/lib/postgresql/ca.crt -c hba_file=/var/lib/postgresql/pg_hba.conf
     environment:
       POSTGRES_USER: postgres
@@ -47,6 +56,19 @@ services:
       - ./ssl/pg_hba.conf:/var/lib/postgresql/pg_hba.conf # Configuration file to allow connection over SSL.
     ports:
       - "5433:5432"
+
+  postgres_log_based:
+    image: meltano/log_based # Locally built
+    command: postgres -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./log_based:/docker-entrypoint-initdb.d
+    ports:
+      - "5434:5432"
+
 
 networks:
   inner:

@@ -206,13 +206,20 @@ def test_jsonb_json():
         Column("column_jsonb", JSONB),
         Column("column_json", JSON),
     )
+
+    rows = [
+        {"column_jsonb": {"foo": "bar"}, "column_json": {"baz": "foo"}},
+        {"column_jsonb": 3.14, "column_json": -9.3},
+        {"column_jsonb": 22, "column_json": 10000000},
+        {"column_jsonb": {}, "column_json": {}},
+        {"column_jsonb": ["bar", "foo"], "column_json": ["foo", "baz"]},
+        {"column_jsonb": True, "column_json": False},
+    ]
+
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
-        insert = table.insert().values(
-            column_jsonb={"foo": "bar"},
-            column_json={"baz": "foo"},
-        )
+        insert = table.insert().values(rows)
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
@@ -236,12 +243,30 @@ def test_jsonb_json():
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert schema_message["schema"]["properties"]["column_jsonb"] == {}
-            assert schema_message["schema"]["properties"]["column_json"] == {}
-    assert test_runner.records[altered_table_name][0] == {
-        "column_jsonb": {"foo": "bar"},
-        "column_json": {"baz": "foo"},
-    }
+            assert schema_message["schema"]["properties"]["column_jsonb"] == {
+                "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "array",
+                    "object",
+                    "boolean",
+                    "null",
+                ]
+            }
+            assert schema_message["schema"]["properties"]["column_json"] == {
+                "type": [
+                    "string",
+                    "number",
+                    "integer",
+                    "array",
+                    "object",
+                    "boolean",
+                    "null",
+                ]
+            }
+    for i in range(len(rows)):
+        assert test_runner.records[altered_table_name][i] == rows[i]
 
 
 def test_decimal():

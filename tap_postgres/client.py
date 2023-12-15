@@ -13,6 +13,7 @@ from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Type, Union
 
+import pendulum
 import psycopg2
 import singer_sdk.helpers._typing
 import sqlalchemy
@@ -29,23 +30,55 @@ from sqlalchemy.engine.reflection import Inspector
 if TYPE_CHECKING:
     from sqlalchemy.dialects import postgresql
 
-unpatched_conform = singer_sdk.helpers._typing._conform_primitive_property
-
 
 def patched_conform(
     elem: Any,
     property_schema: dict,
 ) -> Any:
-    """Overrides Singer SDK type conformance to prevent dates turning into datetimes.
+    """Overrides Singer SDK type conformance.
+
+    Most logic here is from singer_sdk.helpers._typing._conform_primitive_property, as
+    marked by "# copied". This is a full override rather than calling the "super"
+    because the final piece of logic in the super `if is_boolean_type(property_schema):`
+    is flawed. is_boolean_type will return True if the schema contains a boolean
+    anywhere. Therefore, a jsonschema type like ["boolean", "integer"] will return true
+    and will have its values coerced to either True or False. In practice, this occurs
+    for columns with JSONB type: no guarantees can be made about their data, so the
+    schema has every possible data type, including boolean. Without this override, all
+    JSONB columns would be coerced to True or False.
+
+    Modifications:
+     - prevent dates from turning into datetimes.
+     - prevent collapsing values to booleans. (discussed above)
 
     Converts a primitive (i.e. not object or array) to a json compatible type.
 
     Returns:
         The appropriate json compatible type.
     """
-    if isinstance(elem, datetime.date):
+    if isinstance(elem, datetime.date):  # not copied, original logic
         return elem.isoformat()
-    return unpatched_conform(elem=elem, property_schema=property_schema)
+    if isinstance(elem, (datetime.datetime, pendulum.DateTime)):  # copied
+        return singer_sdk.helpers._typing.to_json_compatible(elem)
+    if isinstance(elem, datetime.timedelta):  # copied
+        epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
+        timedelta_from_epoch = epoch + elem
+        if timedelta_from_epoch.tzinfo is None:
+            timedelta_from_epoch = timedelta_from_epoch.replace(
+                tzinfo=datetime.timezone.utc
+            )
+        return timedelta_from_epoch.isoformat()
+    if isinstance(elem, datetime.time):  # copied
+        return str(elem)
+    if isinstance(elem, bytes):  # copied, modified to import is_boolean_type
+        # for BIT value, treat 0 as False and anything else as True
+        # Will only due this for booleans, not `bytea` data.
+        return (
+            elem != b"\x00"
+            if singer_sdk.helpers._typing.is_boolean_type(property_schema)
+            else elem.hex()
+        )
+    return elem
 
 
 singer_sdk.helpers._typing._conform_primitive_property = patched_conform
@@ -124,8 +157,14 @@ class PostgresConnector(SQLConnector):
         elif isinstance(sql_type, sqlalchemy.types.TypeEngine):
             type_name = type(sql_type).__name__
 
+        # Should theoretically be th.AnyType().type_dict but that causes errors down
+        # the line with an error like:
+        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from
+        # empty type_dict. Did you forget to define a property in the stream schema?
         if type_name is not None and type_name in ("JSONB", "JSON"):
-            return {}
+            return {
+                "type": ["string", "number", "integer", "array", "object", "boolean"]
+            }
 
         if (
             type_name is not None
@@ -306,8 +345,10 @@ class PostgresLogBasedStream(SQLStream):
         """Override schema for log-based replication adding _sdc columns."""
         schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
         for property in schema_dict["properties"].values():
-            if "null" not in property["type"]:
+            if isinstance(property["type"], list):
                 property["type"].append("null")
+            else:
+                property["type"] = [property["type"], "null"]
         if "required" in schema_dict:
             schema_dict.pop("required")
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})

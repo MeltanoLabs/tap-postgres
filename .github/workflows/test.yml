@@ -11,18 +11,6 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     env:
       PIP_CONSTRAINT: .github/workflows/constraints.txt
     strategy:
@@ -40,9 +28,12 @@ jobs:
         sudo chown 999:999 ssl/server.key
         chmod 600 ssl/pkey.key
 
-    - name: Set up Postgres container
+    - name: Build Postgres container
       run: |
-        docker compose -f docker-compose.yml up -d
+        docker build . --tag meltano/log_based
+    - name: Compose Postgres container
+      run: |
+        docker compose -f docker-compose.yml up -d --wait --wait-timeout=30
 
     - uses: isbang/compose-action@v1.5.1
 
