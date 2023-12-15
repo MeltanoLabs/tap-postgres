@@ -11,8 +11,9 @@ from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import BIGINT, DATE, JSON, JSONB, TIME, TIMESTAMP
-from test_replication_key import TABLE_NAME, TapTestReplicationKey
-from test_selected_columns_only import (
+from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
+from tests.test_replication_key import TABLE_NAME, TapTestReplicationKey
+from tests.test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
     TapTestSelectedColumnsOnly,
 )
@@ -21,7 +22,7 @@ from tap_postgres.tap import TapPostgres
 
 SAMPLE_CONFIG = {
     "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
-    "sqlalchemy_url": "postgresql://postgres:postgres@localhost:5432/postgres",
+    "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 NO_SQLALCHEMY_CONFIG = {
@@ -148,8 +149,7 @@ def test_temporal_datatypes():
         Column("column_timestamp", TIMESTAMP),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             column_date="2022-03-19",
@@ -159,7 +159,7 @@ def test_temporal_datatypes():
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
@@ -207,8 +207,7 @@ def test_jsonb_json():
         Column("column_json", JSON),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             column_jsonb={"foo": "bar"},
@@ -217,7 +216,7 @@ def test_jsonb_json():
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
@@ -257,8 +256,7 @@ def test_decimal():
         Column("column", Numeric()),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(column=decimal.Decimal("3.14"))
         conn.execute(insert)
@@ -268,7 +266,7 @@ def test_decimal():
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
@@ -301,8 +299,7 @@ def test_filter_schemas():
 
     with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
     filter_schemas_config = copy.deepcopy(SAMPLE_CONFIG)
     filter_schemas_config.update({"filter_schemas": ["new_schema"]})
@@ -343,8 +340,7 @@ def test_invalid_python_dates():
         Column("datetime", DateTime),
     )
     with engine.begin() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             date="4713-04-03 BC",
@@ -354,7 +350,7 @@ def test_invalid_python_dates():
     tap = TapPostgres(config=SAMPLE_CONFIG)
     # Alter config and then check the data comes through as a string
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
@@ -376,7 +372,7 @@ def test_invalid_python_dates():
     copied_config["dates_as_string"] = True
     tap = TapPostgres(config=copied_config)
     tap_catalog = json.loads(tap.catalog_json_text)
-    altered_table_name = f"public-{table_name}"
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
     for stream in tap_catalog["streams"]:
         if stream.get("stream") and altered_table_name not in stream["stream"]:
             for metadata in stream["metadata"]:
