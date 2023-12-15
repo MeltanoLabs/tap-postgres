@@ -306,8 +306,10 @@ class PostgresLogBasedStream(SQLStream):
         """Override schema for log-based replication adding _sdc columns."""
         schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
         for property in schema_dict["properties"].values():
-            if "null" not in property["type"]:
+            if isinstance(property["type"], list):
                 property["type"].append("null")
+            else:
+                property["type"] = [property["type"], "null"]
         if "required" in schema_dict:
             schema_dict.pop("required")
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})

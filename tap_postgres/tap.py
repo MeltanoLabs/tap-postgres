@@ -515,7 +515,7 @@ class TapPostgres(SQLTap):
         return self._catalog_dict
 
     @property
-    def catalog(self) -> Catalog:
+    def catalog(self) -> Catalog:  # noqa: C901
         """Get the tap's working catalog.
 
         Override to do LOG_BASED modifications.
@@ -531,8 +531,10 @@ class TapPostgres(SQLTap):
             if new_stream.replication_method == "LOG_BASED":
                 for property in new_stream.schema.properties.values():
                     if "null" not in property.type:
-                        stream_modified = True
-                        property.type.append("null")
+                        if isinstance(property.type, list):
+                            property.type.append("null")
+                        else:
+                            property.type = [property.type, "null"]
                 if new_stream.schema.required:
                     stream_modified = True
                     new_stream.schema.required = None
