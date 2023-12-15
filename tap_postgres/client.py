@@ -56,11 +56,11 @@ def patched_conform(
     Returns:
         The appropriate json compatible type.
     """
-    if isinstance(elem, datetime.date): # not copied, original logic
+    if isinstance(elem, datetime.date):  # not copied, original logic
         return elem.isoformat()
-    if isinstance(elem, (datetime.datetime, pendulum.DateTime)): # copied
+    if isinstance(elem, (datetime.datetime, pendulum.DateTime)):  # copied
         return singer_sdk.helpers._typing.to_json_compatible(elem)
-    if isinstance(elem, datetime.timedelta): # copied
+    if isinstance(elem, datetime.timedelta):  # copied
         epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
         timedelta_from_epoch = epoch + elem
         if timedelta_from_epoch.tzinfo is None:
@@ -68,9 +68,9 @@ def patched_conform(
                 tzinfo=datetime.timezone.utc
             )
         return timedelta_from_epoch.isoformat()
-    if isinstance(elem, datetime.time): # copied
+    if isinstance(elem, datetime.time):  # copied
         return str(elem)
-    if isinstance(elem, bytes): # copied, modified to import is_boolean_type
+    if isinstance(elem, bytes):  # copied, modified to import is_boolean_type
         # for BIT value, treat 0 as False and anything else as True
         # Will only due this for booleans, not `bytea` data.
         return (
