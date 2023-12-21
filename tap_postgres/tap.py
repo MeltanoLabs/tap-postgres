@@ -406,7 +406,7 @@ class TapPostgres(SQLTap):
 
         """
         # We mutate this url to use the ssh tunnel if enabled
-        url = make_url(self.get_sqlalchemy_url(config=self.config))  # type: ignore[arg-type]
+        url = make_url(self.get_sqlalchemy_url(config=self.config))  # type: ignore[arg-type] # noqa: E501
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):
@@ -530,7 +530,7 @@ class TapPostgres(SQLTap):
             stream_modified = False
             new_stream = copy.deepcopy(stream)
             if new_stream.replication_method == "LOG_BASED":
-                for property in new_stream.schema.properties.values():  # type: ignore[union-attr]
+                for property in new_stream.schema.properties.values():  # type: ignore[union-attr] # noqa: E501
                     if "null" not in property.type:
                         if isinstance(property.type, list):
                             property.type.append("null")
@@ -539,33 +539,37 @@ class TapPostgres(SQLTap):
                 if new_stream.schema.required:
                     stream_modified = True
                     new_stream.schema.required = None
-                if "_sdc_deleted_at" not in new_stream.schema.properties:  # type: ignore[operator]
+                if "_sdc_deleted_at" not in new_stream.schema.properties:  # type: ignore[operator] # noqa: E501
                     stream_modified = True
-                    new_stream.schema.properties.update(
-                        {  # type: ignore[union-attr]
-                            "_sdc_deleted_at": Schema(type=["string", "null"])
-                        }
+                    new_stream.schema.properties.update(  # type: ignore[union-attr]
+                        {
+                            "_sdc_deleted_at": Schema(type=["string", "null"]),
+                        },
                     )
                     new_stream.metadata.update(
                         {
                             ("properties", "_sdc_deleted_at"): Metadata(
-                                Metadata.InclusionType.AVAILABLE, True, None
-                            )
-                        }
+                                Metadata.InclusionType.AVAILABLE,
+                                True,
+                                None,
+                            ),
+                        },
                     )
-                if "_sdc_lsn" not in new_stream.schema.properties:  # type: ignore[operator]
+                if "_sdc_lsn" not in new_stream.schema.properties:  # type: ignore[operator] # noqa: E501
                     stream_modified = True
-                    new_stream.schema.properties.update(
-                        {  # type: ignore[union-attr]
-                            "_sdc_lsn": Schema(type=["integer", "null"])
-                        }
+                    new_stream.schema.properties.update(  # type: ignore[union-attr]
+                        {
+                            "_sdc_lsn": Schema(type=["integer", "null"]),
+                        },
                     )
                     new_stream.metadata.update(
                         {
                             ("properties", "_sdc_lsn"): Metadata(
-                                Metadata.InclusionType.AVAILABLE, True, None
-                            )
-                        }
+                                Metadata.InclusionType.AVAILABLE,
+                                True,
+                                None,
+                            ),
+                        },
                     )
             if stream_modified:
                 modified_streams.append(new_stream.tap_stream_id)
@@ -578,7 +582,7 @@ class TapPostgres(SQLTap):
             )
         return new_catalog
 
-    def discover_streams(self) -> list[PostgresStream | PostgresLogBasedStream]:  # type: ignore[override]
+    def discover_streams(self) -> list[PostgresStream | PostgresLogBasedStream]:  # type: ignore[override] # noqa: E501
         """Initialize all available streams and return them as a list.
 
         Returns:
