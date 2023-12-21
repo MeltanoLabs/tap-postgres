@@ -541,24 +541,32 @@ class TapPostgres(SQLTap):
                     new_stream.schema.required = None
                 if "_sdc_deleted_at" not in new_stream.schema.properties:  # type: ignore[operator]
                     stream_modified = True
-                    new_stream.schema.properties.update({  # type: ignore[union-attr]
-                        "_sdc_deleted_at": Schema(type=["string", "null"])
-                    })
-                    new_stream.metadata.update({
-                        ("properties", "_sdc_deleted_at"): Metadata(
-                            Metadata.InclusionType.AVAILABLE, True, None
-                        )
-                    })
+                    new_stream.schema.properties.update(
+                        {  # type: ignore[union-attr]
+                            "_sdc_deleted_at": Schema(type=["string", "null"])
+                        }
+                    )
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_deleted_at"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
                 if "_sdc_lsn" not in new_stream.schema.properties:  # type: ignore[operator]
                     stream_modified = True
-                    new_stream.schema.properties.update({  # type: ignore[union-attr]
-                        "_sdc_lsn": Schema(type=["integer", "null"])
-                    })
-                    new_stream.metadata.update({
-                        ("properties", "_sdc_lsn"): Metadata(
-                            Metadata.InclusionType.AVAILABLE, True, None
-                        )
-                    })
+                    new_stream.schema.properties.update(
+                        {  # type: ignore[union-attr]
+                            "_sdc_lsn": Schema(type=["integer", "null"])
+                        }
+                    )
+                    new_stream.metadata.update(
+                        {
+                            ("properties", "_sdc_lsn"): Metadata(
+                                Metadata.InclusionType.AVAILABLE, True, None
+                            )
+                        }
+                    )
             if stream_modified:
                 modified_streams.append(new_stream.tap_stream_id)
             new_catalog.add_stream(new_stream)

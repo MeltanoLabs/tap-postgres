@@ -475,11 +475,13 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update({
-                "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
-                    r"%Y-%m-%dT%H:%M:%SZ"
-                )
-            })
+            row.update(
+                {
+                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
+                        r"%Y-%m-%dT%H:%M:%SZ"
+                    )
+                }
+            )
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(
