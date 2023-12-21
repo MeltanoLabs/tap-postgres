@@ -1,4 +1,5 @@
 """Postgres tap class."""
+
 from __future__ import annotations
 
 import atexit
@@ -10,7 +11,7 @@ from os import chmod, path
 from typing import Any, Dict, cast
 
 import paramiko
-from singer_sdk import SQLTap, Stream
+from singer_sdk import SQLTap
 from singer_sdk import typing as th
 from singer_sdk._singerlib import (  # JSON schema typing helpers
     Catalog,
@@ -405,7 +406,7 @@ class TapPostgres(SQLTap):
 
         """
         # We mutate this url to use the ssh tunnel if enabled
-        url = make_url(self.get_sqlalchemy_url(config=self.config))
+        url = make_url(self.get_sqlalchemy_url(config=self.config))  # type: ignore[arg-type]
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):
@@ -529,7 +530,7 @@ class TapPostgres(SQLTap):
             stream_modified = False
             new_stream = copy.deepcopy(stream)
             if new_stream.replication_method == "LOG_BASED":
-                for property in new_stream.schema.properties.values():
+                for property in new_stream.schema.properties.values():  # type: ignore[union-attr]
                     if "null" not in property.type:
                         if isinstance(property.type, list):
                             property.type.append("null")
@@ -538,30 +539,26 @@ class TapPostgres(SQLTap):
                 if new_stream.schema.required:
                     stream_modified = True
                     new_stream.schema.required = None
-                if "_sdc_deleted_at" not in new_stream.schema.properties:
+                if "_sdc_deleted_at" not in new_stream.schema.properties:  # type: ignore[operator]
                     stream_modified = True
-                    new_stream.schema.properties.update(
-                        {"_sdc_deleted_at": Schema(type=["string", "null"])}
-                    )
-                    new_stream.metadata.update(
-                        {
-                            ("properties", "_sdc_deleted_at"): Metadata(
-                                Metadata.InclusionType.AVAILABLE, True, None
-                            )
-                        }
-                    )
-                if "_sdc_lsn" not in new_stream.schema.properties:
+                    new_stream.schema.properties.update({  # type: ignore[union-attr]
+                        "_sdc_deleted_at": Schema(type=["string", "null"])
+                    })
+                    new_stream.metadata.update({
+                        ("properties", "_sdc_deleted_at"): Metadata(
+                            Metadata.InclusionType.AVAILABLE, True, None
+                        )
+                    })
+                if "_sdc_lsn" not in new_stream.schema.properties:  # type: ignore[operator]
                     stream_modified = True
-                    new_stream.schema.properties.update(
-                        {"_sdc_lsn": Schema(type=["integer", "null"])}
-                    )
-                    new_stream.metadata.update(
-                        {
-                            ("properties", "_sdc_lsn"): Metadata(
-                                Metadata.InclusionType.AVAILABLE, True, None
-                            )
-                        }
-                    )
+                    new_stream.schema.properties.update({  # type: ignore[union-attr]
+                        "_sdc_lsn": Schema(type=["integer", "null"])
+                    })
+                    new_stream.metadata.update({
+                        ("properties", "_sdc_lsn"): Metadata(
+                            Metadata.InclusionType.AVAILABLE, True, None
+                        )
+                    })
             if stream_modified:
                 modified_streams.append(new_stream.tap_stream_id)
             new_catalog.add_stream(new_stream)
@@ -573,13 +570,13 @@ class TapPostgres(SQLTap):
             )
         return new_catalog
 
-    def discover_streams(self) -> list[Stream]:
+    def discover_streams(self) -> list[PostgresStream | PostgresLogBasedStream]:  # type: ignore[override]
         """Initialize all available streams and return them as a list.
 
         Returns:
             List of discovered Stream objects.
         """
-        streams = []
+        streams: list[PostgresStream | PostgresLogBasedStream] = []
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(

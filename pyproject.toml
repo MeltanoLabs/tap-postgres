@@ -47,8 +47,10 @@ mypy = "1.8.0"
 pendulum = "~=3.0"
 pre-commit = "^3.0.4"
 pydocstyle = "^6.1.1"
-singer-sdk = {version = "*", extras = ["testing"]}
+singer-sdk = { version = "*", extras = ["testing"] }
+sqlalchemy = { version = "<2", extras = ["mypy"] }
 tox = "^4"
+types-paramiko = "^3.3.0.2"
 
 [tool.isort]
 profile = "black"
@@ -57,13 +59,14 @@ src_paths = "tap_postgres"
 
 [tool.mypy]
 exclude = "tests"
-python_version = "3.9"
+python_version = "3.11"
 warn_unused_configs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = [
+    "psycopg2",
     "sshtunnel",
 ]
 

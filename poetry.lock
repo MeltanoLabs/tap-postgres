@@ -1832,6 +1832,8 @@ files = [
 
 [package.dependencies]
 greenlet = {version = "!=0.4.17", markers = "python_version >= \"3\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\")"}
+mypy = {version = ">=0.910", optional = true, markers = "python_version >= \"3\" and extra == \"mypy\""}
+sqlalchemy2-stubs = {version = "*", optional = true, markers = "extra == \"mypy\""}
 
 [package.extras]
 aiomysql = ["aiomysql (>=0.2.0)", "greenlet (!=0.4.17)"]
@@ -1853,6 +1855,20 @@ postgresql-psycopg2binary = ["psycopg2-binary"]
 postgresql-psycopg2cffi = ["psycopg2cffi"]
 pymysql = ["pymysql", "pymysql (<1)"]
 sqlcipher = ["sqlcipher3_binary"]
+
+[[package]]
+name = "sqlalchemy2-stubs"
+version = "0.0.2a37"
+description = "Typing Stubs for SQLAlchemy 1.4"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "sqlalchemy2-stubs-0.0.2a37.tar.gz", hash = "sha256:619bd131f8ad7eeb88af8dfabb0e6ba07593db91868cdc49674d2cd4ca61e986"},
+    {file = "sqlalchemy2_stubs-0.0.2a37-py3-none-any.whl", hash = "sha256:43067e3f67bd16a7fb2b574ee696f7ed53bf60f3e73329cf234a7b4dd4d3816a"},
+]
+
+[package.dependencies]
+typing-extensions = ">=3.7.4"
 
 [[package]]
 name = "sshtunnel"
@@ -1910,6 +1926,20 @@ virtualenv = ">=20.25"
 [package.extras]
 docs = ["furo (>=2023.9.10)", "sphinx (>=7.2.6)", "sphinx-argparse-cli (>=1.11.1)", "sphinx-autodoc-typehints (>=1.25.2)", "sphinx-copybutton (>=0.5.2)", "sphinx-inline-tabs (>=2023.4.21)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=23.11)"]
 testing = ["build[virtualenv] (>=1.0.3)", "covdefaults (>=2.3)", "detect-test-pollution (>=1.2)", "devpi-process (>=1)", "diff-cover (>=8.0.2)", "distlib (>=0.3.8)", "flaky (>=3.7)", "hatch-vcs (>=0.4)", "hatchling (>=1.21)", "psutil (>=5.9.7)", "pytest (>=7.4.4)", "pytest-cov (>=4.1)", "pytest-mock (>=3.12)", "pytest-xdist (>=3.5)", "re-assert (>=1.1)", "time-machine (>=2.13)", "wheel (>=0.42)"]
+
+[[package]]
+name = "types-paramiko"
+version = "3.3.0.2"
+description = "Typing stubs for paramiko"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "types-paramiko-3.3.0.2.tar.gz", hash = "sha256:4615fa0bc5b78c0f1b68b106071dc29737cb2cf53903712df72785dad5b359c3"},
+    {file = "types_paramiko-3.3.0.2-py3-none-any.whl", hash = "sha256:18fe96e6ef78ca04b2ac2a111f9404409b31a1d28bb2f5dca1a1afd62b8351a9"},
+]
+
+[package.dependencies]
+cryptography = ">=37.0.0"
 
 [[package]]
 name = "typing-extensions"
@@ -1987,4 +2017,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.13,>=3.8.1"
-content-hash = "be7623681c33f3fbcb99780e77d59c583442841d5c413d79243404166c18edcc"
+content-hash = "c11d9899c1e18797e005f7d6782c5c1493dc3d70265cafeef91282990251596a"

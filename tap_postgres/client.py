@@ -117,7 +117,7 @@ class PostgresConnector(SQLConnector):
 
     # Note super is static, we can get away with this because this is called once
     # and is luckily referenced via the instance of the class
-    def to_jsonschema_type(
+    def to_jsonschema_type(  # type: ignore[override]
         self,
         sql_type: Union[
             str,
@@ -211,12 +211,12 @@ class PostgresConnector(SQLConnector):
             | th.StringType
             | th.BooleanType,
         ] = {
-            "jsonb": th.CustomType(
-                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
-            ),
-            "json": th.CustomType(
-                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
-            ),
+            "jsonb": th.CustomType({
+                "type": ["string", "number", "integer", "array", "object", "boolean"]
+            }),
+            "json": th.CustomType({
+                "type": ["string", "number", "integer", "array", "object", "boolean"]
+            }),
             "timestamp": th.DateTimeType(),
             "datetime": th.DateTimeType(),
             "date": th.DateType(),
@@ -475,13 +475,11 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update(
-                {
-                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
-                        r"%Y-%m-%dT%H:%M:%SZ"
-                    )
-                }
-            )
+            row.update({
+                "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
+                    r"%Y-%m-%dT%H:%M:%SZ"
+                )
+            })
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(
@@ -529,6 +527,7 @@ class PostgresLogBasedStream(SQLStream):
     # TODO: Make this change upstream in the SDK?
     # I'm not sure if in general SQL databases don't guarantee order of records log
     # replication, but at least Postgres does not.
+    @property
     def is_sorted(self) -> bool:
         """Return True if the stream is sorted by the replication key."""
         return self.replication_method == REPLICATION_INCREMENTAL
