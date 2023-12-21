@@ -1701,13 +1701,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.34.0"
+version = "0.34.1"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.7.1"
 files = [
-    {file = "singer_sdk-0.34.0-py3-none-any.whl", hash = "sha256:bd47449efd519b6b027b75659c0e5d2448ca1ceea3e5ba379114abd03b452a95"},
-    {file = "singer_sdk-0.34.0.tar.gz", hash = "sha256:90683e9040176fdb8bb1a08b731faa7a9e05e2e163d461c6dc6d2136c4d45e11"},
+    {file = "singer_sdk-0.34.1-py3-none-any.whl", hash = "sha256:2b9afa40722c2d7288992d86d16298128e38387941306267d908b9cd954227a3"},
+    {file = "singer_sdk-0.34.1.tar.gz", hash = "sha256:5da11da3de07cc31cc8c1f3f19a40b8f8be4a0df9b5535fb90880c263e58aee5"},
 ]
 
 [package.dependencies]
@@ -1724,7 +1724,7 @@ jsonpath-ng = ">=1.5.3"
 jsonschema = {version = ">=4.16.0", markers = "python_version >= \"3.8\""}
 memoization = {version = ">=0.3.2,<0.5.0", markers = "python_version < \"4\""}
 packaging = ">=23.1"
-pendulum = ">=2.1.0"
+pendulum = {version = ">=2.1.0,<4", markers = "python_version >= \"3.8\""}
 PyJWT = ">=2.4,<3.0"
 pytest = {version = ">=7.2.1", optional = true, markers = "extra == \"testing\""}
 pytest-durations = {version = ">=1.2.0", optional = true, markers = "extra == \"testing\""}
@@ -1736,12 +1736,12 @@ requests = ">=2.25.1"
 simpleeval = ">=0.9.13"
 simplejson = ">=3.17.6"
 sqlalchemy = ">=1.4,<3.0"
-typing-extensions = ">=4.2.0"
+typing-extensions = ">=4.5.0"
 urllib3 = ">=1.26,<2"
 
 [package.extras]
 docs = ["furo (>=2022.12.7)", "myst-parser (>=1)", "sphinx (>=4.5)", "sphinx-autobuild (>=2021.3.14)", "sphinx-copybutton (>=0.3.1)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.1)"]
-parquet = ["numpy (<1.22)", "numpy (>=1.22)", "pyarrow (>=11,<13)", "pyarrow (>=13)"]
+parquet = ["numpy (<1.22)", "numpy (>=1.22)", "numpy (>=1.22,<1.25)", "pyarrow (>=11,<13)", "pyarrow (>=13)"]
 s3 = ["fs-s3fs (>=1.1.1)"]
 testing = ["pytest (>=7.2.1)", "pytest-durations (>=1.2.0)"]
 
