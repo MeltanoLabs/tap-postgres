@@ -195,7 +195,6 @@ class PostgresConnector(SQLConnector):
             A compatible JSON Schema type definition.
 
         """
-
         # NOTE: This is an ordered mapping, with earlier mappings taking precedence. If
         # the SQL-provided type contains the type name on the left, the mapping will
         # return the respective singer type.
@@ -380,7 +379,7 @@ class PostgresLogBasedStream(SQLStream):
                     f"stream(replication method={self.replication_method})"
                 )
                 raise ValueError(msg)
-            treat_as_sorted = self.is_sorted
+            treat_as_sorted = self.is_sorted()
             if not treat_as_sorted and self.state_partitioning_keys is not None:
                 # Streams with custom state partitioning are not resumable.
                 treat_as_sorted = False
@@ -459,7 +458,7 @@ class PostgresLogBasedStream(SQLStream):
                 "A message payload of %s could not be converted to JSON",
                 message.payload,
             )
-            return
+            return {}
 
         row = {}
 
