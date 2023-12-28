@@ -157,15 +157,6 @@ class PostgresConnector(SQLConnector):
         elif isinstance(sql_type, sqlalchemy.types.TypeEngine):
             type_name = type(sql_type).__name__
 
-        # Should theoretically be th.AnyType().type_dict but that causes errors down
-        # the line with an error like:
-        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from
-        # empty type_dict. Did you forget to define a property in the stream schema?
-        if type_name is not None and type_name in ("JSONB", "JSON"):
-            return {
-                "type": ["string", "number", "integer", "array", "object", "boolean"]
-            }
-
         if (
             type_name is not None
             and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY)
@@ -204,6 +195,14 @@ class PostgresConnector(SQLConnector):
             A compatible JSON Schema type definition.
 
         """
+
+        # NOTE: This is an ordered mapping, with earlier mappings taking precedence. If
+        # the SQL-provided type contains the type name on the left, the mapping will
+        # return the respective singer type.
+        # NOTE: jsonb and json should theoretically be th.AnyType().type_dict but that
+        # causes problems down the line with an error like:
+        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from
+        # empty type_dict. Did you forget to define a property in the stream schema?
         sqltype_lookup: dict[
             str,
             th.DateTimeType
@@ -213,9 +212,12 @@ class PostgresConnector(SQLConnector):
             | th.StringType
             | th.BooleanType,
         ] = {
-            # NOTE: This is an ordered mapping, with earlier mappings taking
-            # precedence. If the SQL-provided type contains the type name on
-            #  the left, the mapping will return the respective singer type.
+            "jsonb": th.CustomType(
+                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            ),
+            "json": th.CustomType(
+                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            ),
             "timestamp": th.DateTimeType(),
             "datetime": th.DateTimeType(),
             "date": th.DateType(),
