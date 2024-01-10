@@ -379,7 +379,7 @@ class PostgresLogBasedStream(SQLStream):
                     f"stream(replication method={self.replication_method})"
                 )
                 raise ValueError(msg)
-            treat_as_sorted = self.is_sorted()
+            treat_as_sorted = self.is_sorted
             if not treat_as_sorted and self.state_partitioning_keys is not None:
                 # Streams with custom state partitioning are not resumable.
                 treat_as_sorted = False
@@ -475,13 +475,11 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update(
-                {
-                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
-                        r"%Y-%m-%dT%H:%M:%SZ"
-                    )
-                }
-            )
+            row.update({
+                "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
+                    r"%Y-%m-%dT%H:%M:%SZ"
+                )
+            })
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(
