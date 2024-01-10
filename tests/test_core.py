@@ -11,13 +11,13 @@ from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import (
+    ARRAY,
     BIGINT,
     DATE,
     JSON,
     JSONB,
     TIME,
     TIMESTAMP,
-    ARRAY,
 )
 from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 from tests.test_replication_key import TABLE_NAME, TapTestReplicationKey
@@ -418,13 +418,13 @@ class PostgresTestRunner(TapTestRunner):
         return True
 
 
-def test_invalid_python_dates():
+def test_invalid_python_dates():  # noqa: C901
     """Some dates are invalid in python, but valid in Postgres
 
     Check out https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date
     for more information.
 
-    """
+    """  # noqa: E501
     table_name = "test_invalid_python_dates"
     engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 

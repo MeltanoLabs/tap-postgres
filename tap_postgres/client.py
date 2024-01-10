@@ -178,6 +178,7 @@ class PostgresConnector(SQLConnector):
         | th.DateType
         | th.StringType
         | th.BooleanType
+        | th.CustomType
     ):
         """Return the JSON Schema dict that describes the sql type.
 
@@ -209,14 +210,15 @@ class PostgresConnector(SQLConnector):
             | th.IntegerType
             | th.DateType
             | th.StringType
-            | th.BooleanType,
+            | th.BooleanType
+            | th.CustomType,
         ] = {
-            "jsonb": th.CustomType({
-                "type": ["string", "number", "integer", "array", "object", "boolean"]
-            }),
-            "json": th.CustomType({
-                "type": ["string", "number", "integer", "array", "object", "boolean"]
-            }),
+            "jsonb": th.CustomType(
+                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            ),
+            "json": th.CustomType(
+                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            ),
             "timestamp": th.DateTimeType(),
             "datetime": th.DateTimeType(),
             "date": th.DateType(),
@@ -475,11 +477,13 @@ class PostgresLogBasedStream(SQLStream):
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
                 row.update({column["name"]: column["value"]})
-            row.update({
-                "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
-                    r"%Y-%m-%dT%H:%M:%SZ"
-                )
-            })
+            row.update(
+                {
+                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
+                        r"%Y-%m-%dT%H:%M:%SZ"
+                    )
+                }
+            )
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(

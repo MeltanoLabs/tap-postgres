@@ -3,9 +3,9 @@ import json
 import sqlalchemy
 from sqlalchemy import Column, MetaData, Table
 from sqlalchemy.dialects.postgresql import BIGINT, TEXT
-from tap_postgres.tap import TapPostgres
 from tests.test_core import PostgresTestRunner
 
+from tap_postgres.tap import TapPostgres
 
 LOG_BASED_CONFIG = {
     "host": "localhost",
@@ -15,6 +15,7 @@ LOG_BASED_CONFIG = {
     "database": "postgres",
 }
 
+
 def test_null_append():
     """LOG_BASED syncs failed with string property types. (issue #294).
 
@@ -23,14 +24,16 @@ def test_null_append():
     LOG_BASED replication can still append the "null" option to a property's type.
     """
     table_name = "test_null_append"
-    engine = sqlalchemy.create_engine("postgresql://postgres:postgres@localhost:5434/postgres")
+    engine = sqlalchemy.create_engine(
+        "postgresql://postgres:postgres@localhost:5434/postgres"
+    )
 
     metadata_obj = MetaData()
     table = Table(
         table_name,
         metadata_obj,
-        Column("id", BIGINT, primary_key = True),
-        Column("data", TEXT, nullable = True)
+        Column("id", BIGINT, primary_key=True),
+        Column("data", TEXT, nullable=True),
     )
     with engine.connect() as conn:
         table.drop(conn, checkfirst=True)
