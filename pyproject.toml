@@ -33,10 +33,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "<3.13,>=3.8.1"
-singer-sdk = "~=0.34.0"
 psycopg2-binary = "2.9.9"
 sqlalchemy = "<2"
 sshtunnel = "0.4.0"
+singer-sdk = {git = "https://github.com/meltano/sdk.git", rev="1385aebf694df8755cc3a2232ad99693d479db73"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
@@ -47,7 +47,7 @@ mypy = "1.8.0"
 pendulum = "~=3.0"
 pre-commit = "^3.0.4"
 pydocstyle = "^6.1.1"
-singer-sdk = {version = "*", extras = ["testing"]}
+singer-sdk = {git = "https://github.com/meltano/sdk.git", rev = "1385aebf694df8755cc3a2232ad99693d479db73", extras = ["testing"]}
 tox = "^4"
 
 [tool.isort]
