@@ -2,9 +2,9 @@
 import json
 
 from singer_sdk.testing.templates import TapTestTemplate
-from tests.settings import DB_SQLALCHEMY_URL
 
 from tap_postgres.tap import TapPostgres
+from tests.settings import DB_SQLALCHEMY_URL
 
 TABLE_NAME_SELECTED_COLUMNS_ONLY = "test_selected_columns_only"
 SAMPLE_CONFIG = {
@@ -24,16 +24,18 @@ def selected_columns_only_test(tap, table_name):
         else:
             for metadata in stream["metadata"]:
                 metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] != []:
-                    if metadata["breadcrumb"][1] == column_to_exclude:
-                        metadata["metadata"]["selected"] = False
+                if (
+                    metadata["breadcrumb"] != []
+                    and metadata["breadcrumb"][1] == column_to_exclude
+                ):
+                    metadata["metadata"]["selected"] = False
 
     tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
     streams = tap.discover_streams()
-    selected_stream = [s for s in streams if s.selected is True][0]
+    selected_stream = next(s for s in streams if s.selected is True)
 
     for row in selected_stream.get_records(context=None):
-        assert column_to_exclude not in row.keys()
+        assert column_to_exclude not in row
 
 
 class TapTestSelectedColumnsOnly(TapTestTemplate):

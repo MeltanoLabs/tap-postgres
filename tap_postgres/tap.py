@@ -5,12 +5,13 @@ import atexit
 import copy
 import io
 import signal
+import sys
 from functools import cached_property
 from os import chmod, path
-from typing import Any, Dict, cast
+from typing import TYPE_CHECKING, Any, Sequence, cast
 
 import paramiko
-from singer_sdk import SQLTap, Stream
+from singer_sdk import SQLStream, SQLTap, Stream
 from singer_sdk import typing as th
 from singer_sdk._singerlib import (  # JSON schema typing helpers
     Catalog,
@@ -26,6 +27,9 @@ from tap_postgres.client import (
     PostgresLogBasedStream,
     PostgresStream,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class TapPostgres(SQLTap):
@@ -247,7 +251,7 @@ class TapPostgres(SQLTap):
             th.StringType,
             default="verify-full",
             description=(
-                "SSL Protection method, see [postgres documentation](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION)"  # noqa: E501
+                "SSL Protection method, see [postgres documentation](https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION)"
                 + " for more information. Must be one of disable, allow, prefer,"
                 + " require, verify-ca, or verify-full."
                 + " Note if sqlalchemy_url is set this will be ignored."
@@ -309,7 +313,7 @@ class TapPostgres(SQLTap):
         ),
     ).to_dict()
 
-    def get_sqlalchemy_url(self, config: Dict[Any, Any]) -> str:
+    def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
         """Generate a SQLAlchemy URL.
 
         Args:
@@ -318,19 +322,18 @@ class TapPostgres(SQLTap):
         if config.get("sqlalchemy_url"):
             return cast(str, config["sqlalchemy_url"])
 
-        else:
-            sqlalchemy_url = URL.create(
-                drivername="postgresql+psycopg2",
-                username=config["user"],
-                password=config["password"],
-                host=config["host"],
-                port=config["port"],
-                database=config["database"],
-                query=self.get_sqlalchemy_query(config=config),
-            )
-            return cast(str, sqlalchemy_url)
+        sqlalchemy_url = URL.create(
+            drivername="postgresql+psycopg2",
+            username=config["user"],
+            password=config["password"],
+            host=config["host"],
+            port=config["port"],
+            database=config["database"],
+            query=self.get_sqlalchemy_query(config=config),
+        )
+        return cast(str, sqlalchemy_url)
 
-    def get_sqlalchemy_query(self, config: dict) -> dict:
+    def get_sqlalchemy_query(self, config: Mapping[str, Any]) -> dict:
         """Get query values to be used for sqlalchemy URL creation.
 
         Args:
@@ -390,12 +393,13 @@ class TapPostgres(SQLTap):
         """
         if path.isfile(value):
             return value
-        else:
-            with open(alternative_name, "wb") as alternative_file:
-                alternative_file.write(value.encode("utf-8"))
-            if restrict_permissions:
-                chmod(alternative_name, 0o600)
-            return alternative_name
+
+        with open(alternative_name, "wb") as alternative_file:
+            alternative_file.write(value.encode("utf-8"))
+        if restrict_permissions:
+            chmod(alternative_name, 0o600)
+
+        return alternative_name
 
     @cached_property
     def connector(self) -> PostgresConnector:
@@ -439,8 +443,8 @@ class TapPostgres(SQLTap):
             paramiko.Ed25519Key,
         ):
             try:
-                key = key_class.from_private_key(io.StringIO(key_data))  # type: ignore[attr-defined]  # noqa: E501
-            except paramiko.SSHException:
+                key = key_class.from_private_key(io.StringIO(key_data))  # type: ignore[attr-defined]
+            except paramiko.SSHException:  # noqa: PERF203
                 continue
             else:
                 return key
@@ -491,7 +495,7 @@ class TapPostgres(SQLTap):
             signum: The signal number
             frame: The current stack frame
         """
-        exit(1)  # Calling this to be sure atexit is called, so clean_up gets called
+        sys.exit(1)  # Calling this to be sure atexit is called, so clean_up gets called
 
     @property
     def catalog_dict(self) -> dict:
@@ -515,7 +519,7 @@ class TapPostgres(SQLTap):
         return self._catalog_dict
 
     @property
-    def catalog(self) -> Catalog:  # noqa: C901
+    def catalog(self) -> Catalog:
         """Get the tap's working catalog.
 
         Override to do LOG_BASED modifications.
@@ -528,7 +532,10 @@ class TapPostgres(SQLTap):
         for stream in super().catalog.streams:
             stream_modified = False
             new_stream = copy.deepcopy(stream)
-            if new_stream.replication_method == "LOG_BASED":
+            if (
+                new_stream.replication_method == "LOG_BASED"
+                and new_stream.schema.properties
+            ):
                 for property in new_stream.schema.properties.values():
                     if "null" not in property.type:
                         if isinstance(property.type, list):
@@ -573,13 +580,13 @@ class TapPostgres(SQLTap):
             )
         return new_catalog
 
-    def discover_streams(self) -> list[Stream]:
+    def discover_streams(self) -> Sequence[Stream]:  # type: ignore[override]
         """Initialize all available streams and return them as a list.
 
         Returns:
             List of discovered Stream objects.
         """
-        streams = []
+        streams: list[SQLStream] = []
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(

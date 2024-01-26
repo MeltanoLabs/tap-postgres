@@ -11,24 +11,24 @@ import select
 import typing
 from functools import cached_property
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Mapping, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, Mapping
 
 import pendulum
 import psycopg2
 import singer_sdk.helpers._typing
-import sqlalchemy
+import sqlalchemy as sa
 from psycopg2 import extras
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.streams.core import REPLICATION_INCREMENTAL
-from sqlalchemy import nullsfirst
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine.reflection import Inspector
 
 if TYPE_CHECKING:
     from sqlalchemy.dialects import postgresql
+    from sqlalchemy.engine import Engine
+    from sqlalchemy.engine.reflection import Inspector
+    from sqlalchemy.types import TypeEngine
 
 
 def patched_conform(
@@ -117,19 +117,13 @@ class PostgresConnector(SQLConnector):
 
     # Note super is static, we can get away with this because this is called once
     # and is luckily referenced via the instance of the class
-    def to_jsonschema_type(
+    def to_jsonschema_type(  # type: ignore[override]
         self,
-        sql_type: Union[
-            str,
-            sqlalchemy.types.TypeEngine,
-            Type[sqlalchemy.types.TypeEngine],
-            postgresql.ARRAY,
-            Any,
-        ],
+        sql_type: str | TypeEngine | type[TypeEngine] | postgresql.ARRAY | Any,
     ) -> dict:
         """Return a JSON Schema representation of the provided type.
 
-        Overidden from SQLConnector to correctly handle JSONB and Arrays.
+        Overridden from SQLConnector to correctly handle JSONB and Arrays.
 
         Also Overridden in order to call our instance method `sdk_typing_object()`
         instead of the static version
@@ -137,29 +131,26 @@ class PostgresConnector(SQLConnector):
         By default will call `typing.to_jsonschema_type()` for strings and SQLAlchemy
         types.
 
-        Args
-        ----
+        Args:
             sql_type: The string representation of the SQL type, a SQLAlchemy
                 TypeEngine class or object, or a custom-specified object.
 
-        Raises
-        ------
+        Raises:
             ValueError: If the type received could not be translated to jsonschema.
 
-        Returns
-        -------
+        Returns:
             The JSON Schema representation of the provided type.
 
         """
         type_name = None
         if isinstance(sql_type, str):
             type_name = sql_type
-        elif isinstance(sql_type, sqlalchemy.types.TypeEngine):
+        elif isinstance(sql_type, sa.types.TypeEngine):
             type_name = type(sql_type).__name__
 
         if (
             type_name is not None
-            and isinstance(sql_type, sqlalchemy.dialects.postgresql.ARRAY)
+            and isinstance(sql_type, sa.dialects.postgresql.ARRAY)
             and type_name == "ARRAY"
         ):
             array_type = self.sdk_typing_object(sql_type.item_type)
@@ -168,9 +159,7 @@ class PostgresConnector(SQLConnector):
 
     def sdk_typing_object(
         self,
-        from_type: str
-        | sqlalchemy.types.TypeEngine
-        | type[sqlalchemy.types.TypeEngine],
+        from_type: str | TypeEngine | type[TypeEngine],
     ) -> (
         th.DateTimeType
         | th.NumberType
@@ -178,22 +167,19 @@ class PostgresConnector(SQLConnector):
         | th.DateType
         | th.StringType
         | th.BooleanType
+        | th.CustomType
     ):
         """Return the JSON Schema dict that describes the sql type.
 
-        Args
-        ----
+        Args:
             from_type: The SQL type as a string or as a TypeEngine. If a TypeEngine is
                 provided, it may be provided as a class or a specific object instance.
 
-        Raises
-        ------
+        Raises:
             ValueError: If the `from_type` value is not of type `str` or `TypeEngine`.
 
-        Returns
-        -------
+        Returns:
             A compatible JSON Schema type definition.
-
         """
         # NOTE: This is an ordered mapping, with earlier mappings taking precedence. If
         # the SQL-provided type contains the type name on the left, the mapping will
@@ -209,7 +195,8 @@ class PostgresConnector(SQLConnector):
             | th.IntegerType
             | th.DateType
             | th.StringType
-            | th.BooleanType,
+            | th.BooleanType
+            | th.CustomType,
         ] = {
             "jsonb": th.CustomType(
                 {"type": ["string", "number", "integer", "array", "object", "boolean"]}
@@ -236,11 +223,9 @@ class PostgresConnector(SQLConnector):
             sqltype_lookup["datetime"] = th.StringType()
         if isinstance(from_type, str):
             type_name = from_type
-        elif isinstance(from_type, sqlalchemy.types.TypeEngine):
+        elif isinstance(from_type, sa.types.TypeEngine):
             type_name = type(from_type).__name__
-        elif isinstance(from_type, type) and issubclass(
-            from_type, sqlalchemy.types.TypeEngine
-        ):
+        elif isinstance(from_type, type) and issubclass(from_type, sa.types.TypeEngine):
             type_name = from_type.__name__
         else:
             raise ValueError(
@@ -274,30 +259,26 @@ class PostgresStream(SQLStream):
 
     connector_class = PostgresConnector
 
-    # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
+    # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
-    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
+    def get_records(self, context: dict | None) -> Iterable[dict[str, Any]]:
         """Return a generator of row-type dictionary objects.
 
         If the stream has a replication_key value defined, records will be sorted by the
         incremental key. If the stream also has an available starting bookmark, the
         records will be filtered for values greater than or equal to the bookmark value.
 
-        Args
-        ----
+        Args:
             context: If partition context is provided, will read specifically from this
                 data slice.
 
-        Yields
-        ------
+        Yields:
             One dict per record.
 
-        Raises
-        ------
+        Raises:
             NotImplementedError: If partition is passed in context and the stream does
                 not support partitioning.
-
         """
         if context:
             raise NotImplementedError(
@@ -315,7 +296,7 @@ class PostgresStream(SQLStream):
 
             # Nulls first because the default is to have nulls as the "highest" value
             # which incorrectly causes the tap to attempt to store null state.
-            query = query.order_by(nullsfirst(replication_key_col))
+            query = query.order_by(sa.nullsfirst(replication_key_col))
 
             start_val = self.get_starting_replication_key_value(context)
             if start_val:
@@ -391,7 +372,7 @@ class PostgresLogBasedStream(SQLStream):
                 check_sorted=self.check_sorted,
             )
 
-    def get_records(self, context: Optional[dict]) -> Iterable[Dict[str, Any]]:
+    def get_records(self, context: dict | None) -> Iterable[dict[str, Any]]:
         """Return a generator of row-type dictionary objects."""
         status_interval = 5.0  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
@@ -529,6 +510,6 @@ class PostgresLogBasedStream(SQLStream):
     # TODO: Make this change upstream in the SDK?
     # I'm not sure if in general SQL databases don't guarantee order of records log
     # replication, but at least Postgres does not.
-    def is_sorted(self) -> bool:
+    def is_sorted(self) -> bool:  # type: ignore[override]
         """Return True if the stream is sorted by the replication key."""
         return self.replication_method == REPLICATION_INCREMENTAL

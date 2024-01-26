@@ -4,14 +4,13 @@ import copy
 import json
 
 import pendulum
-import sqlalchemy
+import sqlalchemy as sa
 from singer_sdk.testing.runners import TapTestRunner
 from singer_sdk.testing.templates import TapTestTemplate
-from sqlalchemy import Column, MetaData, String, Table
 from sqlalchemy.dialects.postgresql import TIMESTAMP
-from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 
 from tap_postgres.tap import TapPostgres
+from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 
 TABLE_NAME = "test_replication_key"
 SAMPLE_CONFIG = {
@@ -43,7 +42,7 @@ def replication_key_test(tap, table_name):
 
     # Handy for debugging
     # with open('data.json', 'w', encoding='utf-8') as f:
-    #    json.dump(tap_catalog, f, indent=4)
+    #    json.dump(tap_catalog, f, indent=4)  # noqa: ERA001
 
     tap = TapPostgres(config=SAMPLE_CONFIG, catalog=tap_catalog)
     tap.sync_all()
@@ -56,14 +55,14 @@ def test_null_replication_key_with_start_date():
     greater than the start date should be synced.
     """
     table_name = "test_null_replication_key_with_start_date"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("data", String()),
-        Column("updated_at", TIMESTAMP),
+        sa.Column("data", sa.String()),
+        sa.Column("updated_at", TIMESTAMP),
     )
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
@@ -112,14 +111,14 @@ def test_null_replication_key_without_start_date():
 
     modified_config = copy.deepcopy(SAMPLE_CONFIG)
     modified_config["start_date"] = None
-    engine = sqlalchemy.create_engine(modified_config["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(modified_config["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("data", String()),
-        Column("updated_at", TIMESTAMP),
+        sa.Column("data", sa.String()),
+        sa.Column("updated_at", TIMESTAMP),
     )
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
@@ -155,7 +154,9 @@ def test_null_replication_key_without_start_date():
         catalog=tap_catalog,
     )
     test_runner.sync_all()
-    assert len(test_runner.records[altered_table_name]) == 3  # All three records.
+    assert (
+        len(test_runner.records[altered_table_name]) == 3  # noqa: PLR2004
+    )  # All three records.
 
 
 class TapTestReplicationKey(TapTestTemplate):
