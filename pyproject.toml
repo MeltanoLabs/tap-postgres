@@ -39,7 +39,7 @@ sqlalchemy = "<2"
 sshtunnel = "0.4.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
+black = "^24.1.0"
 faker = ">=18.5.1,<23.0.0"
 flake8 = "^7.0.0"
 isort = "^5.10.1"
