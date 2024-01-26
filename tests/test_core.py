@@ -5,28 +5,27 @@ import json
 
 import pendulum
 import pytest
-import sqlalchemy
+import sqlalchemy as sa
 from faker import Faker
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
-from sqlalchemy import Column, DateTime, Integer, MetaData, Numeric, String, Table, text
 from sqlalchemy.dialects.postgresql import (
+    ARRAY,
     BIGINT,
     DATE,
     JSON,
     JSONB,
     TIME,
     TIMESTAMP,
-    ARRAY,
 )
+
+from tap_postgres.tap import TapPostgres
 from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 from tests.test_replication_key import TABLE_NAME, TapTestReplicationKey
 from tests.test_selected_columns_only import (
     TABLE_NAME_SELECTED_COLUMNS_ONLY,
     TapTestSelectedColumnsOnly,
 )
-
-from tap_postgres.tap import TapPostgres
 
 SAMPLE_CONFIG = {
     "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
@@ -45,22 +44,22 @@ NO_SQLALCHEMY_CONFIG = {
 
 def setup_test_table(table_name, sqlalchemy_url):
     """setup any state specific to the execution of the given module."""
-    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
+    engine = sa.create_engine(sqlalchemy_url, future=True)
     fake = Faker()
 
     date1 = datetime.date(2022, 11, 1)
     date2 = datetime.date(2022, 11, 30)
-    metadata_obj = MetaData()
-    test_replication_key_table = Table(
+    metadata_obj = sa.MetaData()
+    test_replication_key_table = sa.Table(
         table_name,
         metadata_obj,
-        Column("id", Integer, primary_key=True),
-        Column("updated_at", DateTime(), nullable=False),
-        Column("name", String()),
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("updated_at", sa.DateTime(), nullable=False),
+        sa.Column("name", sa.String()),
     )
     with engine.begin() as conn:
         metadata_obj.create_all(conn)
-        conn.execute(text(f"TRUNCATE TABLE {table_name}"))
+        conn.execute(sa.text(f"TRUNCATE TABLE {table_name}"))
         for _ in range(1000):
             insert = test_replication_key_table.insert().values(
                 updated_at=fake.date_between(date1, date2), name=fake.name()
@@ -69,9 +68,9 @@ def setup_test_table(table_name, sqlalchemy_url):
 
 
 def teardown_test_table(table_name, sqlalchemy_url):
-    engine = sqlalchemy.create_engine(sqlalchemy_url, future=True)
+    engine = sa.create_engine(sqlalchemy_url, future=True)
     with engine.begin() as conn:
-        conn.execute(text(f"DROP TABLE {table_name}"))
+        conn.execute(sa.text(f"DROP TABLE {table_name}"))
 
 
 custom_test_replication_key = suites.TestSuite(
@@ -117,7 +116,7 @@ class TestTapPostgres(TapPostgresTest):
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
 
-class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):
+class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -146,15 +145,15 @@ def test_temporal_datatypes():
     schema checks, and performs similar tests on times and timestamps.
     """
     table_name = "test_temporal_datatypes"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("column_date", DATE),
-        Column("column_time", TIME),
-        Column("column_timestamp", TIMESTAMP),
+        sa.Column("column_date", DATE),
+        sa.Column("column_time", TIME),
+        sa.Column("column_timestamp", TIMESTAMP),
     )
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
@@ -188,12 +187,12 @@ def test_temporal_datatypes():
             and schema_message["stream"] == altered_table_name
         ):
             assert (
-                "date"
-                == schema_message["schema"]["properties"]["column_date"]["format"]
+                schema_message["schema"]["properties"]["column_date"]["format"]
+                == "date"
             )
             assert (
-                "date-time"
-                == schema_message["schema"]["properties"]["column_timestamp"]["format"]
+                schema_message["schema"]["properties"]["column_timestamp"]["format"]
+                == "date-time"
             )
     assert test_runner.records[altered_table_name][0] == {
         "column_date": "2022-03-19",
@@ -203,16 +202,16 @@ def test_temporal_datatypes():
 
 
 def test_jsonb_json():
-    """JSONB and JSON Objects weren't being selected, make sure they are now"""
+    """JSONB and JSON Objects weren't being selected, make sure they are now."""
     table_name = "test_jsonb_json"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("column_jsonb", JSONB),
-        Column("column_json", JSON),
+        sa.Column("column_jsonb", JSONB),
+        sa.Column("column_json", JSON),
     )
 
     rows = [
@@ -280,13 +279,13 @@ def test_jsonb_json():
 def test_jsonb_array():
     """ARRAYS of JSONB objects had incorrect schemas. See issue #331."""
     table_name = "test_jsonb_array"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("column_jsonb_array", ARRAY(JSONB)),
+        sa.Column("column_jsonb_array", ARRAY(JSONB)),
     )
 
     rows = [
@@ -343,13 +342,13 @@ def test_jsonb_array():
 def test_decimal():
     """Schema was wrong for Decimal objects. Check they are correctly selected."""
     table_name = "test_decimal"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("column", Numeric()),
+        sa.Column("column", sa.Numeric()),
     )
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
@@ -388,13 +387,18 @@ def test_decimal():
 def test_filter_schemas():
     """Only return tables from a given schema"""
     table_name = "test_filter_schemas"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(table_name, metadata_obj, Column("id", BIGINT), schema="new_schema")
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
+        table_name,
+        metadata_obj,
+        sa.Column("id", BIGINT),
+        schema="new_schema",
+    )
 
     with engine.begin() as conn:
-        conn.execute(text("CREATE SCHEMA IF NOT EXISTS new_schema"))
+        conn.execute(sa.text("CREATE SCHEMA IF NOT EXISTS new_schema"))
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
     filter_schemas_config = copy.deepcopy(SAMPLE_CONFIG)
@@ -409,8 +413,8 @@ def test_filter_schemas():
 
 class PostgresTestRunner(TapTestRunner):
     def run_sync_dry_run(self) -> bool:
-        """
-        Dislike this function and how TestRunner does this so just hacking it here.
+        """Dislike this function and how TestRunner does this so just hacking it here.
+
         Want to be able to run exactly the catalog given
         """
         new_tap = self.new_tap()
@@ -418,22 +422,21 @@ class PostgresTestRunner(TapTestRunner):
         return True
 
 
-def test_invalid_python_dates():
-    """Some dates are invalid in python, but valid in Postgres
+def test_invalid_python_dates():  # noqa: PLR0912
+    """Some dates are invalid in python, but valid in Postgres.
 
     Check out https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date
     for more information.
-
     """
     table_name = "test_invalid_python_dates"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("date", DATE),
-        Column("datetime", DateTime),
+        sa.Column("date", DATE),
+        sa.Column("datetime", sa.DateTime),
     )
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
