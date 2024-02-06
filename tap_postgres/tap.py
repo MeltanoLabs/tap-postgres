@@ -580,7 +580,7 @@ class TapPostgres(SQLTap):
             )
         return new_catalog
 
-    def discover_streams(self) -> Sequence[Stream]:  # type: ignore[override]
+    def discover_streams(self) -> Sequence[Stream]:
         """Initialize all available streams and return them as a list.
 
         Returns:

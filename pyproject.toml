@@ -38,7 +38,7 @@ sqlalchemy = "<2"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.34.0"
+version = "~=0.35.0"
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
@@ -112,7 +112,7 @@ banned-from = ["sqlalchemy"]
 [tool.ruff.lint.flake8-import-conventions.extend-aliases]
 sqlalchemy = "sa"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = [
   "D",
 ]
