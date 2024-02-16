@@ -1604,13 +1604,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.35.0"
+version = "0.35.1"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "singer_sdk-0.35.0-py3-none-any.whl", hash = "sha256:0f56be58655708dd97df4b892ad86bc74cc7a96c360bf4d22362391d0668b8be"},
-    {file = "singer_sdk-0.35.0.tar.gz", hash = "sha256:3e4048a0e2aaef080acff2bca1d27a0dafcf24684f763cc46ed2b1a0c6970fd7"},
+    {file = "singer_sdk-0.35.1-py3-none-any.whl", hash = "sha256:ce74509f4e330b722dd27c70e164e594303898e974faba4dad4aede0e2de1c02"},
+    {file = "singer_sdk-0.35.1.tar.gz", hash = "sha256:25e0bfb7d62c2d33098b92c538c01d384d0bc9d79221a8b92318dc2ff45d32c2"},
 ]
 
 [package.dependencies]
@@ -1628,7 +1628,7 @@ jsonschema = ">=4.16.0"
 packaging = ">=23.1"
 pendulum = ">=2.1.0,<4"
 PyJWT = ">=2.4,<3.0"
-pytest = {version = ">=7.2.1", optional = true, markers = "extra == \"testing\""}
+pytest = {version = ">=7.2.1", optional = true, markers = "extra == \"docs\" or extra == \"testing\""}
 pytest-durations = {version = ">=1.2.0", optional = true, markers = "extra == \"testing\""}
 python-dateutil = ">=2.8.2"
 python-dotenv = ">=0.20"
@@ -1642,8 +1642,8 @@ typing-extensions = ">=4.5.0"
 urllib3 = ">=1.26,<2"
 
 [package.extras]
-docs = ["furo (>=2022.12.7)", "myst-parser (>=1)", "sphinx (>=4.5)", "sphinx-autobuild (>=2021.3.14)", "sphinx-copybutton (>=0.3.1)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.1)"]
-faker = ["faker (>=22.5,<23.0)"]
+docs = ["furo (>=2022.12.7)", "myst-parser (>=1)", "pytest (>=7.2.1)", "sphinx (>=4.5)", "sphinx-autobuild (>=2021.3.14)", "sphinx-copybutton (>=0.3.1)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.1)"]
+faker = ["faker (>=22.5,<24.0)"]
 parquet = ["numpy (>=1.22)", "numpy (>=1.22,<1.25)", "pyarrow (>=13)"]
 s3 = ["fs-s3fs (>=1.1.1)"]
 testing = ["pytest (>=7.2.1)", "pytest-durations (>=1.2.0)"]
