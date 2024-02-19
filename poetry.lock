@@ -1836,13 +1836,13 @@ cryptography = ">=37.0.0"
 
 [[package]]
 name = "types-psycopg2"
-version = "2.9.21.20240201"
+version = "2.9.21.20240218"
 description = "Typing stubs for psycopg2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "types-psycopg2-2.9.21.20240201.tar.gz", hash = "sha256:75a92735f62ba36397409ae4758f0241cbc4a9bb30f1f95d3b4a660fea7e7711"},
-    {file = "types_psycopg2-2.9.21.20240201-py3-none-any.whl", hash = "sha256:b05cf5d7ce0bd460319f6399fb358307e5af109bfcb6ed7b3d63c9ebec6b9be6"},
+    {file = "types-psycopg2-2.9.21.20240218.tar.gz", hash = "sha256:3084cd807038a62c80fb5be78b41d855b48a060316101ea59fd85c302efb57d4"},
+    {file = "types_psycopg2-2.9.21.20240218-py3-none-any.whl", hash = "sha256:cac96264e063cbce28dee337a973d39e6df4ca671252343cb4f8e5ef6db5e67d"},
 ]
 
 [[package]]
