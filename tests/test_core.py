@@ -414,21 +414,20 @@ def test_filter_schemas():
 def test_incremental():
     """Test incremental replication state."""
     table_name = "test_incremental"
-    engine = sqlalchemy.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"])
 
-    metadata_obj = MetaData()
-    table = Table(
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
         table_name,
         metadata_obj,
-        Column("id", Integer),
-        Column("name", String),
-        Column("updated_at", DateTime),
+        sa.Column("id", sa.Integer),
+        sa.Column("name", sa.String),
+        sa.Column("updated_at", sa.DateTime),
     )
     replication_key = "updated_at"
 
     with engine.connect() as conn:
-        if table.exists(conn):
-            table.drop(conn)
+        table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
             [
