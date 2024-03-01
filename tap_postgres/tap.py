@@ -1,4 +1,5 @@
 """Postgres tap class."""
+
 from __future__ import annotations
 
 import atexit
