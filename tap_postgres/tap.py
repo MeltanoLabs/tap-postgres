@@ -141,6 +141,15 @@ class TapPostgres(SQLTap):
             ),
         ),
         th.Property(
+            "max_record_count",
+            th.IntegerType,
+            default=None,
+            description=(
+                "Optional. The maximum number of records to return in a "
+                "single stream."
+            ),
+        ),
+        th.Property(
             "sqlalchemy_url",
             th.StringType,
             secret=True,
