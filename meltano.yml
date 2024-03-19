@@ -1,10 +1,10 @@
 version: 1
 send_anonymous_usage_stats: true
-project_id: "tap-postgres"
+project_id: "tap-postgres-meltanolabs--loss"
 plugins:
   extractors:
-  - name: "tap-postgres"
-    namespace: "tap_postgres"
+  - name: "tap-postgres-meltanolabs--loss"
+    namespace: "tap_postgres_meltanolabs__loss"
     pip_url: -e .
     capabilities:
     - state

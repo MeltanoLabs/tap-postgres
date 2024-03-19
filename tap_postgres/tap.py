@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class TapPostgres(SQLTap):
     """Singer tap for Postgres."""
 
-    name = "tap-postgres"
+    name = "tap-postgres-meltanolabs--loss"
     default_stream_class = PostgresStream
 
     def __init__(
