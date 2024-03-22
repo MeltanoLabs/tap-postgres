@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 import json
 import select
-import typing
+import typing as t
 from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Iterable, Mapping
@@ -258,12 +258,18 @@ class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
+    supports_nulls_first = True
 
     # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
-    def get_records(self, context: dict | None) -> Iterable[dict[str, Any]]:
-        """Return a generator of row-type dictionary objects.
+    def max_record_count(self) -> int | None:
+        """Return the maximum number of records to fetch in a single query."""
+        return self.config.get("max_record_count")
+
+    # Get records from stream
+    def get_records(self, context: dict | None) -> t.Iterable[dict[str, t.Any]]:
+        """Return a generator of record-type dictionary objects.
 
         If the stream has a replication_key value defined, records will be sorted by the
         incremental key. If the stream also has an available starting bookmark, the
@@ -281,30 +287,48 @@ class PostgresStream(SQLStream):
                 not support partitioning.
         """
         if context:
-            raise NotImplementedError(
-                f"Stream '{self.name}' does not support partitioning."
-            )
+            msg = f"Stream '{self.name}' does not support partitioning."
+            raise NotImplementedError(msg)
 
-        # pulling rows with only selected columns from stream
-        selected_column_names = [k for k in self.get_selected_schema()["properties"]]
+        selected_column_names = self.get_selected_schema()["properties"].keys()
         table = self.connector.get_table(
-            self.fully_qualified_name, column_names=selected_column_names
+            full_table_name=self.fully_qualified_name,
+            column_names=selected_column_names,
         )
         query = table.select()
+
         if self.replication_key:
             replication_key_col = table.columns[self.replication_key]
-
-            # Nulls first because the default is to have nulls as the "highest" value
-            # which incorrectly causes the tap to attempt to store null state.
-            query = query.order_by(sa.nullsfirst(replication_key_col))
+            order_by = (
+                sa.nulls_first(replication_key_col.asc())
+                if self.supports_nulls_first
+                else replication_key_col.asc()
+            )
+            query = query.order_by(order_by)
 
             start_val = self.get_starting_replication_key_value(context)
             if start_val:
-                query = query.filter(replication_key_col >= start_val)
+                query = query.where(replication_key_col >= start_val)
 
-        with self.connector._connect() as con:
-            for row in con.execute(query).mappings():
-                yield dict(row)
+        if self.ABORT_AT_RECORD_COUNT is not None:
+            # Limit record count to one greater than the abort threshold. This ensures
+            # `MaxRecordsLimitException` exception is properly raised by caller
+            # `Stream._sync_records()` if more records are available than can be
+            # processed.
+            query = query.limit(self.ABORT_AT_RECORD_COUNT + 1)
+
+        if self.max_record_count():
+            query = query.limit(self.max_record_count())
+
+        with self.connector._connect() as conn:
+            for record in conn.execute(query).mappings():
+                # TODO: Standardize record mapping type
+                # https://github.com/meltano/sdk/issues/2096
+                transformed_record = self.post_process(dict(record))
+                if transformed_record is None:
+                    # Record filtered out during post_process()
+                    continue
+                yield transformed_record
 
 
 class PostgresLogBasedStream(SQLStream):
@@ -325,7 +349,7 @@ class PostgresLogBasedStream(SQLStream):
     @cached_property
     def schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
-        schema_dict = typing.cast(dict, self._singer_catalog_entry.schema.to_dict())
+        schema_dict = t.cast(dict, self._singer_catalog_entry.schema.to_dict())
         for property in schema_dict["properties"].values():
             if isinstance(property["type"], list):
                 property["type"].append("null")
