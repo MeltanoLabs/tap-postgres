@@ -1,6 +1,5 @@
 """Tests standard tap features using the built-in SDK tests library."""
 
-
 from tap_postgres.tap import TapPostgres
 
 TABLE_NAME = "test_replication_key"
