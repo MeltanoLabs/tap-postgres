@@ -1,4 +1,5 @@
-"""Tests selected columns only from stream """
+"""Tests selected columns only from stream"""
+
 import json
 
 from singer_sdk.testing.templates import TapTestTemplate
