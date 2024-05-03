@@ -462,18 +462,17 @@ test = ["pytest (>=6)"]
 
 [[package]]
 name = "faker"
-version = "24.9.0"
+version = "25.0.1"
 description = "Faker is a Python package that generates fake data for you."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Faker-24.9.0-py3-none-any.whl", hash = "sha256:97c7874665e8eb7b517f97bf3b59f03bf3f07513fe2c159e98b6b9ea6b9f2b3d"},
-    {file = "Faker-24.9.0.tar.gz", hash = "sha256:73b1e7967b0ceeac42fc99a8c973bb49e4499cc4044d20d17ab661d5cb7eda1d"},
+    {file = "Faker-25.0.1-py3-none-any.whl", hash = "sha256:6737cc6d591cd83421fdc5e494f6e2c1a6e32266214f158b745aa9fa15687c98"},
+    {file = "Faker-25.0.1.tar.gz", hash = "sha256:c153505618801f1704807b258a6010ea8cabf91f66f4788939bfdba83b887e76"},
 ]
 
 [package.dependencies]
 python-dateutil = ">=2.4"
-typing-extensions = {version = ">=3.10.0.1", markers = "python_version <= \"3.8\""}
 
 [[package]]
 name = "filelock"
