@@ -1603,32 +1603,30 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.36.1"
+version = "0.37.0a2.post9.dev0+834ea2d1"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.8"
-files = [
-    {file = "singer_sdk-0.36.1-py3-none-any.whl", hash = "sha256:bce8c65320df77cd666db7033dc58fecc3af9af9bb777299f1c5a07faef32fd9"},
-    {file = "singer_sdk-0.36.1.tar.gz", hash = "sha256:445263e9da946191e5a30b4464533b659f8fd9d8a6767cd66124e948ba6bf554"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 backoff = {version = ">=2.0.0", markers = "python_version < \"4\""}
 backports-datetime-fromisoformat = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
-click = ">=8.0,<9.0"
+click = "~=8.0"
 cryptography = ">=3.4.6"
 fs = ">=2.4.16"
 importlib-metadata = {version = "<8.0.0", markers = "python_version < \"3.12\""}
-importlib-resources = {version = ">=5.12.0,<6.2.0", markers = "python_version < \"3.9\""}
+importlib-resources = {version = ">=5.12.0,!=6.2.0,!=6.3.0,!=6.3.1", markers = "python_version < \"3.9\""}
 inflection = ">=0.5.1"
 joblib = ">=1.3.0"
 jsonpath-ng = ">=1.5.3"
 jsonschema = ">=4.16.0"
 packaging = ">=23.1"
 pendulum = ">=2.1.0,<4"
-PyJWT = ">=2.4,<3.0"
-pytest = {version = ">=7.2.1", optional = true, markers = "extra == \"docs\" or extra == \"testing\""}
-pytest-durations = {version = ">=1.2.0", optional = true, markers = "extra == \"testing\""}
+PyJWT = "~=2.4"
+pytest = {version = ">=7.2.1", optional = true}
+pytest-durations = {version = ">=1.2.0", optional = true}
 python-dateutil = ">=2.8.2"
 python-dotenv = ">=0.20"
 PyYAML = ">=6.0"
@@ -1643,9 +1641,16 @@ urllib3 = ">=1.26,<2"
 [package.extras]
 docs = ["furo (>=2022.12.7)", "myst-parser (>=1)", "pytest (>=7.2.1)", "sphinx (>=4.5)", "sphinx-autobuild (>=2021.3.14)", "sphinx-copybutton (>=0.3.1)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.1)"]
 faker = ["faker (>=22.5,<25.0)"]
+jwt = []
 parquet = ["numpy (>=1.22)", "numpy (>=1.22,<1.25)", "pyarrow (>=13)"]
 s3 = ["fs-s3fs (>=1.1.1)"]
 testing = ["pytest (>=7.2.1)", "pytest-durations (>=1.2.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/meltano/sdk.git"
+reference = "834ea2d14111fe6b5eaa14a05f64ee91384487c2"
+resolved_reference = "834ea2d14111fe6b5eaa14a05f64ee91384487c2"
 
 [[package]]
 name = "six"
@@ -1950,4 +1955,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "<3.13,>=3.8.1"
-content-hash = "2ac32bceaad412ace88eb0721ffe7675ad6b8edb747926d35a35eb30347aac7a"
+content-hash = "afeb82ffb18eef75532605fdebdec51c58372072c1e03343a5b08a580ec9c2f9"
