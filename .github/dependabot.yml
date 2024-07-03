@@ -8,25 +8,40 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: weekly
       timezone: "America/New_York"
       time: "07:23"
     reviewers:
       - "visch"
     versioning-strategy: increase-if-necessary
+    groups:
+      development-dependencies:
+        dependency-type: development
+      runtime-dependencies:
+        dependency-type: production
+        update-types:
+          - "patch"
   - package-ecosystem: "pip"
     directory: "/.github/workflows"
     schedule:
-      interval: "daily"
+      interval: weekly
       timezone: "America/New_York"
       time: "07:23"
     reviewers:
       - "visch"
+    groups:
+      ci:
+        patterns:
+          - "*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
       timezone: "America/New_York"
       time: "07:23"
     reviewers:
       - "visch"
+    groups:
+      actions:
+        patterns:
+          - "*"
