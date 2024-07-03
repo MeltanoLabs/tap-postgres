@@ -212,6 +212,8 @@ class PostgresConnector(SQLConnector):
             "decimal": th.NumberType(),
             "double": th.NumberType(),
             "float": th.NumberType(),
+            "real": th.NumberType(),
+            "float4": th.NumberType(),
             "string": th.StringType(),
             "text": th.StringType(),
             "char": th.StringType(),
