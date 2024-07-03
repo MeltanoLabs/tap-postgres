@@ -492,12 +492,14 @@ def test_invalid_python_dates():  # noqa: PLR0912
             "stream" in schema_message
             and schema_message["stream"] == altered_table_name
         ):
-            assert ["string", "null"] == schema_message["schema"]["properties"]["date"][
-                "type"
+            assert schema_message["schema"]["properties"]["date"]["type"] == [
+                "string",
+                "null",
             ]
-            assert ["string", "null"] == schema_message["schema"]["properties"][
-                "datetime"
-            ]["type"]
+            assert schema_message["schema"]["properties"]["datetime"]["type"] == [
+                "string",
+                "null",
+            ]
     assert test_runner.records[altered_table_name][0] == {
         "date": "4713-04-03 BC",
         "datetime": "4712-10-19 10:23:54 BC",
