@@ -354,11 +354,20 @@ def test_numeric_types():
     with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
-        insert = table.insert().values(column=decimal.Decimal("3.14"))
+        insert = table.insert().values(
+            my_numeric=decimal.Decimal("3.14"),
+            my_real=3.14,
+        )
         conn.execute(insert)
-        insert = table.insert().values(column=decimal.Decimal("12"))
+        insert = table.insert().values(
+            my_numeric=decimal.Decimal("12"),
+            my_real=12,
+        )
         conn.execute(insert)
-        insert = table.insert().values(column=decimal.Decimal("10000.00001"))
+        insert = table.insert().values(
+            my_numeric=decimal.Decimal("10000.00001"),
+            my_real=10000.00001,
+        )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap_catalog = json.loads(tap.catalog_json_text)
