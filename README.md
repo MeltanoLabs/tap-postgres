@@ -223,28 +223,28 @@ Copying Keys
 
 To connect through SSH, you will need to determine the following pieces of information. If you're missing something, go back to [the section on Obtaining Keys](#obtaining-keys) to gather all the relevant information.
  - The connection details for your Postgres database, the same as any other tap-postgres run. This includes host, port, username, password and database.
-   - Alternatively, provide an sqlalchemy url. Keep in mind that many other configuration options are ignored when an sqlalchemy url is set, and ideally you should be able to accomplish everything through other configuration options. Consider making an issue in the [tap-postrges repository](https://github.com/MeltanoLabs/tap-postgres) if you find a reasonable use-case that is unsupported by current configuration options.
+   - Alternatively, provide an sqlalchemy url. Keep in mind that many other configuration options are ignored when an sqlalchemy url is set, and ideally you should be able to accomplish everything through other configuration options. Consider making an issue in the [tap-postrges repository](https://github.com/MeltanoLabs/tap-postgres) if you find a reasonable use case that is unsupported by current configuration options.
    - Note that when your connection details are used, it will be from the perspective of the bastion server. This could change the meaning of local IP address or keywords such as "localhost".
  - The hostname or ip address of the bastion server, provided in the `ssh.host` configuration option.
  - The port for use with the bastion server, provided in the `ssh.port` configuration option.
- - The username for authentication with the bastion server, provided in the `ssh.username` configuration option. This will require you to have setup an SSH login with the bastion server.
+ - The username for authentication with the bastion server, provided in the `ssh.username` configuration option. This will require you to have setup an SSH login with the Bastion server.
  - The private key you use for authentication with the bastion server, provided in the `ssh.private_key` configuration option. If your private key is protected by a password (alternatively called a "private key passphrase"), provide it in the `ssh.private_key_password` configuration option. If your private key doesn't have a password, you can safely leave this field blank.
 
 After everything has been configured, be sure to indicate your use of an ssh tunnel to the tap by configuring the `ssh.enable` configuration option to be `True`. Then, you should be able to connect to your privately accessible Postgres database through the bastion server.
 
 ## Log-Based Replication
 
-Log-based replication is an alternative to full-table and incremental syncs and syncs all changes tot he database, including deletes. This feature is built based on [postgres replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS).
+Log-based replication is an alternative to full-table and incremental syncs and syncs all changes to the database, including deletes. This feature is built based on [postgres replication slots](https://www.postgresql.org/docs/current/logicaldecoding-explanation.html#LOGICALDECODING-REPLICATION-SLOTS).
 
-### Negatives of Log Based Replication
+### Negatives of Log-Based Replication
 
 1. Managing replication slots - Log-based replication has to be set up and maintained on the database. This tap attempts to abstract away as much complexity as possible, but there's still potentially manual effort needed
 2. Log Files - When a replication slot is setup the file that holds these logs will continue to grow until consumed, this can cause issues if the tap doesn't ingest these quickly enough due to outages, etc.
 
-If and when someone finds more please add them to this list!
+If and when someone finds more, please add them to this list!
 
 ### Implementation Details
-Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accomodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
+Log-based replication will modify the schemas output by the tap. Specifically, all fields will be made nullable and non-required. The reason for this is that when the tap sends a message indicating that a record has been deleted, that message will leave all fields for that record (except primary keys) as null. The stream's schema must be capable of accommodating these messages, even if a source field in the database is not nullable. As a result, log-based schemas will have all fields nullable.
 
 Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.
 
@@ -296,7 +296,7 @@ Note also that using log-based replication will cause the replication key for al
 1. Use the following metadata modification in your `meltano.yml` for the streams you wish to have as log-based. Note that during log-based replication, we do not support any replication key other than `_sdc_lsn`.
     ```yml
     metadata:
-    "*":
-      replication_method: LOG_BASED
-      replication_key: _sdc_lsn
+      "*":
+        replication_method: LOG_BASED
+        replication_key: _sdc_lsn
     ```
