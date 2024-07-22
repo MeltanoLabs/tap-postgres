@@ -453,7 +453,7 @@ class TapPostgres(SQLTap):
             paramiko.Ed25519Key,
         ):
             try:
-                key = key_class.from_private_key(io.StringIO(key_data))  # type: ignore[attr-defined]
+                key = key_class.from_private_key(io.StringIO(key_data))
             except paramiko.SSHException:  # noqa: PERF203
                 continue
             else:
