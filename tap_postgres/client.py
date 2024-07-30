@@ -13,7 +13,6 @@ from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Iterable, Mapping
 
-import pendulum
 import psycopg2
 import singer_sdk.helpers._typing
 import sqlalchemy as sa
@@ -58,7 +57,7 @@ def patched_conform(
     """
     if isinstance(elem, datetime.date):  # not copied, original logic
         return elem.isoformat()
-    if isinstance(elem, (datetime.datetime, pendulum.DateTime)):  # copied
+    if isinstance(elem, (datetime.datetime,)):  # copied
         return singer_sdk.helpers._typing.to_json_compatible(elem)
     if isinstance(elem, datetime.timedelta):  # copied
         epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
