@@ -24,6 +24,7 @@ from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.streams.core import REPLICATION_INCREMENTAL
 
 if TYPE_CHECKING:
+    from singer_sdk.helpers.types import Context
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine.reflection import Inspector
@@ -269,7 +270,7 @@ class PostgresStream(SQLStream):
         return self.config.get("max_record_count")
 
     # Get records from stream
-    def get_records(self, context: dict | None) -> t.Iterable[dict[str, t.Any]]:
+    def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
         """Return a generator of record-type dictionary objects.
 
         If the stream has a replication_key value defined, records will be sorted by the
@@ -366,7 +367,7 @@ class PostgresLogBasedStream(SQLStream):
         self,
         latest_record: dict[str, Any],
         *,
-        context: dict | None = None,
+        context: Context | None = None,
     ) -> None:
         """Update state of stream or partition with data from the provided record.
 
@@ -397,7 +398,7 @@ class PostgresLogBasedStream(SQLStream):
                 check_sorted=self.check_sorted,
             )
 
-    def get_records(self, context: dict | None) -> Iterable[dict[str, Any]]:
+    def get_records(self, context: Context | None) -> Iterable[dict[str, Any]]:
         """Return a generator of row-type dictionary objects."""
         status_interval = 5.0  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
