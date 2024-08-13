@@ -32,13 +32,13 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = "<3.13,>=3.8.1"
+python = ">=3.8.1"
 psycopg2-binary = "2.9.9"
 sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.39.0"
+version = "~=0.40.0a1"
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
@@ -60,7 +60,7 @@ extras = ["testing"]
 
 [tool.mypy]
 exclude = "tests"
-python_version = "3.11"
+python_version = "3.12"
 warn_unused_configs = true
 warn_unused_ignores = true
 
@@ -87,7 +87,6 @@ vcs = "git"
 style = "pep440"
 
 [tool.ruff]
-target-version = "py38"
 
 [tool.ruff.lint]
 select = [
