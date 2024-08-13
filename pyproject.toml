@@ -38,7 +38,8 @@ sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.39.0"
+git = "https://github.com/meltano/sdk.git"
+rev = "edgarrmondragon/refactor/backwards-compat-sql-ident-quoting"
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
@@ -55,7 +56,8 @@ types-jsonschema = ">=4.19.0.3"
 types-psycopg2 = ">=2.9.21.20240118"
 
 [tool.poetry.dev-dependencies.singer-sdk]
-version = "*"
+git = "https://github.com/meltano/sdk.git"
+rev = "edgarrmondragon/refactor/backwards-compat-sql-ident-quoting"
 extras = ["testing"]
 
 [tool.mypy]
