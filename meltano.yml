@@ -1,3 +1,6 @@
+default_environment: dev
+environments:
+  - name: dev
 version: 1
 send_anonymous_usage_stats: true
 project_id: "tap-postgres"
@@ -11,7 +14,7 @@ plugins:
     - catalog
     - discover
     config:
-      sqlalchemy_url: "postgresql://postgres:postgres@localhost:5432/postgres"
+      sqlalchemy_url: "postgresql://tobiascadee:password@localhost:5432/postgres"
     settings:
     - name: sqlalchemy_url
       kind: password
@@ -37,7 +40,7 @@ plugins:
     - name: ssl_client_private_key
       kind: password
     select:
-    - "*.*"
+    - "public-test.*"
   loaders:
   - name: target-jsonl
     variant: andyh1203
