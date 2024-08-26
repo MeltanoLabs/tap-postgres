@@ -121,3 +121,6 @@ sqlalchemy = "sa"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+addopts = '--durations=10'

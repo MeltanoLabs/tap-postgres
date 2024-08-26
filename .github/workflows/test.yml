@@ -2,9 +2,32 @@ name: Test tap-postgres
 
 on:
   pull_request:
+    branches: [main]
     types: [opened, synchronize, reopened]
+    paths:
+    - .github/workflows/test.yml
+    - log_based/**
+    - pagila/**
+    - ssh_tunnel/**
+    - ssl/**
+    - tap_postgres/**
+    - tests/**
+    - poetry.lock
+    - pyproject.toml
+    - tox.ini
   push:
     branches: [main]
+    paths:
+    - .github/workflows/test.yml
+    - log_based/**
+    - pagila/**
+    - ssh_tunnel/**
+    - ssl/**
+    - tap_postgres/**
+    - tests/**
+    - poetry.lock
+    - pyproject.toml
+    - tox.ini
   workflow_dispatch:
     inputs: {}
 
