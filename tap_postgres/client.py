@@ -429,7 +429,7 @@ class PostgresLogBasedStream(SQLStream):
         while True:
             message = logical_replication_cursor.read_message()
             if message:
-                row = self.consume(message)
+                row = self.consume(message, logical_replication_cursor)
                 if row:
                     yield row
             else:
@@ -456,7 +456,7 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_cursor.close()
         logical_replication_connection.close()
 
-    def consume(self, message) -> dict | None:
+    def consume(self, message, cursor) -> dict | None:
         """Ingest WAL message."""
         try:
             message_payload = json.loads(message.payload)
@@ -476,12 +476,14 @@ class PostgresLogBasedStream(SQLStream):
 
         if message_payload["action"] in upsert_actions:
             for column in message_payload["columns"]:
-                row.update({column["name"]: column["value"]})
+                value = self._parse_column_value(column, cursor)
+                row.update({column["name"]: value})
             row.update({"_sdc_deleted_at": None})
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
-                row.update({column["name"]: column["value"]})
+                value = self._parse_column_value(column, cursor)
+                row.update({column["name"]: value})
             row.update(
                 {
                     "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
@@ -516,6 +518,12 @@ class PostgresLogBasedStream(SQLStream):
             )
 
         return row
+
+    def _parse_column_value(self, column, cursor):
+        if column["type"] == "text[]":
+            return psycopg2.extensions.STRINGARRAY(column["value"], cursor)
+
+        return column["value"]
 
     def logical_replication_connection(self):
         """A logical replication connection to the database.
