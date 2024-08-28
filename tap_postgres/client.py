@@ -476,14 +476,12 @@ class PostgresLogBasedStream(SQLStream):
 
         if message_payload["action"] in upsert_actions:
             for column in message_payload["columns"]:
-                value = self._parse_column_value(column, cursor)
-                row.update({column["name"]: value})
+                row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update({"_sdc_deleted_at": None})
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in delete_actions:
             for column in message_payload["identity"]:
-                value = self._parse_column_value(column, cursor)
-                row.update({column["name"]: value})
+                row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update(
                 {
                     "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
@@ -520,6 +518,9 @@ class PostgresLogBasedStream(SQLStream):
         return row
 
     def _parse_column_value(self, column, cursor):
+        # When using log based replication, the wal2json output for columns of
+        # array types returns a string encoded in sql format, e.g. '{a,b}'
+        # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
         if column["type"] == "text[]":
             return psycopg2.extensions.STRINGARRAY(column["value"], cursor)
 
