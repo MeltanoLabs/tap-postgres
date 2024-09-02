@@ -1587,13 +1587,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.40.0a2"
+version = "0.40.0"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "singer_sdk-0.40.0a2-py3-none-any.whl", hash = "sha256:881b2993e1fbe177c5b18dc94b4e6977cd23662cd75aa0d2f5962684d3ecae85"},
-    {file = "singer_sdk-0.40.0a2.tar.gz", hash = "sha256:64fc1ca5ed4b566530373051ced6aa1455fec6c37aa77c6febcfd6fce215899e"},
+    {file = "singer_sdk-0.40.0-py3-none-any.whl", hash = "sha256:eb54a1de031a8888adb5ba2d1236161e95b4f87522444c943229a122f4d6b1ee"},
+    {file = "singer_sdk-0.40.0.tar.gz", hash = "sha256:f9360cbfac187cf4f14338b181313cab5726c8d1314c5719f2e8212c375ca3cf"},
 ]
 
 [package.dependencies]
@@ -1621,7 +1621,7 @@ urllib3 = ">=1.26,<2"
 
 [package.extras]
 docs = ["furo (>=2024.5.6)", "myst-parser (>=3)", "pytest (>=7.2.1)", "sphinx (>=7)", "sphinx-copybutton (>=0.5.2)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.5)"]
-faker = ["faker (>=22.5,<27.0)"]
+faker = ["faker (>=22.5)"]
 jwt = ["PyJWT (>=2.4,<3.0)", "cryptography (>=3.4.6)"]
 parquet = ["numpy (>=1.22)", "numpy (>=1.22,<1.25)", "numpy (>=1.22,<2.1)", "pyarrow (>=13)"]
 s3 = ["fs-s3fs (>=1.1.1)"]
