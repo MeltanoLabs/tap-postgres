@@ -39,6 +39,7 @@ sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
 version = "~=0.40.0a1"
+extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
