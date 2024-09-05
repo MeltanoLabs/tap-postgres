@@ -1600,6 +1600,7 @@ files = [
 backoff = {version = ">=2.0.0", markers = "python_version < \"4\""}
 backports-datetime-fromisoformat = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 click = ">=8.0,<9.0"
+faker = {version = ">=22.5", optional = true, markers = "extra == \"faker\""}
 fs = ">=2.4.16"
 importlib-metadata = {version = "<9.0.0", markers = "python_version < \"3.12\""}
 importlib-resources = {version = ">=5.12.0,<6.2.0 || >6.2.0,<6.3.0 || >6.3.0,<6.3.1 || >6.3.1", markers = "python_version < \"3.10\""}
@@ -1930,4 +1931,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1"
-content-hash = "580f2690c055886c859caefafb0f6c358ebdd6b01cbe73855092c3b275140128"
+content-hash = "e7e4eac15fb0b08f3b711ccdb1fb2c6bf74a0903bedd3e8749c0379cbe5c75dd"
