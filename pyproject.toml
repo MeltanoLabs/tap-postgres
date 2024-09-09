@@ -7,8 +7,8 @@ maintainers = ["Meltano Team and Contributors <hello@meltano.com>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://meltano.com"
-repository = "https://github.com/meltanolabs/tap-postgres"
-documentation = "https://github.com/meltanolabs/tap-postgres/blob/main/README.md"
+repository = "https://github.com/MeltanoLabs/tap-postgres"
+documentation = "https://github.com/MeltanoLabs/tap-postgres/blob/main/README.md"
 keywords = [
     "Postgres",
     "Singer",
