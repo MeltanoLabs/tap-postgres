@@ -46,7 +46,6 @@ extras = ["faker"]
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
 mypy = ">=1.8.0"
-pendulum = "~=3.0"
 pre-commit = ">=3.0.4"
 ruff = "~=0.6.1"
 pydocstyle = ">=6.1.1"
