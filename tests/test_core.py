@@ -3,7 +3,6 @@ import datetime
 import decimal
 import json
 
-import pendulum
 import pytest
 import sqlalchemy as sa
 from faker import Faker
@@ -28,12 +27,12 @@ from tests.test_selected_columns_only import (
 )
 
 SAMPLE_CONFIG = {
-    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
     "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 NO_SQLALCHEMY_CONFIG = {
-    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
     "host": "localhost",
     "port": 5432,
     "user": "postgres",
