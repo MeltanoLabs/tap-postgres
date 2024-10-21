@@ -34,7 +34,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.8.1"
-psycopg2-binary = "2.9.9"
+psycopg2-binary = "2.9.10"
 sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
