@@ -405,8 +405,10 @@ def test_json_as_object():
                     "null",
                 ]
             }
-    for i in range(len(rows)):
-        assert test_runner.records[altered_table_name][i] == rows[i]
+    for expected_row, actual_row in zip(
+        rows, test_runner.records[altered_table_name], strict=True
+    ):
+        assert actual_row == expected_row
 
 
 def test_numeric_types():
