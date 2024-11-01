@@ -405,9 +405,9 @@ def test_json_as_object():
                     "null",
                 ]
             }
-    for expected_row, actual_row in zip(
-        rows, test_runner.records[altered_table_name], strict=True
-    ):
+
+    assert len(rows) == len(test_runner.records[altered_table_name])
+    for expected_row, actual_row in zip(rows, test_runner.records[altered_table_name]):
         assert actual_row == expected_row
 
 
