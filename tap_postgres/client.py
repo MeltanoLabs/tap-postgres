@@ -36,10 +36,11 @@ if TYPE_CHECKING:
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
     """Custom SQL to JSON Schema conversion for Postgres."""
 
-    def __init__(self, dates_as_string: bool, *args, **kwargs):
+    def __init__(self, dates_as_string: bool, json_as_object: bool, *args, **kwargs):
         """Initialize the SQL to JSON Schema converter."""
         super().__init__(*args, **kwargs)
         self.dates_as_string = dates_as_string
+        self.json_as_object = json_as_object
 
     @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
     def array_to_jsonschema(self, column_type: postgresql.ARRAY) -> dict:
@@ -55,6 +56,8 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
     @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
     def json_to_jsonschema(self, column_type: postgresql.JSON) -> dict:
         """Override the default mapping for JSON and JSONB columns."""
+        if self.json_as_object:
+            return {"type": ["object", "null"]}
         return {"type": ["string", "number", "integer", "array", "object", "boolean"]}
 
     @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
@@ -159,7 +162,10 @@ class PostgresConnector(SQLConnector):
     @functools.cached_property
     def sql_to_jsonschema(self):
         """Return a mapping of SQL types to JSON Schema types."""
-        return PostgresSQLToJSONSchema(dates_as_string=self.config["dates_as_string"])
+        return PostgresSQLToJSONSchema(
+            dates_as_string=self.config["dates_as_string"],
+            json_as_object=self.config["json_as_object"],
+        )
 
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.

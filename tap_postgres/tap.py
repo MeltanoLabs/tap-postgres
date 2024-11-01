@@ -177,6 +177,14 @@ class TapPostgres(SQLTap):
             default=False,
         ),
         th.Property(
+            "json_as_object",
+            th.BooleanType,
+            description=(
+                "Defaults to false, if true, json and jsonb fields will be Objects."
+            ),
+            default=False,
+        ),
+        th.Property(
             "ssh_tunnel",
             th.ObjectType(
                 th.Property(
