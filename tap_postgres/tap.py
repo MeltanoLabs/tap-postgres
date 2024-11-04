@@ -9,7 +9,7 @@ import signal
 import sys
 from functools import cached_property
 from os import chmod, path
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
 from singer_sdk import SQLStream, SQLTap, Stream
@@ -30,7 +30,7 @@ from tap_postgres.client import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 
 class TapPostgres(SQLTap):
