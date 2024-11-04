@@ -44,11 +44,24 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
+        - "3.13"
         - "3.12"
         - "3.11"
         - "3.10"
         - "3.9"
-        - "3.8"
+        postgres-version:
+        - "17"
+        include:
+        - python-version: "3.13"
+          postgres-version: "12"
+        - python-version: "3.13"
+          postgres-version: "13"
+        - python-version: "3.13"
+          postgres-version: "14"
+        - python-version: "3.13"
+          postgres-version: "15"
+        - python-version: "3.13"
+          postgres-version: "16"
 
     steps:
     - name: Checkout code

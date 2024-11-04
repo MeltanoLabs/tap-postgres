@@ -1,4 +1,4 @@
-FROM postgres:16
+FROM postgres:${POSTGRES_VERSION:-latest}
 
 RUN apt-get update
 RUN apt-mark hold locales
