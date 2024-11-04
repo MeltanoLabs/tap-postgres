@@ -28,11 +28,6 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5432:5432"
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-d", "postgres", "-U", "arch" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
 
   postgresdb:
     image: postgres:${POSTGRES_VERSION:-latest}
@@ -43,11 +38,6 @@ services:
     networks:
       inner:
         ipv4_address: 10.5.0.5
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-d", "postgres", "-U", "arch" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
 
   postgres_ssl:
     image: postgres:${POSTGRES_VERSION:-latest}
@@ -66,11 +56,6 @@ services:
       - ./ssl/pg_hba.conf:/var/lib/postgresql/pg_hba.conf # Configuration file to allow connection over SSL.
     ports:
       - "5433:5432"
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-d", "postgres", "-U", "arch" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
 
   postgres_log_based:
     image: meltano/log_based # Locally built
@@ -83,11 +68,6 @@ services:
       - ./log_based:/docker-entrypoint-initdb.d
     ports:
       - "5434:5432"
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-d", "postgres", "-U", "arch" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
 
 
 networks:
