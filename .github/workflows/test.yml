@@ -79,7 +79,7 @@ jobs:
       env:
         POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
-        docker build . --tag meltano/log_based
+        docker build . --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --tag meltano/log_based
     - name: Compose Postgres container
       env:
         POSTGRES_VERSION: ${{ matrix.postgres-version }}
