@@ -2,8 +2,6 @@ ARG POSTGRES_VERSION=17
 
 FROM postgres:$POSTGRES_VERSION
 
-ENV POSTGRES_VERSION=${POSTGRES_VERSION}
-
 RUN apt-get update
 RUN apt-mark hold locales
 RUN apt-get install curl ca-certificates -y
