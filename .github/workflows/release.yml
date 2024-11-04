@@ -42,5 +42,4 @@ jobs:
         file_glob: true
     - name: Deploy to PyPI
       uses: pypa/gh-action-pypi-publish@v1.11.0
-      with:
-        attestations: true
+
