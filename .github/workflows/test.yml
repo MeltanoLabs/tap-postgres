@@ -37,6 +37,7 @@ concurrency:
 
 jobs:
   tests:
+    name: Python ${{ matrix.python-version }} / Postgres ${{ matrix.postgres-version }}
     runs-on: ubuntu-latest
     env:
       PIP_CONSTRAINT: ${{ github.workspace }}/.github/workflows/constraints.txt
