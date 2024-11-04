@@ -76,9 +76,13 @@ jobs:
         chmod 600 ssl/pkey.key
 
     - name: Build Postgres container
+      env:
+        POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
         docker build . --tag meltano/log_based
     - name: Compose Postgres container
+      env:
+        POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
         docker compose -f docker-compose.yml up -d --wait --wait-timeout=30
 
