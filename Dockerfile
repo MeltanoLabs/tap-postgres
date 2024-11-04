@@ -1,7 +1,7 @@
 ARG POSTGRES_VERSION=17
 FROM postgres:${POSTGRES_VERSION}
 
-ENV POSTGRES_VERSION=${POSTGRES_VERSION}
+ARG POSTGRES_VERSION=17
 
 # Install prerequisites and configure PostgreSQL for wal2json
 RUN apt-get update && apt-mark hold locales && \
