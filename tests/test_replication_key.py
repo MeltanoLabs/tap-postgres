@@ -1,9 +1,9 @@
 """Tests standard tap features using the built-in SDK tests library."""
 
 import copy
+import datetime
 import json
 
-import pendulum
 import sqlalchemy as sa
 from singer_sdk.testing.runners import TapTestRunner
 from singer_sdk.testing.templates import TapTestTemplate
@@ -14,7 +14,7 @@ from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 
 TABLE_NAME = "test_replication_key"
 SAMPLE_CONFIG = {
-    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
     "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
@@ -68,11 +68,11 @@ def test_null_replication_key_with_start_date():
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
-            data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
+            data="Alpha", updated_at=datetime.datetime(2022, 10, 20).isoformat()
         )
         conn.execute(insert)
         insert = table.insert().values(
-            data="Bravo", updated_at=pendulum.datetime(2022, 11, 20).to_iso8601_string()
+            data="Bravo", updated_at=datetime.datetime(2022, 11, 20).isoformat()
         )
         conn.execute(insert)
         insert = table.insert().values(data="Zulu", updated_at=None)
@@ -124,11 +124,11 @@ def test_null_replication_key_without_start_date():
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(
-            data="Alpha", updated_at=pendulum.datetime(2022, 10, 20).to_iso8601_string()
+            data="Alpha", updated_at=datetime.datetime(2022, 10, 20).isoformat()
         )
         conn.execute(insert)
         insert = table.insert().values(
-            data="Bravo", updated_at=pendulum.datetime(2022, 11, 20).to_iso8601_string()
+            data="Bravo", updated_at=datetime.datetime(2022, 11, 20).isoformat()
         )
         conn.execute(insert)
         insert = table.insert().values(data="Zulu", updated_at=None)

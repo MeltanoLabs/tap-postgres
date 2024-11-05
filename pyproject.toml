@@ -1,13 +1,14 @@
 [tool.poetry]
 name = "meltanolabs-tap-postgres"
 version = "0.0.0"
-description = "`tap-postgres` is a Singer tap for Postgres, built with the Meltano SDK for Singer Targets."
+description = "Singer tap for Postgres, built with the Meltano SDK for Singer Targets."
 authors = ["Meltano Team and Contributors <hello@meltano.com>"]
 maintainers = ["Meltano Team and Contributors <hello@meltano.com>"]
 license = "MIT"
 readme = "README.md"
 homepage = "https://meltano.com"
-repository = "https://github.com/meltanolabs/tap-postgres"
+repository = "https://github.com/MeltanoLabs/tap-postgres"
+documentation = "https://github.com/MeltanoLabs/tap-postgres/blob/main/README.md"
 keywords = [
     "Postgres",
     "Singer",
@@ -19,11 +20,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 packages = [
@@ -32,20 +33,20 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = "<3.13,>=3.8.1"
-psycopg2-binary = "2.9.9"
+python = ">=3.9"
+psycopg2-binary = "2.9.10"
 sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.38.0"
+version = "~=0.41.0"
+extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
 mypy = ">=1.8.0"
-pendulum = "~=3.0"
 pre-commit = ">=3.0.4"
-ruff = "~=0.5.0"
+ruff = "~=0.7.0"
 pydocstyle = ">=6.1.1"
 tox = "~=4"
 types-paramiko = ">=3.3.0.0"
@@ -60,7 +61,7 @@ extras = ["testing"]
 
 [tool.mypy]
 exclude = "tests"
-python_version = "3.11"
+python_version = "3.13"
 warn_unused_configs = true
 warn_unused_ignores = true
 
@@ -72,8 +73,8 @@ module = [
 
 [build-system]
 requires = [
-  "poetry-core==1.9.0",
-  "poetry-dynamic-versioning==1.4.0",
+  "poetry-core==1.9.1",
+  "poetry-dynamic-versioning==1.4.1",
 ]
 build-backend = "poetry_dynamic_versioning.backend"
 
@@ -87,7 +88,7 @@ vcs = "git"
 style = "pep440"
 
 [tool.ruff]
-target-version = "py38"
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [
@@ -122,3 +123,6 @@ sqlalchemy = "sa"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+addopts = '--durations=10'

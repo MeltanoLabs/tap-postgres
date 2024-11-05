@@ -13,6 +13,10 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 * `stream-maps`
 * `schema-flattening`
 
+## Supported Python and PostgreSQL Versions
+
+This tap is tested with all actively supported [Python](https://devguide.python.org/versions/#supported-versions) and [PostgreSQL](https://www.postgresql.org/support/versioning/) versions. At the time of writing, this includes Python 3.9 through 3.13 and PostgreSQL 12 through 17.
+
 ## Settings
 
 | Setting                           | Required | Default                      | Description                                                                                                                                                                                                                                                                                              |
@@ -26,6 +30,7 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 | sqlalchemy_url                    | False    | None                         | Example postgresql://[username]:[password]@localhost:5432/[db_name]                                                                                                                                                                                                                                      |
 | filter_schemas                    | False    | None                         | If an array of schema names is provided, the tap will only process the specified Postgres schemas and ignore others. If left blank, the tap automatically determines ALL available Postgres schemas.                                                                                                     |
 | dates_as_string                   | False    | 0                            | Defaults to false, if true, date, and timestamp fields will be Strings. If you see ValueError: Year is out of range, try setting this to True.                                                                                                                                                           |
+| json_as_object                    | False    | 0                            | Defaults to false, if true, json and jsonb fields will be Objects.                                                                                                     |
 | ssh_tunnel                        | False    | None                         | SSH Tunnel Configuration, this is a json object                                                                                                                                                                                                                                                          |
 | ssh_tunnel.enable                 | False    | 0                            | Enable an ssh tunnel (also known as bastion server), see the other ssh_tunnel.* properties for more details                                                                                                                                                                                              |
 | ssh_tunnel.host                   | False    | None                         | Host of the bastion server, this is the host we'll connect to via ssh                                                                                                                                                                                                                                    |
@@ -131,6 +136,8 @@ Create tests within the `tap_postgres/tests` subfolder and
 ```bash
 poetry run pytest
 ```
+
+NOTE: Running the tests requires a locally running postgres. See tests/settings.py for the expected configuration.
 
 You can also test the `tap-postgres` CLI interface directly using `poetry run`:
 

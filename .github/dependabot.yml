@@ -11,8 +11,6 @@ updates:
       interval: weekly
       timezone: "America/New_York"
       time: "07:23"
-    reviewers:
-      - "visch"
     versioning-strategy: increase-if-necessary
     groups:
       development-dependencies:
@@ -39,8 +37,6 @@ updates:
       interval: weekly
       timezone: "America/New_York"
       time: "07:23"
-    reviewers:
-      - "visch"
     groups:
       actions:
         patterns:

@@ -3,7 +3,6 @@ import datetime
 import decimal
 import json
 
-import pendulum
 import pytest
 import sqlalchemy as sa
 from faker import Faker
@@ -28,12 +27,12 @@ from tests.test_selected_columns_only import (
 )
 
 SAMPLE_CONFIG = {
-    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
     "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 NO_SQLALCHEMY_CONFIG = {
-    "start_date": pendulum.datetime(2022, 11, 1).to_iso8601_string(),
+    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
     "host": "localhost",
     "port": 5432,
     "user": "postgres",
@@ -337,6 +336,79 @@ def test_jsonb_array():
             }
     for i in range(len(rows)):
         assert test_runner.records[altered_table_name][i] == rows[i]
+
+
+def test_json_as_object():
+    """Some use cases require JSON and JSONB columns to be typed as Objects."""
+    table_name = "test_json_as_object"
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
+        table_name,
+        metadata_obj,
+        sa.Column("column_jsonb", JSONB),
+        sa.Column("column_json", JSON),
+    )
+
+    rows = [
+        {"column_jsonb": {"foo": "bar"}, "column_json": {"baz": "foo"}},
+        {"column_jsonb": 3.14, "column_json": -9.3},
+        {"column_jsonb": 22, "column_json": 10000000},
+        {"column_jsonb": {}, "column_json": {}},
+        {"column_jsonb": ["bar", "foo"], "column_json": ["foo", "baz"]},
+        {"column_jsonb": True, "column_json": False},
+    ]
+
+    with engine.begin() as conn:
+        table.drop(conn, checkfirst=True)
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(rows)
+        conn.execute(insert)
+
+    copied_config = copy.deepcopy(SAMPLE_CONFIG)
+    # This should cause the same data to pass
+    copied_config["json_as_object"] = True
+
+    tap = TapPostgres(config=copied_config)
+    tap_catalog = json.loads(tap.catalog_json_text)
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
+
+    for stream in tap_catalog["streams"]:
+        if stream.get("stream") and altered_table_name not in stream["stream"]:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = False
+        else:
+            for metadata in stream["metadata"]:
+                metadata["metadata"]["selected"] = True
+                if metadata["breadcrumb"] == []:
+                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert schema_message["schema"]["properties"]["column_jsonb"] == {
+                "type": [
+                    "object",
+                    "null",
+                ]
+            }
+            assert schema_message["schema"]["properties"]["column_json"] == {
+                "type": [
+                    "object",
+                    "null",
+                ]
+            }
+
+    assert len(rows) == len(test_runner.records[altered_table_name])
+    for expected_row, actual_row in zip(rows, test_runner.records[altered_table_name]):
+        assert actual_row == expected_row
 
 
 def test_numeric_types():
