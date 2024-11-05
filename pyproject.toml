@@ -20,11 +20,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 packages = [
@@ -33,7 +33,7 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.8.1"
+python = ">=3.9"
 psycopg2-binary = "2.9.10"
 sqlalchemy = "<3"
 sshtunnel = "0.4.0"
@@ -61,7 +61,7 @@ extras = ["testing"]
 
 [tool.mypy]
 exclude = "tests"
-python_version = "3.12"
+python_version = "3.13"
 warn_unused_configs = true
 warn_unused_ignores = true
 
@@ -73,8 +73,8 @@ module = [
 
 [build-system]
 requires = [
-  "poetry-core==1.9.0",
-  "poetry-dynamic-versioning==1.4.0",
+  "poetry-core==1.9.1",
+  "poetry-dynamic-versioning==1.4.1",
 ]
 build-backend = "poetry_dynamic_versioning.backend"
 
@@ -88,6 +88,7 @@ vcs = "git"
 style = "pep440"
 
 [tool.ruff]
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [

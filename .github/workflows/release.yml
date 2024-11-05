@@ -41,6 +41,4 @@ jobs:
         overwrite: true
         file_glob: true
     - name: Deploy to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.10.3
-      with:
-        attestations: true
+      uses: pypa/gh-action-pypi-publish@v1.11.0

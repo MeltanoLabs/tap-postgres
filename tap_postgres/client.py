@@ -12,7 +12,7 @@ import select
 import typing as t
 from functools import cached_property
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Iterable, Mapping
+from typing import TYPE_CHECKING, Any
 
 import psycopg2
 import singer_sdk.helpers._typing
@@ -29,6 +29,8 @@ from singer_sdk.streams.core import REPLICATION_INCREMENTAL
 from sqlalchemy.dialects import postgresql
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from singer_sdk.helpers.types import Context
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.engine import Engine
