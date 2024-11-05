@@ -6,29 +6,83 @@ This includes PostgresStream and PostgresConnector.
 from __future__ import annotations
 
 import datetime
+import functools
 import json
 import select
 import typing as t
 from functools import cached_property
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Iterable, Mapping
+from typing import TYPE_CHECKING, Any
 
 import psycopg2
 import singer_sdk.helpers._typing
 import sqlalchemy as sa
+import sqlalchemy.types
 from psycopg2 import extras
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk import typing as th
+from singer_sdk._singerlib import CatalogEntry, MetadataMapping, Schema
+from singer_sdk.connectors.sql import SQLToJSONSchema
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.streams.core import REPLICATION_INCREMENTAL
+from sqlalchemy.dialects import postgresql
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from singer_sdk.helpers.types import Context
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.engine import Engine
+    from sqlalchemy.engine.interfaces import (  # type: ignore[attr-defined]
+        ReflectedColumn,
+        ReflectedIndex,
+        ReflectedPrimaryKeyConstraint,
+        TableKey,
+    )
     from sqlalchemy.engine.reflection import Inspector
-    from sqlalchemy.types import TypeEngine
+
+
+class PostgresSQLToJSONSchema(SQLToJSONSchema):
+    """Custom SQL to JSON Schema conversion for Postgres."""
+
+    def __init__(self, dates_as_string: bool, json_as_object: bool, *args, **kwargs):
+        """Initialize the SQL to JSON Schema converter."""
+        super().__init__(*args, **kwargs)
+        self.dates_as_string = dates_as_string
+        self.json_as_object = json_as_object
+
+    @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
+    def array_to_jsonschema(self, column_type: postgresql.ARRAY) -> dict:
+        """Override the default mapping for NUMERIC columns.
+
+        For example, a scale of 4 translates to a multipleOf 0.0001.
+        """
+        return {
+            "type": "array",
+            "items": self.to_jsonschema(column_type.item_type),
+        }
+
+    @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
+    def json_to_jsonschema(self, column_type: postgresql.JSON) -> dict:
+        """Override the default mapping for JSON and JSONB columns."""
+        if self.json_as_object:
+            return {"type": ["object", "null"]}
+        return {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+
+    @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
+    def datetime_to_jsonschema(self, column_type: sqlalchemy.types.DateTime) -> dict:
+        """Override the default mapping for DATETIME columns."""
+        if self.dates_as_string:
+            return {"type": ["string", "null"]}
+        return super().datetime_to_jsonschema(column_type)
+
+    @SQLToJSONSchema.to_jsonschema.register  # type: ignore[attr-defined]
+    def date_to_jsonschema(self, column_type: sqlalchemy.types.Date) -> dict:
+        """Override the default mapping for DATE columns."""
+        if self.dates_as_string:
+            return {"type": ["string", "null"]}
+        return super().date_to_jsonschema(column_type)
 
 
 def patched_conform(
@@ -115,131 +169,13 @@ class PostgresConnector(SQLConnector):
 
         super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
 
-    # Note super is static, we can get away with this because this is called once
-    # and is luckily referenced via the instance of the class
-    def to_jsonschema_type(  # type: ignore[override]
-        self,
-        sql_type: str | TypeEngine | type[TypeEngine] | postgresql.ARRAY | Any,
-    ) -> dict:
-        """Return a JSON Schema representation of the provided type.
-
-        Overridden from SQLConnector to correctly handle JSONB and Arrays.
-
-        Also Overridden in order to call our instance method `sdk_typing_object()`
-        instead of the static version
-
-        By default will call `typing.to_jsonschema_type()` for strings and SQLAlchemy
-        types.
-
-        Args:
-            sql_type: The string representation of the SQL type, a SQLAlchemy
-                TypeEngine class or object, or a custom-specified object.
-
-        Raises:
-            ValueError: If the type received could not be translated to jsonschema.
-
-        Returns:
-            The JSON Schema representation of the provided type.
-
-        """
-        type_name = None
-        if isinstance(sql_type, str):
-            type_name = sql_type
-        elif isinstance(sql_type, sa.types.TypeEngine):
-            type_name = type(sql_type).__name__
-
-        if (
-            type_name is not None
-            and isinstance(sql_type, sa.dialects.postgresql.ARRAY)
-            and type_name == "ARRAY"
-        ):
-            array_type = self.sdk_typing_object(sql_type.item_type)
-            return th.ArrayType(array_type).type_dict
-        return self.sdk_typing_object(sql_type).type_dict
-
-    def sdk_typing_object(
-        self,
-        from_type: str | TypeEngine | type[TypeEngine],
-    ) -> (
-        th.DateTimeType
-        | th.NumberType
-        | th.IntegerType
-        | th.DateType
-        | th.StringType
-        | th.BooleanType
-        | th.CustomType
-    ):
-        """Return the JSON Schema dict that describes the sql type.
-
-        Args:
-            from_type: The SQL type as a string or as a TypeEngine. If a TypeEngine is
-                provided, it may be provided as a class or a specific object instance.
-
-        Raises:
-            ValueError: If the `from_type` value is not of type `str` or `TypeEngine`.
-
-        Returns:
-            A compatible JSON Schema type definition.
-        """
-        # NOTE: This is an ordered mapping, with earlier mappings taking precedence. If
-        # the SQL-provided type contains the type name on the left, the mapping will
-        # return the respective singer type.
-        # NOTE: jsonb and json should theoretically be th.AnyType().type_dict but that
-        # causes problems down the line with an error like:
-        # singer_sdk.helpers._typing.EmptySchemaTypeError: Could not detect type from
-        # empty type_dict. Did you forget to define a property in the stream schema?
-        sqltype_lookup: dict[
-            str,
-            th.DateTimeType
-            | th.NumberType
-            | th.IntegerType
-            | th.DateType
-            | th.StringType
-            | th.BooleanType
-            | th.CustomType,
-        ] = {
-            "jsonb": th.CustomType(
-                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
-            ),
-            "json": th.CustomType(
-                {"type": ["string", "number", "integer", "array", "object", "boolean"]}
-            ),
-            "timestamp": th.DateTimeType(),
-            "datetime": th.DateTimeType(),
-            "date": th.DateType(),
-            "int": th.IntegerType(),
-            "numeric": th.NumberType(),
-            "decimal": th.NumberType(),
-            "double": th.NumberType(),
-            "float": th.NumberType(),
-            "real": th.NumberType(),
-            "float4": th.NumberType(),
-            "string": th.StringType(),
-            "text": th.StringType(),
-            "char": th.StringType(),
-            "bool": th.BooleanType(),
-            "variant": th.StringType(),
-        }
-        if self.config["dates_as_string"] is True:
-            sqltype_lookup["date"] = th.StringType()
-            sqltype_lookup["datetime"] = th.StringType()
-        if isinstance(from_type, str):
-            type_name = from_type
-        elif isinstance(from_type, sa.types.TypeEngine):
-            type_name = type(from_type).__name__
-        elif isinstance(from_type, type) and issubclass(from_type, sa.types.TypeEngine):
-            type_name = from_type.__name__
-        else:
-            raise ValueError(
-                "Expected `str` or a SQLAlchemy `TypeEngine` object or type."
-            )
-
-        # Look for the type name within the known SQL type names:
-        for sqltype, jsonschema_type in sqltype_lookup.items():
-            if sqltype.lower() in type_name.lower():
-                return jsonschema_type
-
-        return sqltype_lookup["string"]  # safe failover to str
+    @functools.cached_property
+    def sql_to_jsonschema(self):
+        """Return a mapping of SQL types to JSON Schema types."""
+        return PostgresSQLToJSONSchema(
+            dates_as_string=self.config["dates_as_string"],
+            json_as_object=self.config["json_as_object"],
+        )
 
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.
@@ -254,6 +190,135 @@ class PostgresConnector(SQLConnector):
         if "filter_schemas" in self.config and len(self.config["filter_schemas"]) != 0:
             return self.config["filter_schemas"]
         return super().get_schema_names(engine, inspected)
+
+    # Uses information_schema for speed.
+    def discover_catalog_entry_optimized(  # noqa: PLR0913
+        self,
+        engine: Engine,
+        inspected: Inspector,
+        schema_name: str,
+        table_name: str,
+        is_view: bool,
+        table_data: dict[TableKey, list[ReflectedColumn]],
+        pk_data: dict[TableKey, ReflectedPrimaryKeyConstraint],
+        index_data: dict[TableKey, list[ReflectedIndex]],
+    ) -> CatalogEntry:
+        """Create `CatalogEntry` object for the given table or a view.
+
+        Args:
+            engine: SQLAlchemy engine
+            inspected: SQLAlchemy inspector instance for engine
+            schema_name: Schema name to inspect
+            table_name: Name of the table or a view
+            is_view: Flag whether this object is a view, returned by `get_object_names`
+            table_data: Cached inspector data for the relevant tables
+            pk_data: Cached inspector data for the relevant primary keys
+            index_data: Cached inspector data for the relevant indexes
+
+        Returns:
+            `CatalogEntry` object for the given table or a view
+        """
+        # Initialize unique stream name
+        unique_stream_id = f"{schema_name}-{table_name}"
+        table_key = (schema_name, table_name)
+
+        # Detect key properties
+        possible_primary_keys: list[list[str]] = []
+        pk_def = pk_data.get(table_key, {})
+        if pk_def and "constrained_columns" in pk_def:
+            possible_primary_keys.append(pk_def["constrained_columns"])
+
+        # An element of the columns list is ``None`` if it's an expression and is
+        # returned in the ``expressions`` list of the reflected index.
+        possible_primary_keys.extend(
+            index_def["column_names"]
+            for index_def in index_data.get(table_key, [])
+            if index_def.get("unique", False)
+        )
+
+        key_properties = next(iter(possible_primary_keys), None)
+
+        # Initialize columns list
+        table_schema = th.PropertiesList()
+        for column_def in table_data.get(table_key, []):
+            column_name = column_def["name"]
+            is_nullable = column_def.get("nullable", False)
+            jsonschema_type: dict = self.to_jsonschema_type(column_def["type"])
+            table_schema.append(
+                th.Property(
+                    name=column_name,
+                    wrapped=th.CustomType(jsonschema_type),
+                    nullable=is_nullable,
+                    required=column_name in key_properties if key_properties else False,
+                ),
+            )
+        schema = table_schema.to_dict()
+
+        # Initialize available replication methods
+        addl_replication_methods: list[str] = [""]  # By default an empty list.
+        # Notes regarding replication methods:
+        # - 'INCREMENTAL' replication must be enabled by the user by specifying
+        #   a replication_key value.
+        # - 'LOG_BASED' replication must be enabled by the developer, according
+        #   to source-specific implementation capabilities.
+        replication_method = next(reversed(["FULL_TABLE", *addl_replication_methods]))
+
+        # Create the catalog entry object
+        return CatalogEntry(
+            tap_stream_id=unique_stream_id,
+            stream=unique_stream_id,
+            table=table_name,
+            key_properties=key_properties,
+            schema=Schema.from_dict(schema),
+            is_view=is_view,
+            replication_method=replication_method,
+            metadata=MetadataMapping.get_standard_metadata(
+                schema_name=schema_name,
+                schema=schema,
+                replication_method=replication_method,
+                key_properties=key_properties,
+                valid_replication_keys=None,  # Must be defined by user
+            ),
+            database=None,  # Expects single-database context
+            row_count=None,
+            stream_alias=None,
+            replication_key=None,  # Must be defined by user
+        )
+
+    def discover_catalog_entries(self) -> list[dict]:
+        """Return a list of catalog entries from discovery.
+
+        Returns:
+            The discovered catalog entries as a list.
+        """
+        result: list[dict] = []
+        engine = self._engine
+        inspected = sa.inspect(engine)
+        for schema_name in self.get_schema_names(engine, inspected):
+            # Use get_multi_* data here instead of pulling per-table
+            table_data = inspected.get_multi_columns(schema=schema_name)
+            pk_data = inspected.get_multi_pk_constraint(schema=schema_name)
+            index_data = inspected.get_multi_indexes(schema=schema_name)
+
+            # Iterate through each table and view
+            for table_name, is_view in self.get_object_names(
+                engine,
+                inspected,
+                schema_name,
+            ):
+                catalog_entry = self.discover_catalog_entry_optimized(
+                    engine,
+                    inspected,
+                    schema_name,
+                    table_name,
+                    is_view,
+                    table_data,
+                    pk_data,
+                    index_data,
+                )
+                result.append(catalog_entry.to_dict())
+
+        return result
 
 
 class PostgresStream(SQLStream):

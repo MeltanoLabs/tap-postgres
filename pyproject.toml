@@ -20,7 +20,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -34,20 +33,20 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = ">=3.8.1"
-psycopg2-binary = "2.9.9"
+python = ">=3.9"
+psycopg2-binary = "2.9.10"
 sqlalchemy = "<3"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.40.0a1"
+version = "~=0.41.0"
 extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
 mypy = ">=1.8.0"
 pre-commit = ">=3.0.4"
-ruff = "~=0.6.1"
+ruff = "~=0.7.0"
 pydocstyle = ">=6.1.1"
 tox = "~=4"
 types-paramiko = ">=3.3.0.0"
@@ -62,7 +61,7 @@ extras = ["testing"]
 
 [tool.mypy]
 exclude = "tests"
-python_version = "3.12"
+python_version = "3.13"
 warn_unused_configs = true
 warn_unused_ignores = true
 
@@ -74,8 +73,8 @@ module = [
 
 [build-system]
 requires = [
-  "poetry-core==1.9.0",
-  "poetry-dynamic-versioning==1.4.0",
+  "poetry-core==1.9.1",
+  "poetry-dynamic-versioning==1.4.1",
 ]
 build-backend = "poetry_dynamic_versioning.backend"
 
@@ -89,6 +88,7 @@ vcs = "git"
 style = "pep440"
 
 [tool.ruff]
+target-version = "py39"
 
 [tool.ruff.lint]
 select = [

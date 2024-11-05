@@ -1,5 +1,8 @@
 name: Test tap-postgres
 
+env:
+  FORCE_COLOR: 1
+
 on:
   pull_request:
     branches: [main]
@@ -37,6 +40,7 @@ concurrency:
 
 jobs:
   tests:
+    name: Python ${{ matrix.python-version }} / Postgres ${{ matrix.postgres-version }}
     runs-on: ubuntu-latest
     env:
       PIP_CONSTRAINT: ${{ github.workspace }}/.github/workflows/constraints.txt
@@ -49,7 +53,19 @@ jobs:
         - "3.11"
         - "3.10"
         - "3.9"
-        - "3.8"
+        postgres-version:
+        - "17"
+        include:
+        - python-version: "3.13"
+          postgres-version: "12"
+        - python-version: "3.13"
+          postgres-version: "13"
+        - python-version: "3.13"
+          postgres-version: "14"
+        - python-version: "3.13"
+          postgres-version: "15"
+        - python-version: "3.13"
+          postgres-version: "16"
 
     steps:
     - name: Checkout code
@@ -63,13 +79,19 @@ jobs:
         chmod 600 ssl/pkey.key
 
     - name: Build Postgres container
+      env:
+        POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
-        docker build . --tag meltano/log_based
+        docker build . --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --tag meltano/log_based
     - name: Compose Postgres container
+      env:
+        POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
         docker compose -f docker-compose.yml up -d --wait --wait-timeout=30
 
     - uses: isbang/compose-action@v2.0.2
+      env:
+        POSTGRES_VERSION: ${{ matrix.postgres-version }}
 
  # Leaving comments as this makes testing the openssh docker image easier and should save someone some time later
  #   - name: Test SSH File Permissiosn
@@ -79,27 +101,21 @@ jobs:
  #       docker exec openssh-server ps aux
 
 
+    - run: docker ps
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         allow-prereleases: true
 
-    - name: Upgrade pip
+    - name: Install Tox
       run: |
-        pip install pip
-        pip --version
-    - name: Install Poetry
-      run: |
-        pip install poetry
-        poetry --version
-    - name: Install dependencies
-      run: |
-        poetry env use python${{ matrix.python-version }}
-        poetry install
+        python -m pip install --upgrade pip
+        pipx install tox
     - name: Run pytest
       run: |
-        poetry run pytest
+        tox -e $(echo py${{ matrix.python-version }} | tr -d .)
     - name: Run lint
       run: |
-        poetry run tox -e lint
+        tox -e lint
