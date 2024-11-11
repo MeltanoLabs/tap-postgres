@@ -1552,13 +1552,13 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.41.0"
+version = "0.42.1"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "singer_sdk-0.41.0-py3-none-any.whl", hash = "sha256:9570377d043239c04d38d4193e0c6e164949d07382234c5895e5ea1ba273e260"},
-    {file = "singer_sdk-0.41.0.tar.gz", hash = "sha256:be3a4b0ae034eda445e7dd9378999f9d19d8135fd14c9135e3bc5deaf5dbd3ad"},
+    {file = "singer_sdk-0.42.1-py3-none-any.whl", hash = "sha256:cc588927ff87b7aea0087c57c37c85bbe95f9b7c52ebb265abb50a184cec6ad8"},
+    {file = "singer_sdk-0.42.1.tar.gz", hash = "sha256:92019c3f2e476f5c17eaa381e35d3c0ff428814587f8424149a4b28904f75ca0"},
 ]
 
 [package.dependencies]
@@ -1581,17 +1581,16 @@ PyYAML = ">=6.0"
 referencing = ">=0.30.0"
 requests = ">=2.25.1"
 setuptools = "<=70.3.0"
-simpleeval = ">=0.9.13"
+simpleeval = {version = ">=0.9.13,<1.0.1 || >1.0.1", markers = "python_version >= \"3.9\""}
 simplejson = ">=3.17.6"
 sqlalchemy = ">=1.4,<3.0"
 typing-extensions = ">=4.5.0"
-urllib3 = ">=1.26,<2"
 
 [package.extras]
 docs = ["furo (>=2024.5.6)", "myst-parser (>=3)", "pytest (>=7.2.1)", "sphinx (>=7)", "sphinx-copybutton (>=0.5.2)", "sphinx-inline-tabs (>=2023.4.21)", "sphinx-notfound-page (>=1.0.0)", "sphinx-reredirects (>=0.1.5)"]
 faker = ["faker (>=22.5)"]
 jwt = ["PyJWT (>=2.4,<3.0)", "cryptography (>=3.4.6)"]
-parquet = ["numpy (>=1.22)", "numpy (>=1.22,<1.25)", "numpy (>=1.22,<2.1)", "pyarrow (>=13)"]
+parquet = ["numpy (>=1.22)", "numpy (>=1.22,<1.25)", "numpy (>=1.22,<2.1)", "pyarrow (>=13)", "pyarrow (>=13,<18)"]
 s3 = ["fs-s3fs (>=1.1.1)", "s3fs (>=2024.9.0)"]
 ssh = ["paramiko (>=3.3.0)"]
 testing = ["pytest (>=7.2.1)"]
@@ -1900,4 +1899,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9"
-content-hash = "db8435f84ba5f56001c07965340b7d7eb335eb61ce5eba79d3c57359d47630ef"
+content-hash = "18285a1b66e15414204e6bc3ee32d145a1dd62184edc2ca58fa1b0d7cbe75d1c"
