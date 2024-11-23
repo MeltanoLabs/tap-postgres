@@ -474,7 +474,8 @@ class PostgresLogBasedStream(SQLStream):
             connection_string,
             # add slot name to application_name
             application_name=(
-                f"tap_postgres_{self.config.get('replication_slot_name', 'tappostgres')}"
+                    f"tap_postgres_{self.config.get(
+                        'replication_slot_name', "f"'tappostgres')}"
             ),
             connection_factory=extras.LogicalReplicationConnection,
         )
