@@ -344,7 +344,7 @@ class PostgresLogBasedStream(SQLStream):
         replication_slot_name = self.config.get("replication_slot_name", "tappostgres")
 
         logical_replication_cursor.start_replication(
-            slot_name=replication_slot_name,, #use slot name
+            slot_name=replication_slot_name, #use slot name
             decode=True,
             start_lsn=start_lsn,
             status_interval=status_interval,

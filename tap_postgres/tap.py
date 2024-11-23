@@ -58,9 +58,10 @@ class TapPostgres(SQLTap):
         ):
             slot_name = self.config["replication_slot_name"]
             assert slot_name.isalnum() or "_" in slot_name, (
-                "Replication slot name must contain only letters, numbers and underscores"
+                "Replication slot name must contain letters, numbers and underscores"
             )
-            assert len(slot_name) <= 63, (
+            max_slot_name_len = 63
+            assert len(slot_name) <= max_slot_name_len, (
                 "Replication slot name must be less than 63 characters"
             )
             assert not slot_name.startswith("pg_"), (
@@ -462,7 +463,7 @@ class TapPostgres(SQLTap):
             url = self.ssh_tunnel_connect(ssh_config=ssh_config, url=url)
 
         return PostgresConnector(
-            config=dict(self.config), #Pass the entire configuration, including replication_slot_name
+            config=dict(self.config),
             sqlalchemy_url=url.render_as_string(hide_password=False),
         )
 
