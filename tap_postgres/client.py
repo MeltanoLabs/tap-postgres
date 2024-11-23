@@ -344,7 +344,7 @@ class PostgresLogBasedStream(SQLStream):
         replication_slot_name = self.config.get("replication_slot_name", "tappostgres")
 
         logical_replication_cursor.start_replication(
-            slot_name="replication_slot_name", #use slot name
+            slot_name=replication_slot_name,, #use slot name
             decode=True,
             start_lsn=start_lsn,
             status_interval=status_interval,
@@ -472,7 +472,10 @@ class PostgresLogBasedStream(SQLStream):
         )
         return psycopg2.connect(
             connection_string,
-            application_name=f"tap_postgres_{self.config.get('replication_slot_name', 'tappostgres')}", #add slot name to application_name
+            #add slot name to application_name
+            application_name=(
+            f"tap_postgres_{self.config.get('replication_slot_name', 'tappostgres')}"
+            ),
             connection_factory=extras.LogicalReplicationConnection,
         )
 

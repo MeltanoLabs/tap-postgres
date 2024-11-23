@@ -60,7 +60,7 @@ class TapPostgres(SQLTap):
             assert slot_name.isalnum() or "_" in slot_name, (
                 "Replication slot name must contain only letters, numbers and underscores"
             )
-            assert len(slot_name) <= 60, (
+            assert len(slot_name) <= 63, (
                 "Replication slot name must be less than 63 characters"
             )
             assert not slot_name.startswith("pg_"), (
