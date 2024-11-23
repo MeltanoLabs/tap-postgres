@@ -16,8 +16,8 @@ class TestReplicationSlot(unittest.TestCase):
         config = self.default_config
         tap = TapPostgres(config)
         self.assertEqual(
-            tap.config.get("replication_slot_name", "tappostgres"),
-            "tappostgres")
+            tap.config.get("replication_slot_name", "tappostgres"), "tappostgres"
+        )
 
     def test_custom_slot_name(self):
         # Test if the custom slot name is used.
@@ -43,8 +43,8 @@ class TestReplicationSlot(unittest.TestCase):
     def test_invalid_slot_name(self):
         # Test validation for invalid slot names (if any validation rules exist).
         invalid_config = {
-        **self.default_config,
-        "replication_slot_name": "invalid slot name!",
+            **self.default_config,
+            "replication_slot_name": "invalid slot name!",
         }
 
         with self.assertRaises(ValueError):

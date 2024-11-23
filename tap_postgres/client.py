@@ -340,11 +340,11 @@ class PostgresLogBasedStream(SQLStream):
         # even though we still want logs with an LSN == start_lsn.
         logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
-        #get the slot name from the configuration or use the default value
+        # get the slot name from the configuration or use the default value
         replication_slot_name = self.config.get("replication_slot_name", "tappostgres")
 
         logical_replication_cursor.start_replication(
-            slot_name=replication_slot_name, #use slot name
+            slot_name=replication_slot_name,  # use slot name
             decode=True,
             start_lsn=start_lsn,
             status_interval=status_interval,
@@ -472,9 +472,9 @@ class PostgresLogBasedStream(SQLStream):
         )
         return psycopg2.connect(
             connection_string,
-            #add slot name to application_name
+            # add slot name to application_name
             application_name=(
-            f"tap_postgres_{self.config.get('replication_slot_name', 'tappostgres')}"
+                f"tap_postgres_{self.config.get('replication_slot_name', 'tappostgres')}"
             ),
             connection_factory=extras.LogicalReplicationConnection,
         )

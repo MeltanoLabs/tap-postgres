@@ -52,21 +52,20 @@ class TapPostgres(SQLTap):
         super().__init__(*args, **kwargs)
 
         # Add replication_slot_name validation
-        if (
-            self.config.get("replication_method") == "LOG_BASED"
-            and self.config.get("replication_slot_name")
+        if self.config.get("replication_method") == "LOG_BASED" and self.config.get(
+            "replication_slot_name"
         ):
             slot_name = self.config["replication_slot_name"]
-            assert slot_name.isalnum() or "_" in slot_name, (
-                "Replication slot name must contain letters, numbers and underscores"
-            )
+            assert (
+                slot_name.isalnum() or "_" in slot_name
+            ), "Replication slot name must contain letters, numbers and underscores"
             max_slot_name_len = 63
-            assert len(slot_name) <= max_slot_name_len, (
-                "Replication slot name must be less than 63 characters"
-            )
-            assert not slot_name.startswith("pg_"), (
-                "Replication slot name cannot start with 'pg_'"
-            )
+            assert (
+                len(slot_name) <= max_slot_name_len
+            ), "Replication slot name must be less than 63 characters"
+            assert not slot_name.startswith(
+                "pg_"
+            ), "Replication slot name cannot start with 'pg_'"
 
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
@@ -125,7 +124,7 @@ class TapPostgres(SQLTap):
                 "Must be unique for parallel extractions. "
                 "Only applicable when replication_method is LOG_BASED."
             ),
-        ), #New Property
+        ),  # New Property
         th.Property(
             "host",
             th.StringType,
@@ -647,20 +646,18 @@ class TapPostgres(SQLTap):
         return streams
 
 
-
-
 # Configuration Example for Parallel Replication
 
 config_1 = {
     "host": "database1.example.com",
     "port": 5432,
     "dbname": "example_db_1",
-    "replication_slot_name": "slot_1"
+    "replication_slot_name": "slot_1",
 }
 
 config_2 = {
     "host": "database2.example.com",
     "port": 5432,
     "dbname": "example_db_2",
-    "replication_slot_name": "slot_2"
+    "replication_slot_name": "slot_2",
 }
