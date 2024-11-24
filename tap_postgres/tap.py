@@ -123,7 +123,16 @@ class TapPostgres(SQLTap):
                 "Name of the replication slot to use for logical replication. "
                 "Must be unique for parallel extractions. "
                 "Only applicable when replication_method is LOG_BASED."
+                "- Contain only letters, numbers, and underscores. "
+                "- Be less than or equal to 63 characters. "
+                "- Not start with 'pg_'."
             ),
+            validation={
+            "pattern": "^(?!pg_)[A-Za-z0-9_]{1,63}$",
+            "errorMessage": "Replication slot name must be alphanumeric, "
+                            "may include underscores, must not exceed 63 characters, "
+                            "and cannot start with 'pg_'."
+            },  
         ),  # New Property
         th.Property(
             "host",

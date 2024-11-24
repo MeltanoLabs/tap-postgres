@@ -465,19 +465,14 @@ class PostgresLogBasedStream(SQLStream):
         connection_string = (
             f"dbname={self.config['database']} "
             f"user={self.config['user']} "
-            f"password{self.config['password']} "
+            f"password={self.config['password']} "
             f"host={self.config['host']} "
             f"port={self.config['port']}"
-            "replication=database"
         )
         return psycopg2.connect(
             connection_string,
-            # add slot name to application_name
-            application_name=(
-                f"tap_postgres_{self.config.get(
-                        'replication_slot_name', "f"'tappostgres')}"
-            ),
-            connection_factory=extras.LogicalReplicationConnection,
+            application_name="tap_postgres",
+            connection_factory=extras.LogicalReplicationConnection
         )
 
     # TODO: Make this change upstream in the SDK?
