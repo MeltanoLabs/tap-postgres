@@ -128,11 +128,11 @@ class TapPostgres(SQLTap):
                 "- Not start with 'pg_'."
             ),
             validation={
-            "pattern": "^(?!pg_)[A-Za-z0-9_]{1,63}$",
-            "errorMessage": "Replication slot name must be alphanumeric, "
-                            "may include underscores, must not exceed 63 characters, "
-                            "and cannot start with 'pg_'."
-            },  
+                "pattern": "^(?!pg_)[A-Za-z0-9_]{1,63}$",
+                "errorMessage": "Replication slot name must be alphanumeric, "
+                "may include underscores, must not exceed 63 characters, "
+                "and cannot start with 'pg_'.",
+            },
         ),  # New Property
         th.Property(
             "host",

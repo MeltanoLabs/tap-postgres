@@ -472,7 +472,7 @@ class PostgresLogBasedStream(SQLStream):
         return psycopg2.connect(
             connection_string,
             application_name="tap_postgres",
-            connection_factory=extras.LogicalReplicationConnection
+            connection_factory=extras.LogicalReplicationConnection,
         )
 
     # TODO: Make this change upstream in the SDK?
