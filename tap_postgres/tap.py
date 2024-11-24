@@ -50,23 +50,6 @@ class TapPostgres(SQLTap):
         See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
         super().__init__(*args, **kwargs)
-
-        # Add replication_slot_name validation
-        if self.config.get("replication_method") == "LOG_BASED" and self.config.get(
-            "replication_slot_name"
-        ):
-            slot_name = self.config["replication_slot_name"]
-            assert (
-                slot_name.isalnum() or "_" in slot_name
-            ), "Replication slot name must contain letters, numbers and underscores"
-            max_slot_name_len = 63
-            assert (
-                len(slot_name) <= max_slot_name_len
-            ), "Replication slot name must be less than 63 characters"
-            assert not slot_name.startswith(
-                "pg_"
-            ), "Replication slot name cannot start with 'pg_'"
-
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
             and self.config.get("port") is not None
