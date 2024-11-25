@@ -100,7 +100,9 @@ class TapPostgres(SQLTap):
     config_jsonschema = th.PropertiesList(
         th.Property(
             "replication_slot_name",
-            th.StringType,
+            th.StringType(
+                pattern="^(?!pg_)[A-Za-z0-9_]{1,63}$"
+            ),
             default="tappostgres",
             description=(
                 "Name of the replication slot to use for logical replication. "
@@ -110,8 +112,7 @@ class TapPostgres(SQLTap):
                 "- Be less than or equal to 63 characters. "
                 "- Not start with 'pg_'."
             ),
-            pattern="^(?!pg_)[A-Za-z0-9_]{1,63}$",
-        ),  # New Property
+        ),
         th.Property(
             "host",
             th.StringType,
