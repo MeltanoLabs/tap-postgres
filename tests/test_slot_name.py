@@ -8,7 +8,7 @@ class TestReplicationSlot(unittest.TestCase):
         self.default_config = {
             "host": "localhost",
             "port": 5432,
-            "dbname": "test_db",
+            "database": "test_db",
             "user": "postgres",
             "password": "s3cr3t",
         }
