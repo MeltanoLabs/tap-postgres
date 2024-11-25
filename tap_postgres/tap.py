@@ -101,7 +101,7 @@ class TapPostgres(SQLTap):
         th.Property(
             "replication_slot_name",
             th.StringType(
-                pattern="^(?!pg_)[A-Za-z0-9_]{1,63}$"
+                pattern="^(?!pg_)[A-Za-z0-9_]{1,63}$",
             ),
             default="tappostgres",
             description=(
