@@ -46,7 +46,7 @@ extras = ["faker"]
 faker = ">=18.5.1"
 mypy = ">=1.8.0"
 pre-commit = ">=3.0.4"
-ruff = "~=0.7.0"
+ruff = "~=0.8.0"
 pydocstyle = ">=6.1.1"
 tox = "~=4"
 types-paramiko = ">=3.3.0.0"
