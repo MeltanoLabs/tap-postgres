@@ -10,6 +10,7 @@ class TestReplicationSlot(unittest.TestCase):
             "port": 5432,
             "dbname": "test_db",
             "user": "postgres",
+            "password": "s3cr3t",
         }
 
     def test_default_slot_name(self):
