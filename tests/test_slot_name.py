@@ -9,6 +9,7 @@ class TestReplicationSlot(unittest.TestCase):
             "host": "localhost",
             "port": 5432,
             "dbname": "test_db",
+            "user": "postgres",
         }
 
     def test_default_slot_name(self):
