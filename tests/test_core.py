@@ -3,6 +3,7 @@ import datetime
 import decimal
 import json
 
+import importlib.resources
 import pytest
 import sqlalchemy as sa
 from faker import Faker
@@ -18,6 +19,7 @@ from sqlalchemy.dialects.postgresql import (
     TIMESTAMP,
 )
 
+import tests.resources
 from tap_postgres.tap import TapPostgres
 from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 from tests.test_replication_key import TABLE_NAME, TapTestReplicationKey
@@ -83,14 +85,16 @@ custom_test_selected_columns_only = suites.TestSuite(
 TapPostgresTest = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
-    catalog="tests/resources/data.json",
+    # catalog="tests/resources/data.json",
+    catalog=importlib.resources.files(tests.resources) / "data.json",
     custom_suites=[custom_test_replication_key],
 )
 
 TapPostgresTestNOSQLALCHEMY = get_tap_test_class(
     tap_class=TapPostgres,
     config=NO_SQLALCHEMY_CONFIG,
-    catalog="tests/resources/data.json",
+    # catalog="tests/resources/data.json",
+    catalog=importlib.resources.files(tests.resources) / "data.json",
     custom_suites=[custom_test_replication_key],
 )
 
@@ -99,7 +103,8 @@ TapPostgresTestNOSQLALCHEMY = get_tap_test_class(
 TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
-    catalog="tests/resources/data_selected_columns_only.json",
+    # catalog="tests/resources/data_selected_columns_only.json",
+    catalog=importlib.resources.files(tests.resources) / "data_selected_columns_only.json",
     custom_suites=[custom_test_selected_columns_only],
 )
 
