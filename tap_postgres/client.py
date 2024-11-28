@@ -35,11 +35,19 @@ if t.TYPE_CHECKING:
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
     """Custom SQL to JSON Schema conversion for Postgres."""
 
-    def __init__(self, dates_as_string: bool, json_as_object: bool, *args, **kwargs):
+    def __init__(self, *, dates_as_string: bool, json_as_object: bool, **kwargs):
         """Initialize the SQL to JSON Schema converter."""
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self.dates_as_string = dates_as_string
         self.json_as_object = json_as_object
+
+    @classmethod
+    def from_config(cls, config: dict) -> PostgresSQLToJSONSchema:
+        """Instantiate the SQL to JSON Schema converter from a config dictionary."""
+        return cls(
+            dates_as_string=config["dates_as_string"],
+            json_as_object=config["json_as_object"],
+        )
 
     @functools.singledispatchmethod
     def to_jsonschema(self, column_type: t.Any) -> dict:
@@ -132,6 +140,8 @@ singer_sdk.helpers._typing._conform_primitive_property = patched_conform
 class PostgresConnector(SQLConnector):
     """Connects to the Postgres SQL source."""
 
+    sql_to_jsonschema_converter = PostgresSQLToJSONSchema
+
     def __init__(
         self,
         config: dict | None = None,
@@ -159,14 +169,6 @@ class PostgresConnector(SQLConnector):
             psycopg2.extensions.register_type(string_date_arrays)
 
         super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
-
-    @functools.cached_property
-    def sql_to_jsonschema(self):
-        """Return a mapping of SQL types to JSON Schema types."""
-        return PostgresSQLToJSONSchema(
-            dates_as_string=self.config["dates_as_string"],
-            json_as_object=self.config["json_as_object"],
-        )
 
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.
