@@ -1,15 +1,12 @@
 import unittest
 
 from tap_postgres.tap import TapPostgres
+from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
 
 
 class TestReplicationSlot(unittest.TestCase):
     def setUp(self):
-        self.default_config = {
-            "host": "localhost",
-            "port": 5432,
-            "dbname": "test_db",
-        }
+        self.default_config = {"sqlalchemy_url": DB_SQLALCHEMY_URL}
 
     def test_default_slot_name(self):
         # Test backward compatibility when slot name is not provided.
@@ -47,5 +44,6 @@ class TestReplicationSlot(unittest.TestCase):
             "replication_slot_name": "invalid slot name!",
         }
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as context:
             TapPostgres(invalid_config)
+        self.assertIn("must be alphanumeric", str(context.exception))
