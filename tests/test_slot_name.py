@@ -1,7 +1,7 @@
 import unittest
 
 from tap_postgres.tap import TapPostgres
-from tests.settings import DB_SCHEMA_NAME, DB_SQLALCHEMY_URL
+from tests.settings import DB_SQLALCHEMY_URL
 
 
 class TestReplicationSlot(unittest.TestCase):
