@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 
+REPLICATION_SLOT_PATTERN = "^(?!pg_)[A-Za-z0-9_]{1,63}$"
+
+
 class TapPostgres(SQLTap):
     """Singer tap for Postgres."""
 
@@ -100,9 +103,7 @@ class TapPostgres(SQLTap):
     config_jsonschema = th.PropertiesList(
         th.Property(
             "replication_slot_name",
-            th.StringType(
-                pattern="^(?!pg_)[A-Za-z0-9_]{1,63}$",
-            ),
+            th.StringType(pattern=REPLICATION_SLOT_PATTERN),
             default="tappostgres",
             description=(
                 "Name of the replication slot to use for logical replication. "

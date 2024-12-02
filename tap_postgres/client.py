@@ -265,7 +265,7 @@ class PostgresLogBasedStream(SQLStream):
 
     connector_class = PostgresConnector
 
-    # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
+    # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     replication_key = "_sdc_lsn"

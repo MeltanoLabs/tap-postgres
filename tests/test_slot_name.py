@@ -1,7 +1,9 @@
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from singer_sdk.exceptions import ConfigValidationError
 
-from tap_postgres.tap import TapPostgres
+from tap_postgres.tap import REPLICATION_SLOT_PATTERN, TapPostgres
 from tests.settings import DB_SQLALCHEMY_URL
 
 
@@ -10,26 +12,30 @@ def default_config():
     return {"sqlalchemy_url": DB_SQLALCHEMY_URL}
 
 
-def test_default_slot_name(default_config):
-    # Test backward compatibility when slot name is not provided.
-    tap = TapPostgres(config=default_config)
+def test_default_slot_name(default_config: dict):
+    """Test backward compatibility when slot name is not provided."""
+    tap = TapPostgres(config=default_config, setup_mapper=False)
     assert tap.config.get("replication_slot_name", "tappostgres") == "tappostgres"
 
 
-def test_custom_slot_name(default_config):
-    # Test if the custom slot name is used.
-    config = {**default_config, "replication_slot_name": "custom_slot"}
-    tap = TapPostgres(config=config)
-    assert tap.config["replication_slot_name"] == "custom_slot"
+@given(st.from_regex(REPLICATION_SLOT_PATTERN))
+def test_custom_slot_name(s: str):
+    """Test if the custom slot name is used."""
+    config = {
+        "sqlalchemy_url": DB_SQLALCHEMY_URL,
+        "replication_slot_name": s,
+    }
+    tap = TapPostgres(config=config, setup_mapper=False)
+    assert tap.config["replication_slot_name"] == s
 
 
-def test_multiple_slots(default_config):
-    # Simulate using multiple configurations with different slot names.
+def test_multiple_slots(default_config: dict):
+    """Simulate using multiple configurations with different slot names."""
     config_1 = {**default_config, "replication_slot_name": "slot_1"}
     config_2 = {**default_config, "replication_slot_name": "slot_2"}
 
-    tap_1 = TapPostgres(config=config_1)
-    tap_2 = TapPostgres(config=config_2)
+    tap_1 = TapPostgres(config=config_1, setup_mapper=False)
+    tap_2 = TapPostgres(config=config_2, setup_mapper=False)
 
     assert (
         tap_1.config["replication_slot_name"] != tap_2.config["replication_slot_name"]
@@ -38,17 +44,17 @@ def test_multiple_slots(default_config):
     assert tap_2.config["replication_slot_name"] == "slot_2"
 
 
-def test_invalid_slot_name(default_config):
-    # Test validation for invalid slot names (if any validation rules exist).
+def test_invalid_slot_name(default_config: dict):
+    """Test validation for invalid slot names."""
+    invalid_slot_name = "invalid slot name!"
     invalid_config = {
         **default_config,
-        "replication_slot_name": "invalid slot name!",
+        "replication_slot_name": invalid_slot_name,
     }
 
-    with pytest.raises(ConfigValidationError) as exc_info:
-        TapPostgres(config=invalid_config)
+    with pytest.raises(ConfigValidationError, match="does not match") as exc_info:
+        TapPostgres(config=invalid_config, setup_mapper=False)
 
-    # Verify that the error message contains information about the cause
-    assert "'invalid slot name!' does not match '^(?!pg_)[A-Za-z0-9_]{1,63}$'" in str(
-        exc_info.value
-    )
+    errors = exc_info.value.errors
+    assert len(errors) == 1
+    assert invalid_slot_name in errors[0]
