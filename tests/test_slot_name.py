@@ -1,5 +1,7 @@
 import unittest
 
+from singer_sdk.exceptions import ConfigValidationError
+
 from tap_postgres.tap import TapPostgres
 from tests.settings import DB_SQLALCHEMY_URL
 
@@ -43,5 +45,12 @@ class TestReplicationSlot(unittest.TestCase):
             **self.default_config,
             "replication_slot_name": "invalid slot name!",
         }
-        with self.assertRaises(ValueError):
+
+        with self.assertRaises(ConfigValidationError) as context:
             TapPostgres(config=invalid_config)
+
+        # Verify that the error message contains information about the cause
+        self.assertIn(
+            "'invalid slot name!' does not match '^(?!pg_)[A-Za-z0-9_]{1,63}$'",
+            str(context.exception),
+        )
