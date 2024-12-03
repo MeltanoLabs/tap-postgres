@@ -39,6 +39,11 @@ class TapPostgres(SQLTap):
     package_name = "meltanolabs-tap-postgres"
     default_stream_class = PostgresStream
 
+    exclude_schemas = (
+        "information_schema",
+        "pg_catalog",
+    )
+
     def __init__(
         self,
         *args,
@@ -561,7 +566,11 @@ class TapPostgres(SQLTap):
             return self.input_catalog.to_dict()
 
         result: dict[str, list[dict]] = {"streams": []}
-        result["streams"].extend(self.connector.discover_catalog_entries())
+        result["streams"].extend(
+            self.connector.discover_catalog_entries(
+                exclude_schemas=self.exclude_schemas,
+            )
+        )
 
         self._catalog_dict: dict = result
         return self._catalog_dict
