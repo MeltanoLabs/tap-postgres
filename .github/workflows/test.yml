@@ -11,6 +11,7 @@ on:
     - .github/workflows/test.yml
     - log_based/**
     - pagila/**
+    - plugins/**
     - ssh_tunnel/**
     - ssl/**
     - tap_postgres/**
@@ -24,6 +25,7 @@ on:
     - .github/workflows/test.yml
     - log_based/**
     - pagila/**
+    - plugins/**
     - ssh_tunnel/**
     - ssl/**
     - tap_postgres/**
