@@ -44,6 +44,7 @@ extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
 faker = ">=18.5.1"
+hypothesis = ">=6.122.1"
 mypy = ">=1.8.0"
 pre-commit = ">=3.0.4"
 ruff = "~=0.8.0"
@@ -102,7 +103,7 @@ select = [
   "ICN",  # flake8-import-conventions
   "RET",  # flake8-return
   "SIM",  # flake8-simplify
-  "TCH",  # flake8-type-checking
+  "TC",   # flake8-type-checking
   "ERA",  # eradicate
   "PGH",  # pygrep-hooks
   "PL",   # Pylint

@@ -265,7 +265,7 @@ class PostgresLogBasedStream(SQLStream):
 
     connector_class = PostgresConnector
 
-    # JSONB Objects won't be selected without type_confomance_level to ROOT_ONLY
+    # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     replication_key = "_sdc_lsn"
@@ -339,8 +339,11 @@ class PostgresLogBasedStream(SQLStream):
         # even though we still want logs with an LSN == start_lsn.
         logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
+        # get the slot name from the configuration or use the default value
+        replication_slot_name = self.config.get("replication_slot_name", "tappostgres")
+
         logical_replication_cursor.start_replication(
-            slot_name="tappostgres",
+            slot_name=replication_slot_name,  # use slot name
             decode=True,
             start_lsn=start_lsn,
             status_interval=status_interval,
@@ -459,9 +462,11 @@ class PostgresLogBasedStream(SQLStream):
         Uses a direct psycopg2 implementation rather than through sqlalchemy.
         """
         connection_string = (
-            f"dbname={self.config['database']} user={self.config['user']} password="
-            f"{self.config['password']} host={self.config['host']} port="
-            f"{self.config['port']}"
+            f"dbname={self.config['database']} "
+            f"user={self.config['user']} "
+            f"password={self.config['password']} "
+            f"host={self.config['host']} "
+            f"port={self.config['port']}"
         )
         return psycopg2.connect(
             connection_string,
