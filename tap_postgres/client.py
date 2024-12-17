@@ -239,7 +239,7 @@ class PostgresStream(SQLStream):
 
             start_val = self.get_starting_replication_key_value(context)
             if start_val:
-                query = query.where(replication_key_col >= start_val)
+                query = query.where(replication_key_col > start_val)
 
         if self.ABORT_AT_RECORD_COUNT is not None:
             # Limit record count to one greater than the abort threshold. This ensures
