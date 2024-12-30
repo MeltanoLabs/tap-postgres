@@ -194,6 +194,13 @@ class PostgresStream(SQLStream):
     # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
+    @cached_property
+    def schema(self) -> dict:
+        """Override schema adding _sdc columns."""
+        schema_dict = self._singer_catalog_entry.schema.to_dict()
+        schema_dict["properties"]["_sdc_postgres_schema"] = {"type": ["string", "null"]}
+        return schema_dict
+
     def max_record_count(self) -> int | None:
         """Return the maximum number of records to fetch in a single query."""
         return self.config.get("max_record_count")
@@ -256,6 +263,7 @@ class PostgresStream(SQLStream):
                 # TODO: Standardize record mapping type
                 # https://github.com/meltano/sdk/issues/2096
                 transformed_record = self.post_process(dict(record))
+                transformed_record["_sdc_postgres_schema"] = table.schema
                 if transformed_record is None:
                     # Record filtered out during post_process()
                     continue
