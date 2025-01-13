@@ -35,7 +35,7 @@ packages = [
 [tool.poetry.dependencies]
 python = ">=3.9"
 psycopg2-binary = "2.9.10"
-sqlalchemy = "2.0.36"
+sqlalchemy = "2.0.37"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
@@ -56,7 +56,7 @@ types-sqlalchemy = ">=1.4.53.38"
 types-jsonschema = ">=4.19.0.3"
 types-psycopg2 = ">=2.9.21.20240118"
 
-[tool.poetry.dev-dependencies.singer-sdk]
+[tool.poetry.group.dev.dependencies.singer-sdk]
 version = "*"
 extras = ["testing"]
 

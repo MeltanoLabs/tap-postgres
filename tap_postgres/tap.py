@@ -161,8 +161,7 @@ class TapPostgres(SQLTap):
             th.IntegerType,
             default=None,
             description=(
-                "Optional. The maximum number of records to return in a "
-                "single stream."
+                "Optional. The maximum number of records to return in a single stream."
             ),
         ),
         th.Property(
