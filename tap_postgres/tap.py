@@ -40,6 +40,7 @@ class TapPostgres(SQLTap):
     """Singer tap for Postgres."""
 
     name = "tap-postgres"
+    package_name = "meltanolabs-tap-postgres"
     default_stream_class = PostgresStream
 
     def __init__(
