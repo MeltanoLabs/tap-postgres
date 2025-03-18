@@ -354,7 +354,7 @@ class TapPostgres(SQLTap):
             config: The configuration for the connector.
         """
         if config.get("sqlalchemy_url"):
-            return cast(str, config["sqlalchemy_url"])
+            return cast("str", config["sqlalchemy_url"])
 
         sqlalchemy_url = URL.create(
             drivername="postgresql+psycopg2",
@@ -365,7 +365,7 @@ class TapPostgres(SQLTap):
             database=config["database"],
             query=self.get_sqlalchemy_query(config=config),
         )
-        return cast(str, sqlalchemy_url)
+        return cast("str", sqlalchemy_url)
 
     def get_sqlalchemy_query(self, config: Mapping[str, Any]) -> dict:
         """Get query values to be used for sqlalchemy URL creation.

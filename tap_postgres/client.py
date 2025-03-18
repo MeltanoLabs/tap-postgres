@@ -280,7 +280,7 @@ class PostgresLogBasedStream(SQLStream):
     @functools.cached_property
     def schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
-        schema_dict = t.cast(dict, self._singer_catalog_entry.schema.to_dict())
+        schema_dict = t.cast("dict", self._singer_catalog_entry.schema.to_dict())
         for property in schema_dict["properties"].values():
             if isinstance(property["type"], list):
                 property["type"].append("null")
