@@ -39,7 +39,7 @@ sqlalchemy = "2.0.39"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.44.0"
+version = "~=0.45.0"
 extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
