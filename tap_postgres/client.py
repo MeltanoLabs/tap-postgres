@@ -69,8 +69,14 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
     def json_to_jsonschema(self, column_type: postgresql.JSON) -> dict:
         """Override the default mapping for JSON and JSONB columns."""
         if self.json_as_object:
-            return {"type": ["object", "null"]}
-        return {"type": ["string", "number", "integer", "array", "object", "boolean"]}
+            return {
+                "type": ["object", "null"],
+                "additionalProperties": True,
+            }
+        return {
+            "type": ["string", "number", "integer", "array", "object", "boolean"],
+            "additionalProperties": True,
+        }
 
     @to_jsonschema.register
     def datetime_to_jsonschema(self, column_type: sqlalchemy.types.DateTime) -> dict:
