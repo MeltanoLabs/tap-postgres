@@ -661,14 +661,14 @@ test = ["objgraph", "psutil"]
 
 [[package]]
 name = "hypothesis"
-version = "6.130.4"
+version = "6.130.5"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "hypothesis-6.130.4-py3-none-any.whl", hash = "sha256:cda4a57115d10ecbefe0a9cc8d69d20a13eb56ecbfe7c24eaee5d368c2b7c477"},
-    {file = "hypothesis-6.130.4.tar.gz", hash = "sha256:d0672eb0ac1060b0324b0e43925a50b2bef1c60a32739bb9233000d85838436a"},
+    {file = "hypothesis-6.130.5-py3-none-any.whl", hash = "sha256:c13e42ec7df7fdc45c44d0b39f1e429d2253e19a37041d927e092afa7645bfcf"},
+    {file = "hypothesis-6.130.5.tar.gz", hash = "sha256:2cdcdd894adc390a688c8a1c08580c345a67ecf73e31d5bb51a7712acf7b747c"},
 ]
 
 [package.dependencies]
@@ -1935,14 +1935,14 @@ files = [
 
 [[package]]
 name = "types-simplejson"
-version = "3.20.0.20250318"
+version = "3.20.0.20250326"
 description = "Typing stubs for simplejson"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "types_simplejson-3.20.0.20250318-py3-none-any.whl", hash = "sha256:e8c9cdb06b566b6ca1c7bf3d4c97fbd69a6f6a5aea760ef127f31e638a094c26"},
-    {file = "types_simplejson-3.20.0.20250318.tar.gz", hash = "sha256:5ada2caa2f76826a90b97985f7b0caf55088a23ed4eb9c39fc1f5cb00b985e09"},
+    {file = "types_simplejson-3.20.0.20250326-py3-none-any.whl", hash = "sha256:db1ddea7b8f7623b27a137578f22fc6c618db8c83ccfb1828ca0d2f0ec11efa7"},
+    {file = "types_simplejson-3.20.0.20250326.tar.gz", hash = "sha256:b2689bc91e0e672d7a5a947b4cb546b76ae7ddc2899c6678e72a10bf96cd97d2"},
 ]
 
 [[package]]
