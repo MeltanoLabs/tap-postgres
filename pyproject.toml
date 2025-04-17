@@ -39,7 +39,8 @@ sqlalchemy = "2.0.40"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.45.3"
+git = "https://github.com/meltano/sdk.git"
+rev = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
 extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
@@ -57,7 +58,8 @@ types-jsonschema = ">=4.19.0.3"
 types-psycopg2 = ">=2.9.21.20240118"
 
 [tool.poetry.group.dev.dependencies.singer-sdk]
-version = "*"
+git = "https://github.com/meltano/sdk.git"
+rev = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
 extras = ["testing"]
 
 [tool.mypy]
@@ -98,7 +100,7 @@ select = [
   "E",    # pycodestyle errors
   "I",    # isort
   "N",    # pep8-naming
-  "D",    # pydocsyle
+  "D",    # pydocstyle
   "UP",   # pyupgrade
   "ICN",  # flake8-import-conventions
   "RET",  # flake8-return
