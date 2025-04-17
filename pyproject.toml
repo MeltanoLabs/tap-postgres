@@ -39,8 +39,7 @@ sqlalchemy = "2.0.40"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-git = "https://github.com/meltano/sdk.git"
-rev = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
+version = "~=0.45.7"
 extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
@@ -58,8 +57,7 @@ types-jsonschema = ">=4.19.0.3"
 types-psycopg2 = ">=2.9.21.20240118"
 
 [tool.poetry.group.dev.dependencies.singer-sdk]
-git = "https://github.com/meltano/sdk.git"
-rev = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
+version = "~=0.45.7"
 extras = ["testing"]
 
 [tool.mypy]

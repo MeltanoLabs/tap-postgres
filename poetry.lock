@@ -1624,13 +1624,15 @@ files = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.45.7.dev1+g38fb3472"
+version = "0.45.10"
 description = "A framework for building Singer taps"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
-files = []
-develop = false
+files = [
+    {file = "singer_sdk-0.45.10-py3-none-any.whl", hash = "sha256:50bf84d3dd01784798c01d24183a1b9979b55c5b40a00da9fa8c905f9e0400cb"},
+    {file = "singer_sdk-0.45.10.tar.gz", hash = "sha256:fc697badd0c43e0edf59f797bc25e711ab334879c68b235f72fd82dd41f2e724"},
+]
 
 [package.dependencies]
 backoff = {version = ">=2.0.0", markers = "python_version < \"4\""}
@@ -1665,12 +1667,6 @@ parquet = ["numpy (>=1.22)", "pyarrow (>=13)"]
 s3 = ["fs-s3fs (>=1.1.1)", "s3fs (>=2024.9.0)"]
 ssh = ["paramiko (>=3.3.0)"]
 testing = ["pytest (>=7.2.1)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/meltano/sdk.git"
-reference = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
-resolved_reference = "38fb34727d2b0db24a09d00a1c02440c882bcd8b"
 
 [[package]]
 name = "six"
@@ -2048,4 +2044,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "ac42385eeebf9214d29abf1273e84043f811ce464a19e866ed26c65ad163b170"
+content-hash = "c59b3b0acbdafdcc6013d809d743f68a03150c9b5efd74c785018892b55bc6f5"
