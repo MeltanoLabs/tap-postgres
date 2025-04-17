@@ -80,23 +80,14 @@ jobs:
         sudo chown 999:999 ssl/server.key
         chmod 600 ssl/pkey.key
 
-    - name: Build Postgres container
-      env:
-        POSTGRES_VERSION: ${{ matrix.postgres-version }}
-      run: |
-        docker build . --build-arg POSTGRES_VERSION=${POSTGRES_VERSION} --tag meltano/log_based
     - name: Compose Postgres container
       env:
         POSTGRES_VERSION: ${{ matrix.postgres-version }}
       run: |
-        docker compose -f docker-compose.yml up -d --wait --wait-timeout=30
-
-    - uses: isbang/compose-action@8be2d741e891ac9b8ac20825e6f3904149599925 # v2.2.0
-      env:
-        POSTGRES_VERSION: ${{ matrix.postgres-version }}
+        docker compose up -d --wait --wait-timeout=30
 
  # Leaving comments as this makes testing the openssh docker image easier and should save someone some time later
- #   - name: Test SSH File Permissiosn
+ #   - name: Test SSH File Permissions
  #     run: |
  #       docker exec openssh-server ls -lsa /config/ssh_host_keys
  #       docker exec openssh-server cat  /config/logs/openssh/current

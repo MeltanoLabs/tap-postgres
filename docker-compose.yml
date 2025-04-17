@@ -58,7 +58,10 @@ services:
       - "5433:5432"
 
   postgres_log_based:
-    image: meltano/log_based # Locally built
+    build:
+      context: .
+      args:
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-latest}
     command: postgres -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10
     environment:
       POSTGRES_USER: postgres
