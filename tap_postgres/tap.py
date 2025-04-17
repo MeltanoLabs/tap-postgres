@@ -13,12 +13,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
 from singer_sdk import SQLStream, SQLTap, Stream
-from singer_sdk import typing as th
-from singer_sdk._singerlib import (  # JSON schema typing helpers
-    Catalog,
-    Metadata,
-    Schema,
-)
+from singer_sdk import typing as th  # JSON schema typing helpers
+from singer_sdk.singerlib import Catalog, Metadata, Schema
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
