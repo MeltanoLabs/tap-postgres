@@ -1,27 +1,28 @@
 version: 1
 send_anonymous_usage_stats: true
-project_id: "tap-postgres"
+project_id: tap-postgres
 plugins:
   extractors:
-  - name: "tap-postgres"
-    namespace: "tap_postgres"
+  - name: tap-postgres
+    namespace: tap_postgres
     pip_url: -e .
     capabilities:
     - state
     - catalog
     - discover
-    config:
-      sqlalchemy_url: "postgresql://postgres:postgres@localhost:5432/postgres"
     settings:
     - name: sqlalchemy_url
       kind: password
+      sensitive: true
     - name: ssh_tunnel.enable
       kind: boolean
       value: false
     - name: ssh_tunnel.private_key
       kind: password
+      sensitive: true
     - name: ssh_tunnel.private_key_password
       kind: password
+      sensitive: true
     - name: ssh_tunnel.host
     - name: ssh_tunnel.username
     - name: ssh_tunnel.port
@@ -32,13 +33,20 @@ plugins:
     - name: ssl_mode
     - name: ssl_certificate_authority
       kind: password
+      sensitive: true
     - name: ssl_client_certificate
       kind: password
+      sensitive: true
     - name: ssl_client_private_key
       kind: password
+      sensitive: true
+    config:
+      sqlalchemy_url: postgresql://postgres:postgres@localhost:5432/postgres
     select:
     - "*.*"
   loaders:
   - name: target-jsonl
     variant: andyh1203
     pip_url: target-jsonl
+venv:
+  backend: uv
