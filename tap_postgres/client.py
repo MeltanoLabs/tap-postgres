@@ -283,19 +283,23 @@ class PostgresLogBasedStream(SQLStream):
         """Return a read-only config dictionary."""
         return MappingProxyType(self._config)
 
-    @functools.cached_property
-    def schema(self) -> dict:
+    @functools.cached_property  # type: ignore[misc]
+    def effective_schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
-        schema_dict = t.cast("dict", self._singer_catalog_entry.schema.to_dict())
+        schema_dict = super().effective_schema
+
         for property in schema_dict["properties"].values():
             if isinstance(property["type"], list):
                 property["type"].append("null")
             else:
                 property["type"] = [property["type"], "null"]
+
         if "required" in schema_dict:
             schema_dict.pop("required")
+
         schema_dict["properties"].update({"_sdc_deleted_at": {"type": ["string"]}})
         schema_dict["properties"].update({"_sdc_lsn": {"type": ["integer"]}})
+
         return schema_dict
 
     def _increment_stream_state(

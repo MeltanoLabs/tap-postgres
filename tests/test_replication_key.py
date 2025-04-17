@@ -2,9 +2,9 @@
 
 import copy
 import datetime
-import json
 
 import sqlalchemy as sa
+from singer_sdk.singerlib import Catalog, StreamMetadata
 from singer_sdk.testing.runners import TapTestRunner
 from singer_sdk.testing.templates import TapTestTemplate
 from sqlalchemy.dialects.postgresql import TIMESTAMP
@@ -19,26 +19,24 @@ SAMPLE_CONFIG = {
 }
 
 
-def replication_key_test(tap, table_name):
+def replication_key_test(tap: TapPostgres, table_name):
     """Originally built to address
     https://github.com/MeltanoLabs/tap-postgres/issues/9
     """
     tap.run_discovery()
-    # TODO Switch this to using Catalog from _singerlib as it makes iterating
-    # over this stuff easier
-    tap_catalog = json.loads(tap.catalog_json_text)
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
+    for stream in tap_catalog.streams:
+        if stream.stream and table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
             # Without this the tap will not do an INCREMENTAL sync properly
-            stream["replication_key"] = "updated_at"
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "INCREMENTAL"
-                    metadata["metadata"]["replication-key"] = "updated_at"
+            stream.replication_key = "updated_at"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "INCREMENTAL"
+                    metadata.replication_key = "updated_at"
 
     # Handy for debugging
     # with open('data.json', 'w', encoding='utf-8') as f:
@@ -78,19 +76,19 @@ def test_null_replication_key_with_start_date():
         insert = table.insert().values(data="Zulu", updated_at=None)
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            stream["replication_key"] = "updated_at"
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "INCREMENTAL"
-                    metadata["metadata"]["replication-key"] = "updated_at"
+            stream.replication_key = "updated_at"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "INCREMENTAL"
+                    metadata.replication_key = "updated_at"
 
     test_runner = TapTestRunner(
         tap_class=TapPostgres,
@@ -134,19 +132,19 @@ def test_null_replication_key_without_start_date():
         insert = table.insert().values(data="Zulu", updated_at=None)
         conn.execute(insert)
     tap = TapPostgres(config=modified_config)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            stream["replication_key"] = "updated_at"
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "INCREMENTAL"
-                    metadata["metadata"]["replication-key"] = "updated_at"
+            stream.replication_key = "updated_at"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "INCREMENTAL"
+                    metadata.replication_key = "updated_at"
 
     test_runner = TapTestRunner(
         tap_class=TapPostgres,
