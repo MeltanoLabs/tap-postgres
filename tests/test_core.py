@@ -258,7 +258,8 @@ def test_jsonb_json():
                     "object",
                     "boolean",
                     "null",
-                ]
+                ],
+                "additionalProperties": True,
             }
             assert schema_message["schema"]["properties"]["column_json"] == {
                 "type": [
@@ -269,7 +270,8 @@ def test_jsonb_json():
                     "object",
                     "boolean",
                     "null",
-                ]
+                ],
+                "additionalProperties": True,
             }
     for i in range(len(rows)):
         assert test_runner.records[altered_table_name][i] == rows[i]
@@ -330,7 +332,8 @@ def test_jsonb_array():
                         "array",
                         "object",
                         "boolean",
-                    ]
+                    ],
+                    "additionalProperties": True,
                 },
                 "type": ["array", "null"],
             }
@@ -397,13 +400,15 @@ def test_json_as_object():
                 "type": [
                     "object",
                     "null",
-                ]
+                ],
+                "additionalProperties": True,
             }
             assert schema_message["schema"]["properties"]["column_json"] == {
                 "type": [
                     "object",
                     "null",
-                ]
+                ],
+                "additionalProperties": True,
             }
 
     assert len(rows) == len(test_runner.records[altered_table_name])
