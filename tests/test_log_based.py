@@ -1,6 +1,5 @@
-import json
-
 import sqlalchemy as sa
+from singer_sdk.singerlib import Catalog, StreamMetadata
 from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, TEXT
 
 from tap_postgres.tap import TapPostgres
@@ -32,26 +31,31 @@ def test_null_append():
         sa.Column("id", BIGINT, primary_key=True),
         sa.Column("data", TEXT, nullable=True),
     )
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         table.drop(conn, checkfirst=True)
         metadata_obj.create_all(conn)
         insert = table.insert().values(id=123, data="hello world")
         conn.execute(insert)
+
     tap = TapPostgres(config=LOG_BASED_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"public-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            stream["replication_method"] = "LOG_BASED"
-            stream["replication_key"] = "_sdc_lsn"
-            stream["schema"]["properties"]["data"]["type"] = "string"
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "LOG_BASED"
+            stream.replication_method = "LOG_BASED"
+            stream.replication_key = "_sdc_lsn"
+
+            assert stream.schema.properties
+            stream.schema.properties["data"].type = "string"
+
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "LOG_BASED"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=LOG_BASED_CONFIG, catalog=tap_catalog
@@ -86,20 +90,21 @@ def test_string_array_column():
         conn.execute(insert)
 
     tap = TapPostgres(config=LOG_BASED_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"public-{table_name}"
 
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            stream["replication_method"] = "LOG_BASED"
-            stream["replication_key"] = "_sdc_lsn"
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "LOG_BASED"
+            stream.replication_method = "LOG_BASED"
+            stream.replication_key = "_sdc_lsn"
+
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "LOG_BASED"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=LOG_BASED_CONFIG, catalog=tap_catalog

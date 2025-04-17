@@ -39,7 +39,7 @@ sqlalchemy = "2.0.40"
 sshtunnel = "0.4.0"
 
 [tool.poetry.dependencies.singer-sdk]
-version = "~=0.45.3"
+version = "~=0.45.7"
 extras = ["faker"]
 
 [tool.poetry.group.dev.dependencies]
@@ -57,7 +57,7 @@ types-jsonschema = ">=4.19.0.3"
 types-psycopg2 = ">=2.9.21.20240118"
 
 [tool.poetry.group.dev.dependencies.singer-sdk]
-version = "*"
+version = "~=0.45.7"
 extras = ["testing"]
 
 [tool.mypy]
@@ -98,7 +98,7 @@ select = [
   "E",    # pycodestyle errors
   "I",    # isort
   "N",    # pep8-naming
-  "D",    # pydocsyle
+  "D",    # pydocstyle
   "UP",   # pyupgrade
   "ICN",  # flake8-import-conventions
   "RET",  # flake8-return
