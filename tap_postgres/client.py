@@ -21,7 +21,6 @@ from singer_sdk import SQLConnector, SQLStream
 from singer_sdk.connectors.sql import SQLToJSONSchema
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
-from singer_sdk.streams.core import REPLICATION_INCREMENTAL
 from sqlalchemy.dialects import postgresql
 
 if t.TYPE_CHECKING:
@@ -325,7 +324,7 @@ class PostgresLogBasedStream(SQLStream):
                     f"stream(replication method={self.replication_method})"
                 )
                 raise ValueError(msg)
-            treat_as_sorted = self.is_sorted()
+            treat_as_sorted = self.is_sorted
             if not treat_as_sorted and self.state_partitioning_keys is not None:
                 # Streams with custom state partitioning are not resumable.
                 treat_as_sorted = False
@@ -485,10 +484,3 @@ class PostgresLogBasedStream(SQLStream):
             application_name="tap_postgres",
             connection_factory=extras.LogicalReplicationConnection,
         )
-
-    # TODO: Make this change upstream in the SDK?
-    # I'm not sure if in general SQL databases don't guarantee order of records log
-    # replication, but at least Postgres does not.
-    def is_sorted(self) -> bool:  # type: ignore[override]
-        """Return True if the stream is sorted by the replication key."""
-        return self.replication_method == REPLICATION_INCREMENTAL
