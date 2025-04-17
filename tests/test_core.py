@@ -1,11 +1,11 @@
 import copy
 import datetime
 import decimal
-import json
 
 import pytest
 import sqlalchemy as sa
 from faker import Faker
+from singer_sdk.singerlib import Catalog, StreamMetadata
 from singer_sdk.testing import get_tap_test_class, suites
 from singer_sdk.testing.runners import TapTestRunner
 from sqlalchemy.dialects.postgresql import (
@@ -164,17 +164,17 @@ def test_temporal_datatypes():
         )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -228,17 +228,17 @@ def test_jsonb_json():
         insert = table.insert().values(rows)
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -300,17 +300,17 @@ def test_jsonb_array():
         insert = table.insert().values(rows)
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -371,18 +371,18 @@ def test_json_as_object():
     copied_config["json_as_object"] = True
 
     tap = TapPostgres(config=copied_config)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
 
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -442,18 +442,18 @@ def test_numeric_types():
         )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
 
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -490,11 +490,11 @@ def test_filter_schemas():
     filter_schemas_config = copy.deepcopy(SAMPLE_CONFIG)
     filter_schemas_config.update({"filter_schemas": ["new_schema"]})
     tap = TapPostgres(config=filter_schemas_config)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"new_schema-{table_name}"
     # Check that the only stream in the catalog is the one table put into new_schema
-    assert len(tap_catalog["streams"]) == 1
-    assert tap_catalog["streams"][0]["stream"] == altered_table_name
+    assert len(tap_catalog.streams) == 1
+    assert tap_catalog.streams[0].stream == altered_table_name
 
 
 class PostgresTestRunner(TapTestRunner):
@@ -533,18 +533,17 @@ def test_invalid_python_dates():  # noqa: PLR0912
         )
         conn.execute(insert)
     tap = TapPostgres(config=SAMPLE_CONFIG)
-    # Alter config and then check the data comes through as a string
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
@@ -556,17 +555,17 @@ def test_invalid_python_dates():  # noqa: PLR0912
     # This should cause the same data to pass
     copied_config["dates_as_string"] = True
     tap = TapPostgres(config=copied_config)
-    tap_catalog = json.loads(tap.catalog_json_text)
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
     altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
-    for stream in tap_catalog["streams"]:
-        if stream.get("stream") and altered_table_name not in stream["stream"]:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = False
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
         else:
-            for metadata in stream["metadata"]:
-                metadata["metadata"]["selected"] = True
-                if metadata["breadcrumb"] == []:
-                    metadata["metadata"]["replication-method"] = "FULL_TABLE"
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
 
     test_runner = PostgresTestRunner(
         tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
