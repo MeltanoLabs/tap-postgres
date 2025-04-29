@@ -1,14 +1,12 @@
-[tool.poetry]
+[project]
 name = "meltanolabs-tap-postgres"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Singer tap for Postgres, built with the Meltano SDK for Singer Targets."
-authors = ["Meltano Team and Contributors <hello@meltano.com>"]
-maintainers = ["Meltano Team and Contributors <hello@meltano.com>"]
-license = "MIT"
+authors = [{ name = "Meltano Team and Contributors", email = "hello@meltano.com" }]
+requires-python = ">=3.9"
 readme = "README.md"
-homepage = "https://meltano.com"
-repository = "https://github.com/MeltanoLabs/tap-postgres"
-documentation = "https://github.com/MeltanoLabs/tap-postgres/blob/main/README.md"
+license = "MIT"
+maintainers = [{ name = "Meltano Team and Contributors", email = "hello@meltano.com" }]
 keywords = [
     "Postgres",
     "Singer",
@@ -27,38 +25,49 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
-packages = [
-    { include = "tap_postgres" }
+dependencies = [
+    "psycopg2-binary==2.9.10",
+    "sqlalchemy==2.0.40",
+    "sshtunnel==0.4.0",
+    "singer-sdk[faker]~=0.45.7",
 ]
 
+[project.urls]
+Homepage = "https://meltano.com"
+Repository = "https://github.com/MeltanoLabs/tap-postgres"
+Documentation = "https://github.com/MeltanoLabs/tap-postgres/blob/main/README.md"
 
-[tool.poetry.dependencies]
-python = ">=3.9"
-psycopg2-binary = "2.9.10"
-sqlalchemy = "2.0.40"
-sshtunnel = "0.4.0"
+[project.scripts]
+tap-postgres = "tap_postgres.tap:TapPostgres.cli"
 
-[tool.poetry.dependencies.singer-sdk]
-version = "~=0.45.7"
-extras = ["faker"]
+[dependency-groups]
+dev = [
+    { include-group = "lint" },
+    { include-group = "testing" },
+    { include-group = "typing" },
+]
+lint = [
+    "ruff~=0.11.0",
+]
+testing = [
+    "hypothesis>=6.122.1",
+    "pytest>=8",
+    "singer-sdk[testing]~=0.45.7",
+]
+typing = [
+    "mypy>=1.8.0",
+    "types-paramiko>=3.3.0.0",
+    "types-simplejson>=3.19.0.2",
+    "types-sqlalchemy>=1.4.53.38",
+    "types-jsonschema>=4.19.0.3",
+    "types-psycopg2>=2.9.21.20240118",
+]
 
-[tool.poetry.group.dev.dependencies]
-faker = ">=18.5.1"
-hypothesis = ">=6.122.1"
-mypy = ">=1.8.0"
-pre-commit = ">=3.0.4"
-ruff = "~=0.11.0"
-pydocstyle = ">=6.1.1"
-tox = "~=4"
-types-paramiko = ">=3.3.0.0"
-types-simplejson = ">=3.19.0.2"
-types-sqlalchemy = ">=1.4.53.38"
-types-jsonschema = ">=4.19.0.3"
-types-psycopg2 = ">=2.9.21.20240118"
+[tool.hatch.build.targets.sdist]
+include = ["tap_postgres"]
 
-[tool.poetry.group.dev.dependencies.singer-sdk]
-version = "~=0.45.7"
-extras = ["testing"]
+[tool.hatch.build.targets.wheel]
+include = ["tap_postgres"]
 
 [tool.mypy]
 exclude = "tests"
@@ -74,22 +83,13 @@ module = [
 
 [build-system]
 requires = [
-  "poetry-core==1.9.1",
-  "poetry-dynamic-versioning==1.4.1",
+  "hatchling==1.27",
+  "hatch-vcs==0.4",
 ]
-build-backend = "poetry_dynamic_versioning.backend"
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-# CLI declaration
-tap-postgres = 'tap_postgres.tap:TapPostgres.cli'
-
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-style = "pep440"
-
-[tool.ruff]
-target-version = "py39"
+[tool.hatch.version]
+source = "vcs"
 
 [tool.ruff.lint]
 select = [
