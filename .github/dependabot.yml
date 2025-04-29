@@ -25,8 +25,6 @@ updates:
       interval: weekly
       timezone: "America/New_York"
       time: "07:23"
-    reviewers:
-      - "visch"
     groups:
       ci:
         patterns:

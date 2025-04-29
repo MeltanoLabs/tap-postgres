@@ -72,7 +72,7 @@ environment variable is set either in the terminal context or in the `.env` file
 ## Installation
 
 ```bash
-pipx install meltanolabs-tap-postgres
+uv tool install meltanolabs-tap-postgres
 ```
 
 ## Usage
@@ -89,12 +89,16 @@ tap-postgres --config CONFIG --discover > ./catalog.json
 
 ## Developer Resources
 
+Prerequisites:
+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
 ### Initialize your Development Environment
 
 ```bash
-pipx install poetry pre-commit
-poetry install
-pre-commit install
+uv tool install --with tox-uv tox
+uv tool install pre-commit
+uv sync
 ```
 
 ### Setting Up SSL Files
@@ -134,15 +138,15 @@ Create tests within the `tap_postgres/tests` subfolder and
   then run:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
 NOTE: Running the tests requires a locally running postgres. See tests/settings.py for the expected configuration.
 
-You can also test the `tap-postgres` CLI interface directly using `poetry run`:
+You can also test the `tap-postgres` CLI interface directly using `uv run`:
 
 ```bash
-poetry run tap-postgres --help
+uv run tap-postgres --help
 ```
 
 ### Testing with [Meltano](https://www.meltano.com)
@@ -156,7 +160,7 @@ Next, install Meltano (if you haven't already) and any needed plugins:
 
 ```bash
 # Install meltano
-pipx install meltano
+uv tool install meltano
 # Initialize meltano within this directory
 cd tap-postgres
 meltano install

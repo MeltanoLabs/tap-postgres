@@ -282,7 +282,7 @@ class PostgresLogBasedStream(SQLStream):
         """Return a read-only config dictionary."""
         return MappingProxyType(self._config)
 
-    @functools.cached_property  # type: ignore[misc]
+    @functools.cached_property
     def effective_schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
         schema_dict = super().effective_schema
