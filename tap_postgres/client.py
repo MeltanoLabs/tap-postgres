@@ -194,7 +194,7 @@ class PostgresStream(SQLStream):
     """Stream class for Postgres streams."""
 
     connector_class = PostgresConnector
-    supports_nulls_first = True
+    supports_nulls_first = False
 
     # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
