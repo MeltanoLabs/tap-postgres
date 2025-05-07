@@ -234,7 +234,6 @@ class PostgresStream(SQLStream):
         query = table.select()
 
         if self.replication_key:
-            self.logger.info(f"supports_nulls_first: {self.supports_nulls_first}")
             replication_key_col = table.columns[self.replication_key]
             order_by = (
                 sa.nulls_first(replication_key_col.asc())
