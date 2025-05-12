@@ -2,6 +2,9 @@ version = 1
 revision = 2
 requires-python = ">=3.9"
 
+[options]
+prerelease-mode = "allow"
+
 [[package]]
 name = "appdirs"
 version = "1.4.4"
@@ -611,7 +614,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "psycopg2-binary", specifier = "==2.9.10" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["faker"], specifier = ">=0.45.7" },
     { name = "sqlalchemy", specifier = "==2.0.40" },
     { name = "sshtunnel", specifier = "==0.4.0" },
 ]
@@ -622,7 +625,7 @@ dev = [
     { name = "mypy", specifier = ">=1.8.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = "~=0.11.0" },
-    { name = "singer-sdk", extras = ["testing"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["testing"], specifier = ">=0.45.7" },
     { name = "types-jsonschema", specifier = ">=4.19.0.3" },
     { name = "types-paramiko", specifier = ">=3.3.0.0" },
     { name = "types-psycopg2", specifier = ">=2.9.21.20240118" },
@@ -633,7 +636,7 @@ lint = [{ name = "ruff", specifier = "~=0.11.0" }]
 testing = [
     { name = "hypothesis", specifier = ">=6.122.1" },
     { name = "pytest", specifier = ">=8" },
-    { name = "singer-sdk", extras = ["testing"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["testing"], specifier = ">=0.45.7" },
 ]
 typing = [
     { name = "mypy", specifier = ">=1.8.0" },
