@@ -29,7 +29,7 @@ dependencies = [
     "psycopg2-binary==2.9.10",
     "sqlalchemy==2.0.40",
     "sshtunnel==0.4.0",
-    "singer-sdk[faker]~=0.45.7",
+    "singer-sdk[faker]~=0.46.0",
 ]
 
 [project.urls]
@@ -52,7 +52,7 @@ lint = [
 testing = [
     "hypothesis>=6.122.1",
     "pytest>=8",
-    "singer-sdk[testing]~=0.45.7",
+    "singer-sdk[testing]~=0.46.0",
 ]
 typing = [
     "mypy>=1.8.0",
