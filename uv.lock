@@ -611,7 +611,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "psycopg2-binary", specifier = "==2.9.10" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["faker"], git = "https://github.com/meltano/sdk.git" },
     { name = "sqlalchemy", specifier = "==2.0.40" },
     { name = "sshtunnel", specifier = "==0.4.0" },
 ]
@@ -622,7 +622,7 @@ dev = [
     { name = "mypy", specifier = ">=1.8.0" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = "~=0.11.0" },
-    { name = "singer-sdk", extras = ["testing"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["testing"], git = "https://github.com/meltano/sdk.git" },
     { name = "types-jsonschema", specifier = ">=4.19.0.3" },
     { name = "types-paramiko", specifier = ">=3.3.0.0" },
     { name = "types-psycopg2", specifier = ">=2.9.21.20240118" },
@@ -633,7 +633,7 @@ lint = [{ name = "ruff", specifier = "~=0.11.0" }]
 testing = [
     { name = "hypothesis", specifier = ">=6.122.1" },
     { name = "pytest", specifier = ">=8" },
-    { name = "singer-sdk", extras = ["testing"], specifier = "~=0.45.7" },
+    { name = "singer-sdk", extras = ["testing"], git = "https://github.com/meltano/sdk.git" },
 ]
 typing = [
     { name = "mypy", specifier = ">=1.8.0" },
@@ -1181,8 +1181,8 @@ wheels = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.45.11"
-source = { registry = "https://pypi.org/simple" }
+version = "0.45.12.dev1+g9aa55773"
+source = { git = "https://github.com/meltano/sdk.git#9aa557730b1b1f8dfc0a4a886a2d264adaf57de9" }
 dependencies = [
     { name = "backoff", marker = "python_full_version < '4'" },
     { name = "backports-datetime-fromisoformat", marker = "python_full_version < '3.11'" },
@@ -1205,10 +1205,6 @@ dependencies = [
     { name = "simplejson" },
     { name = "sqlalchemy" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/8c/da5b4152f80e15cc2f5fd5a45b97e5bc0fcdfb83fe7e685a09187671e1fd/singer_sdk-0.45.11.tar.gz", hash = "sha256:9188f0a61038e53211291d7497aad1959e6dbef81669d97712cdbc1e0675f2e6", size = 1447613, upload_time = "2025-04-28T19:29:19.39Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/62/512da05f1b314fe55c9fe7210b5e4c264d9e54b08aa6180f528cb3b890a0/singer_sdk-0.45.11-py3-none-any.whl", hash = "sha256:8c47823642859817ccbbc9a983b9f704d553ecefc9bbfebcd9df504778439b96", size = 190569, upload_time = "2025-04-28T19:29:17.081Z" },
 ]
 
 [package.optional-dependencies]
