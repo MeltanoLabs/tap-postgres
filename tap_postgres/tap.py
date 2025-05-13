@@ -341,6 +341,14 @@ class TapPostgres(SQLTap):
                 "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
             ),
         ),
+        th.Property(
+            "end_date",
+            th.StringType,
+            description=(
+                "The date to end the replication. If not provided, the tap will "
+                "continue to replicate data indefinitely."
+            ),
+        ),
     ).to_dict()
 
     def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
