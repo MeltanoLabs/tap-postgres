@@ -60,7 +60,7 @@ This tap is tested with all actively supported [Python](https://devguide.python.
 | batch_config.storage              | False    | None                         | Defines the storage layer to use when writing batch files                                                                                                                                                                                                                                                |
 | batch_config.storage.root         | False    | None                         | Root path to use when writing batch files.                                                                                                                                                                                                                                                               |
 | batch_config.storage.prefix       | False    | None                         | Prefix to use when writing batch files.                                                                                                                                                                                                                                                                  |
-
+| custom_where_clauses              | False    | None                         | Additional custom where condition when extracting data                                                                                                                                                                                                                                                   |
 A full list of supported settings and capabilities is available by running: `tap-postgres --about`
 
 ### Configure using environment variables
