@@ -14,6 +14,8 @@ plugins:
     - name: sqlalchemy_url
       kind: password
       sensitive: true
+    - name: stream_options
+      kind: object
     - name: ssh_tunnel.enable
       kind: boolean
       value: false
