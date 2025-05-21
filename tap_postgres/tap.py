@@ -346,9 +346,9 @@ class TapPostgres(SQLTap):
             th.ArrayType(th.StringType),
             default=[],
             description=(
-                "If an array of custom where clauses is provided, the tap will only process "
-                "the records that match the where clauses."
-                "The where clauses are combined using the AND operator."
+                "If an array of custom WHERE clauses is provided, the tap will only "
+                "process the records that match the WHERE clauses."
+                "The WHERE clauses are combined using the AND operator."
             ),
         ),
     ).to_dict()
