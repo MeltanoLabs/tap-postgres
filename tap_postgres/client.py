@@ -22,7 +22,6 @@ from singer_sdk.connectors.sql import SQLToJSONSchema
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import text
 
 if t.TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -247,11 +246,8 @@ class PostgresStream(SQLStream):
             if start_val:
                 query = query.where(replication_key_col >= start_val)
 
-        if self.config.get("custom_where_clauses") and len(self.config.get("custom_where_clauses")) > 0:
-            custom_where_clauses = self.config.get("custom_where_clauses")
-            custom_where_clauses = [text(clause.strip()) for clause in custom_where_clauses]
-
-            query = query.where(*custom_where_clauses)
+        if clauses := self.config.get("custom_where_clauses"):
+            query = query.where(*(sa.text(clause.strip()) for clause in clauses))
 
         if self.ABORT_AT_RECORD_COUNT is not None:
             # Limit record count to one greater than the abort threshold. This ensures
