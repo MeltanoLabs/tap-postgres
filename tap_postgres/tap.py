@@ -197,6 +197,24 @@ class TapPostgres(SQLTap):
             default=False,
         ),
         th.Property(
+            "stream_options",
+            th.ObjectType(
+                additional_properties=th.ObjectType(
+                    th.Property(
+                        "custom_where_clauses",
+                        th.ArrayType(th.StringType),
+                        default=[],
+                        description=(
+                            "If an array of custom WHERE clauses is provided, the tap "
+                            "will only process the records that match the WHERE "
+                            "clauses. "
+                            "The WHERE clauses are combined using the AND operator."
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        th.Property(
             "ssh_tunnel",
             th.ObjectType(
                 th.Property(
@@ -339,16 +357,6 @@ class TapPostgres(SQLTap):
             description=(
                 "Replication method to use if there is not a catalog entry to override "
                 "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
-            ),
-        ),
-        th.Property(
-            "custom_where_clauses",
-            th.ArrayType(th.StringType),
-            default=[],
-            description=(
-                "If an array of custom WHERE clauses is provided, the tap will only "
-                "process the records that match the WHERE clauses."
-                "The WHERE clauses are combined using the AND operator."
             ),
         ),
     ).to_dict()

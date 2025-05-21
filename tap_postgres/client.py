@@ -246,7 +246,8 @@ class PostgresStream(SQLStream):
             if start_val:
                 query = query.where(replication_key_col >= start_val)
 
-        if clauses := self.config.get("custom_where_clauses"):
+        stream_options = self.config.get("stream_options", {}).get(self.name, {})
+        if clauses := stream_options.get("custom_where_clauses"):
             query = query.where(*(sa.text(clause.strip()) for clause in clauses))
 
         if self.ABORT_AT_RECORD_COUNT is not None:
