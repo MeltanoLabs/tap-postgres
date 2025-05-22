@@ -27,6 +27,7 @@ This tap is tested with all actively supported [Python](https://devguide.python.
 | password                                          | False    | None                         | Password used to authenticate. Note if sqlalchemy_url is set this will be ignored.                                                                                                                                                                                                                       |
 | database                                          | False    | None                         | Database name. Note if sqlalchemy_url is set this will be ignored.                                                                                                                                                                                                                                       |
 | max_record_count                                  | False    | None                         | Optional. The maximum number of records to return in a single stream.                                                                                                                                                                                                                                    |
+| replication_slot_name                             | False    | tappostgres                  | Optional. Name of the replication slot created with `pg_create_logical_replication_slot`                                         |
 | sqlalchemy_url                                    | False    | None                         | Example postgresql://[username]:[password]@localhost:5432/[db_name]                                                                                                                                                                                                                                      |
 | filter_schemas                                    | False    | None                         | If an array of schema names is provided, the tap will only process the specified Postgres schemas and ignore others. If left blank, the tap automatically determines ALL available Postgres schemas.                                                                                                     |
 | dates_as_string                                   | False    | 0                            | Defaults to false, if true, date, and timestamp fields will be Strings. If you see ValueError: Year is out of range, try setting this to True.                                                                                                                                                           |
@@ -267,44 +268,64 @@ Note also that using log-based replication will cause the replication key for al
 1. Ensure you are using  PostgresSQL 9.4 or higher.
 1. Need to access the master postgres instance
 1. Install the wal2json plugin for your database. Example instructions are given below for a Postgres 15.0 database running on Ubuntu 22.04. For more information, or for alternative versions/operating systems, refer to the [wal2json documentation](https://github.com/eulerto/wal2json)
+
     - Update and upgrade apt if necessary.
+
       ```bash
       sudo apt update
       sudo apt upgrade -y
       ```
+
     - Prepare by making prerequisite installations.
+
       ```bash
       sudo apt install curl ca-certificates
       sudo install -d /usr/share/postgresql-common/pgdg
       ```
+
     - Import the repository keys for the Postgres Apt repository
+
       ```bash
       sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
       ```
+
     - Create the pgdg.list file.
+
       ```bash
       sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
       ```
+
     - Use the Postgres Apt repository to install wal2json
+
       ```bash
       sudo apt update
       sudo apt-get install postgresql-server-dev-15
       export PATH=/usr/lib/postgresql/15/bin:$PATH
       sudo apt-get install postgresql-15-wal2json
       ```
+
 1. Configure your database with wal2json enabled.
+
     - Edit your `postgresql.conf` configuration file so the following parameters are appropriately set.
+
       ```
       wal_level = logical
       max_replication_slots = 10
       max_wal_senders = 10
       ```
+
     - Restart PostgresSQL
+
     - Create a replication slot for tap-postgres.
+
       ```sql
       SELECT * FROM pg_create_logical_replication_slot('tappostgres', 'wal2json');
       ```
+
+      You can also create the replication slot with any name you want, and set the `replication_slot_name` setting to that value.
+
 1. Ensure your configuration for tap-postgres specifies host, port, user, password, and database manually, without relying on an sqlalchemy url.
+
 1. Use the following metadata modification in your `meltano.yml` for the streams you wish to have as log-based. Note that during log-based replication, we do not support any replication key other than `_sdc_lsn`.
     ```yml
     metadata:
