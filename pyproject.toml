@@ -29,7 +29,7 @@ dependencies = [
     "psycopg2-binary==2.9.10",
     "sqlalchemy==2.0.41",
     "sshtunnel==0.4.0",
-    "singer-sdk[faker]~=0.46.0",
+    "singer-sdk[faker] @ git+https://github.com/meltano/sdk.git@refs/pull/3050/head",
 ]
 
 [project.urls]
@@ -52,7 +52,7 @@ lint = [
 testing = [
     "hypothesis>=6.122.1",
     "pytest>=8",
-    "singer-sdk[testing]~=0.46.0",
+    "singer-sdk[testing] @ git+https://github.com/meltano/sdk.git@refs/pull/3050/head",
 ]
 typing = [
     "mypy>=1.8.0",
@@ -87,6 +87,9 @@ requires = [
   "hatch-vcs==0.4",
 ]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "vcs"

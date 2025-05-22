@@ -59,7 +59,8 @@ def test_build_query():
         table="test_table",
     )
     stream = PostgresStream(tap, catalog_entry.to_dict(), connector=DummyConnector())
+    table = sa.Table("test_table", sa.MetaData(), sa.Column("id", sa.Integer))
     assert (
-        str(stream.build_query(None).compile()).replace("\n", "")
+        str(stream.build_query(table).compile()).replace("\n", "")
         == "SELECT test_table.id FROM test_table WHERE id % 2 = 0 AND id % 3 = 0"
     )
