@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import (
     ARRAY,
     BIGINT,
     DATE,
+    HSTORE,
     JSON,
     JSONB,
     TIME,
@@ -473,6 +474,67 @@ def test_numeric_types():
             props = schema_message["schema"]["properties"]
             assert "number" in props["my_numeric"]["type"]
             assert "number" in props["my_real"]["type"]
+
+
+def test_hstore():
+    """HSTORE columns were not being selected."""
+    table_name = "test_hstore"
+    engine = sa.create_engine(SAMPLE_CONFIG["sqlalchemy_url"], future=True)
+
+    metadata_obj = sa.MetaData()
+    table = sa.Table(
+        table_name,
+        metadata_obj,
+        sa.Column("id", BIGINT, primary_key=True),
+        sa.Column("hstore_column", HSTORE),
+    )
+
+    rows = [
+        {"id": 1, "hstore_column": {"foo": "bar"}},
+        {"id": 2, "hstore_column": {"baz": "foo", "qux": "quux"}},
+    ]
+
+    with engine.begin() as conn:
+        table.drop(conn, checkfirst=True)
+        # Ensure hstore extension is installed
+        conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS hstore"))
+        metadata_obj.create_all(conn)
+        insert = table.insert().values(rows)
+        conn.execute(insert)
+
+    tap = TapPostgres(config=SAMPLE_CONFIG)
+
+    tap_catalog = Catalog.from_dict(tap.catalog_dict)
+    altered_table_name = f"{DB_SCHEMA_NAME}-{table_name}"
+
+    for stream in tap_catalog.streams:
+        if stream.stream and altered_table_name not in stream.stream:
+            for metadata in stream.metadata.values():
+                metadata.selected = False
+        else:
+            for metadata in stream.metadata.values():
+                metadata.selected = True
+                if isinstance(metadata, StreamMetadata):
+                    metadata.forced_replication_method = "FULL_TABLE"
+
+    test_runner = PostgresTestRunner(
+        tap_class=TapPostgres, config=SAMPLE_CONFIG, catalog=tap_catalog
+    )
+    test_runner.sync_all()
+
+    for schema_message in test_runner.schema_messages:
+        if (
+            "stream" in schema_message
+            and schema_message["stream"] == altered_table_name
+        ):
+            assert schema_message["schema"]["properties"]["hstore_column"] == {
+                "type": ["object", "null"],
+                "additionalProperties": True,
+            }
+
+    assert len(rows) == len(test_runner.records[altered_table_name])
+    for expected_row, actual_row in zip(rows, test_runner.records[altered_table_name]):
+        assert actual_row == expected_row
 
 
 def test_filter_schemas():

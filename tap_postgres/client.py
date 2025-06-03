@@ -91,6 +91,14 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
             return {"type": ["string", "null"]}
         return super().date_to_jsonschema(column_type)
 
+    @to_jsonschema.register
+    def hstore_to_jsonschema(self, column_type: postgresql.HSTORE) -> dict:
+        """Override the default mapping for HSTORE columns."""
+        return {
+            "type": ["object", "null"],
+            "additionalProperties": True,
+        }
+
 
 def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
     """Overrides Singer SDK type conformance.
