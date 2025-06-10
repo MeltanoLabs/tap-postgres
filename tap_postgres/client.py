@@ -91,6 +91,14 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
             return {"type": ["string", "null"]}
         return super().date_to_jsonschema(column_type)
 
+    @to_jsonschema.register
+    def hstore_to_jsonschema(self, column_type: postgresql.HSTORE) -> dict:
+        """Override the default mapping for HSTORE columns."""
+        return {
+            "type": ["object", "null"],
+            "additionalProperties": True,
+        }
+
 
 def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
     """Overrides Singer SDK type conformance.
@@ -210,6 +218,44 @@ class PostgresStream(SQLStream):
         """Return the maximum number of records to fetch in a single query."""
         return self.config.get("max_record_count")
 
+    def build_query(self, context: Context | None) -> sa.sql.Select:
+        """Build a SQLAlchemy query for the stream."""
+        selected_column_names = self.get_selected_schema()["properties"].keys()
+        table = self.connector.get_table(
+            full_table_name=self.fully_qualified_name,
+            column_names=selected_column_names,
+        )
+        query = table.select()
+
+        if self.replication_key:
+            replication_key_col = table.columns[self.replication_key]
+            order_by = (
+                sa.nulls_first(replication_key_col.asc())
+                if self.supports_nulls_first
+                else replication_key_col.asc()
+            )
+            query = query.order_by(order_by)
+
+            start_val = self.get_starting_replication_key_value(context)
+            if start_val:
+                query = query.where(replication_key_col >= start_val)
+
+        stream_options = self.config.get("stream_options", {}).get(self.name, {})
+        if clauses := stream_options.get("custom_where_clauses"):
+            query = query.where(*(sa.text(clause.strip()) for clause in clauses))
+
+        if self.ABORT_AT_RECORD_COUNT is not None:
+            # Limit record count to one greater than the abort threshold. This ensures
+            # `MaxRecordsLimitException` exception is properly raised by caller
+            # `Stream._sync_records()` if more records are available than can be
+            # processed.
+            query = query.limit(self.ABORT_AT_RECORD_COUNT + 1)
+
+        if self.max_record_count():
+            query = query.limit(self.max_record_count())
+
+        return query
+
     # Get records from stream
     def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
         """Return a generator of record-type dictionary objects.
@@ -233,38 +279,8 @@ class PostgresStream(SQLStream):
             msg = f"Stream '{self.name}' does not support partitioning."
             raise NotImplementedError(msg)
 
-        selected_column_names = self.get_selected_schema()["properties"].keys()
-        table = self.connector.get_table(
-            full_table_name=self.fully_qualified_name,
-            column_names=selected_column_names,
-        )
-        query = table.select()
-
-        if self.replication_key:
-            replication_key_col = table.columns[self.replication_key]
-            order_by = (
-                sa.nulls_first(replication_key_col.asc())
-                if self.supports_nulls_first
-                else replication_key_col.asc()
-            )
-            query = query.order_by(order_by)
-
-            start_val = self.get_starting_replication_key_value(context)
-            if start_val:
-                query = query.where(replication_key_col >= start_val)
-
-        if self.ABORT_AT_RECORD_COUNT is not None:
-            # Limit record count to one greater than the abort threshold. This ensures
-            # `MaxRecordsLimitException` exception is properly raised by caller
-            # `Stream._sync_records()` if more records are available than can be
-            # processed.
-            query = query.limit(self.ABORT_AT_RECORD_COUNT + 1)
-
-        if self.max_record_count():
-            query = query.limit(self.max_record_count())
-
         with self.connector._connect() as conn:
-            for record in conn.execute(query).mappings():
+            for record in conn.execute(self.build_query(context)).mappings():
                 # TODO: Standardize record mapping type
                 # https://github.com/meltano/sdk/issues/2096
                 transformed_record = self.post_process(dict(record))
