@@ -244,11 +244,16 @@ class PostgresStream(SQLStream):
 
             start_val = self.get_starting_replication_key_value(context)
             end_val = self.config.get("end_date")
+            buffer_seconds = self.config.get("replication_key_buffer_seconds")
 
             if start_val:
                 query = query.where(replication_key_col >= start_val)
             if end_val is not None:
                 query = query.where(replication_key_col <= end_val)
+            if buffer_seconds is not None:
+                current_time = datetime.datetime.now(datetime.timezone.utc)
+                buffer_time = current_time - datetime.timedelta(seconds=buffer_seconds)
+                query = query.where(replication_key_col < buffer_time)
 
         if self.ABORT_AT_RECORD_COUNT is not None:
             # Limit record count to one greater than the abort threshold. This ensures

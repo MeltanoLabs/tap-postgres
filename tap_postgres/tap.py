@@ -349,6 +349,16 @@ class TapPostgres(SQLTap):
                 "continue to replicate data indefinitely."
             ),
         ),
+        th.Property(
+            "replication_key_buffer_seconds",
+            th.IntegerType,
+            description=(
+                "Optional buffer in seconds to subtract from the current time when "
+                "filtering records by replication key. This helps avoid race conditions "
+                "by excluding recently updated data. For example, setting this to 300 "
+                "will only process records where the replication key is at least 5 minutes old."
+            ),
+        ),
     ).to_dict()
 
     def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
