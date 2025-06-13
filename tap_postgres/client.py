@@ -211,76 +211,19 @@ class PostgresStream(SQLStream):
         """Return the maximum number of records to fetch in a single query."""
         return self.config.get("max_record_count")
 
-    def build_query(self, context: Context | None) -> sa.sql.Select:
-        """Build a SQLAlchemy query for the stream."""
-        selected_column_names = self.get_selected_schema()["properties"].keys()
-        table = self.connector.get_table(
-            full_table_name=self.fully_qualified_name,
-            column_names=selected_column_names,
-        )
-        query = table.select()
-
-        if self.replication_key:
-            replication_key_col = table.columns[self.replication_key]
-            order_by = (
-                sa.nulls_first(replication_key_col.asc())
-                if self.supports_nulls_first
-                else replication_key_col.asc()
-            )
-            query = query.order_by(order_by)
-
-            start_val = self.get_starting_replication_key_value(context)
-            if start_val:
-                query = query.where(replication_key_col >= start_val)
-
+    def apply_query_filters(
+        self,
+        query: sa.sql.Select,
+        table: sa.Table,
+        *,
+        context: Context | None = None,
+    ) -> sa.sql.Select:
+        """Apply query filters to the query."""
+        query = super().apply_query_filters(query, table, context=context)
         stream_options = self.config.get("stream_options", {}).get(self.name, {})
         if clauses := stream_options.get("custom_where_clauses"):
             query = query.where(*(sa.text(clause.strip()) for clause in clauses))
-
-        if self.ABORT_AT_RECORD_COUNT is not None:
-            # Limit record count to one greater than the abort threshold. This ensures
-            # `MaxRecordsLimitException` exception is properly raised by caller
-            # `Stream._sync_records()` if more records are available than can be
-            # processed.
-            query = query.limit(self.ABORT_AT_RECORD_COUNT + 1)
-
-        if self.max_record_count():
-            query = query.limit(self.max_record_count())
-
         return query
-
-    # Get records from stream
-    def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
-        """Return a generator of record-type dictionary objects.
-
-        If the stream has a replication_key value defined, records will be sorted by the
-        incremental key. If the stream also has an available starting bookmark, the
-        records will be filtered for values greater than or equal to the bookmark value.
-
-        Args:
-            context: If partition context is provided, will read specifically from this
-                data slice.
-
-        Yields:
-            One dict per record.
-
-        Raises:
-            NotImplementedError: If partition is passed in context and the stream does
-                not support partitioning.
-        """
-        if context:
-            msg = f"Stream '{self.name}' does not support partitioning."
-            raise NotImplementedError(msg)
-
-        with self.connector._connect() as conn:
-            for record in conn.execute(self.build_query(context)).mappings():
-                # TODO: Standardize record mapping type
-                # https://github.com/meltano/sdk/issues/2096
-                transformed_record = self.post_process(dict(record))
-                if transformed_record is None:
-                    # Record filtered out during post_process()
-                    continue
-                yield transformed_record
 
 
 class PostgresLogBasedStream(SQLStream):
