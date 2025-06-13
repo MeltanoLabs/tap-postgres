@@ -225,39 +225,6 @@ class PostgresStream(SQLStream):
             query = query.where(*(sa.text(clause.strip()) for clause in clauses))
         return query
 
-    # Get records from stream
-    def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
-        """Return a generator of record-type dictionary objects.
-
-        If the stream has a replication_key value defined, records will be sorted by the
-        incremental key. If the stream also has an available starting bookmark, the
-        records will be filtered for values greater than or equal to the bookmark value.
-
-        Args:
-            context: If partition context is provided, will read specifically from this
-                data slice.
-
-        Yields:
-            One dict per record.
-
-        Raises:
-            NotImplementedError: If partition is passed in context and the stream does
-                not support partitioning.
-        """
-        if context:
-            msg = f"Stream '{self.name}' does not support partitioning."
-            raise NotImplementedError(msg)
-
-        with self.connector._connect() as conn:
-            for record in conn.execute(self.build_query(context=context)).mappings():
-                # TODO: Standardize record mapping type
-                # https://github.com/meltano/sdk/issues/2096
-                transformed_record = self.post_process(dict(record))
-                if transformed_record is None:
-                    # Record filtered out during post_process()
-                    continue
-                yield transformed_record
-
 
 class PostgresLogBasedStream(SQLStream):
     """Stream class for Postgres log-based streams."""
