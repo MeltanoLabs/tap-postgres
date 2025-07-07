@@ -3,7 +3,7 @@
 
 def pytest_sessionfinish(session, exitstatus):
     """Session Finish."""
-    import logging
+    import logging  # noqa: PLC0415
 
     loggers: list[logging.Logger] = [
         logging.getLogger(),
