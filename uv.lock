@@ -1378,26 +1378,26 @@ wheels = [
 
 [[package]]
 name = "types-jsonschema"
-version = "4.24.0.20250528"
+version = "4.24.0.20250708"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "referencing" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/a0/a78769197ca769500565cd2708e12ed5fbc9452da1853effd7d8ad292f0a/types_jsonschema-4.24.0.20250528.tar.gz", hash = "sha256:7e28c64e0ae7980eeb158105b20663fc6a6b8f81d5f86ea6614aa0014417bd1e", size = 15128, upload-time = "2025-05-28T03:07:17.25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/0b/38e3c411173be89cc34e8994ef5c76d57420126dd440d06e041a5a8f6a56/types_jsonschema-4.24.0.20250708.tar.gz", hash = "sha256:a910e4944681cbb1b18a93ffb502e09910db788314312fc763df08d8ac2aadb7", size = 15465, upload-time = "2025-07-08T03:14:57.774Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/47/945ecdc1b6741159fca8169565444c1aba0ed7487efe7d408c86151ad50c/types_jsonschema-4.24.0.20250528-py3-none-any.whl", hash = "sha256:6a906b5ff73ac11c8d1e0b6c30a9693e1e4e1ab56c56c932b3a7e081b86d187b", size = 15280, upload-time = "2025-05-28T03:07:15.987Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/06/d8935777e6620d3c3f05cb044abe66e9f7cf71bb70e3de3ed24dc327cbb0/types_jsonschema-4.24.0.20250708-py3-none-any.whl", hash = "sha256:d574aa3421d178a8435cc898cf4cf5e5e8c8f37b949c8e3ceeff06da433a18bf", size = 15766, upload-time = "2025-07-08T03:14:56.997Z" },
 ]
 
 [[package]]
 name = "types-paramiko"
-version = "3.5.0.20250516"
+version = "3.5.0.20250708"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/f4/6b8b9875f1fe044fedd7f7cde1827f58510e3735c151bdd8aeb9ec2a3dcd/types_paramiko-3.5.0.20250516.tar.gz", hash = "sha256:8c2ac59648c16c5469aa0559abdb758a0f67f9f7cf36164b64654f7b6c2ebfb0", size = 28021, upload-time = "2025-05-16T03:08:56.619Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/7e/a50c3538a088eb3dbf167d16f5b0d8b62c821496df7488af4d7841c06bc5/types_paramiko-3.5.0.20250708.tar.gz", hash = "sha256:45125bff40766db2d7d53bd1a4f329868293e512f2e6b7fe11c335111df027f2", size = 28877, upload-time = "2025-07-08T03:15:04.769Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/61/4db776f25de0d4076bc637f54112555806170005ae48500688d7b0f392d0/types_paramiko-3.5.0.20250516-py3-none-any.whl", hash = "sha256:76ac5cbc0c04d36635ac080f301a864f698ef06b64c3a01a33dc657bd413b675", size = 38792, upload-time = "2025-05-16T03:08:55.692Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/42/0a052da12277848f44825532d97858d2ba8851b603b0a4923356f503e31c/types_paramiko-3.5.0.20250708-py3-none-any.whl", hash = "sha256:c761ecff3445d847a40c0d831a0daaba2bddbd2bdc74315659be5ff4835bb434", size = 39758, upload-time = "2025-07-08T03:15:03.95Z" },
 ]
 
 [[package]]
