@@ -359,6 +359,13 @@ class TapPostgres(SQLTap):
                 "will only process records where the replication key is at least 5 minutes old."
             ),
         ),
+        th.Property(
+            "replication_tie_breaker_column",
+            th.StringType,
+            description=(
+                "Optional column to use as a tie breaker when filtering records to avoid infinite loops"
+            ),
+        )
     ).to_dict()
 
     def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:

@@ -20,7 +20,7 @@ from psycopg2 import extras
 from singer_sdk import SQLConnector, SQLStream
 from singer_sdk.connectors.sql import SQLToJSONSchema
 from singer_sdk.helpers._state import increment_state
-from singer_sdk.helpers._typing import TypeConformanceLevel
+from singer_sdk.helpers._typing import TypeConformanceLevel, to_json_compatible
 from sqlalchemy.dialects import postgresql
 
 if t.TYPE_CHECKING:
@@ -199,9 +199,69 @@ class PostgresStream(SQLStream):
     # JSONB Objects won't be selected without type_conformance_level to ROOT_ONLY
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
+    SPECIAL_STATE_DELIMITER = "||"
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize the stream and set sync start time."""
+        super().__init__(*args, **kwargs)
+        self._sync_start_time = None
+    
+    def _get_sync_start_time(self) -> datetime.datetime:
+        """Get or set the sync start time for this sync run."""
+        if self._sync_start_time is None:
+            self._sync_start_time = datetime.datetime.now(datetime.timezone.utc)
+        return self._sync_start_time
+
     def max_record_count(self) -> int | None:
         """Return the maximum number of records to fetch in a single query."""
         return self.config.get("max_record_count")
+
+    def _parse_state(self, state_value: str | None) -> tuple[str | None, str | None]:
+        """Parses state value
+        
+        Args:
+            state_value: State value that may be in special format with delimiter
+            
+        Returns:
+            Tuple of (replication_key_value, last_id) or (state_value, None) for normal state
+        """
+        if not state_value or not isinstance(state_value, str):
+            return state_value, None
+            
+        # Check if this is a special state (contains delimiter)
+        if self.SPECIAL_STATE_DELIMITER in state_value:
+            try:
+                rk_value, last_id = state_value.rsplit(self.SPECIAL_STATE_DELIMITER, 1)
+                # Unpad numeric IDs back to original format
+                if last_id.isdigit() and len(last_id) == 20:
+                    last_id = str(int(last_id))
+                return rk_value, last_id
+            except ValueError:
+                # if parsing fails, throw an error
+                raise ValueError(f"Failed to parse special state: {state_value}")
+        
+        return state_value, None
+    
+    def _get_id_column_name(self) -> str:
+        return self.config.get("replication_tie_breaker_column") or 'id'
+    
+    def _get_id_column(self, table) -> sa.Column:
+        """Get the ID column for secondary ordering.
+        
+        Args:
+            table: SQLAlchemy table object
+            
+        Returns:
+            ID column or None if not found
+        """
+        id_column_name = self._get_id_column_name()
+
+        table_column = table.columns.get(id_column_name)
+
+        if table_column is None:
+            raise ValueError(f"No suitable ID column found for table {self.fully_qualified_name}. Special state pagination may not work correctly.")
+
+        return table_column
 
     # Get records from stream
     def get_records(self, context: Context | None) -> t.Iterable[dict[str, t.Any]]:
@@ -234,26 +294,27 @@ class PostgresStream(SQLStream):
         query = table.select()
 
         if self.replication_key:
+            id_column = self._get_id_column(table)
             replication_key_col = table.columns[self.replication_key]
-            order_by = (
-                sa.nulls_first(replication_key_col.asc())
-                if self.supports_nulls_first
-                else replication_key_col.asc()
-            )
-            query = query.order_by(order_by)
+
+            # Always order by replication key and id column
+            query = query.order_by(replication_key_col.asc(), id_column.asc())
 
             start_val = self.get_starting_replication_key_value(context)
             end_val = self.config.get("end_date")
-            buffer_seconds = self.config.get("replication_key_buffer_seconds")
 
-            if start_val:
-                query = query.where(replication_key_col >= start_val)
+            replication_key_value, last_id = self._parse_state(start_val)
+
+            if last_id is not None and replication_key_value is not None:
+                # Use tuple comparison for more efficient pagination
+                query = query.where(
+                    sa.tuple_(replication_key_col, id_column) >= sa.tuple_(replication_key_value, last_id)
+                )
+            elif replication_key_value is not None:
+                # Fallback to simple replication key comparison if no last_id
+                query = query.where(replication_key_col >= replication_key_value)
             if end_val is not None:
                 query = query.where(replication_key_col <= end_val)
-            if buffer_seconds is not None:
-                current_time = datetime.datetime.now(datetime.timezone.utc)
-                buffer_time = current_time - datetime.timedelta(seconds=buffer_seconds)
-                query = query.where(replication_key_col < buffer_time)
 
         if self.ABORT_AT_RECORD_COUNT is not None:
             # Limit record count to one greater than the abort threshold. This ensures
@@ -275,6 +336,95 @@ class PostgresStream(SQLStream):
                     continue
                 yield transformed_record
 
+    def _increment_stream_state(
+        self,
+        latest_record: dict[str, t.Any],
+        *,
+        context: Context | None = None,
+    ) -> None:
+        # This also creates a state entry if one does not yet exist:
+        state_dict = self.get_context_state(context)
+
+        # Advance state bookmark values if applicable
+        if latest_record and self.replication_method == 'INCREMENTAL':
+            if not self.replication_key:
+                msg = (
+                    f"Could not detect replication key for '{self.name}' "
+                    f"stream(replication method={self.replication_method})"
+                )
+                raise ValueError(msg)
+
+            latest_record[self.replication_key] = self._get_stream_state_value(latest_record)
+
+            treat_as_sorted = self.is_sorted
+            if not treat_as_sorted and self.state_partitioning_keys is not None:
+                # Streams with custom state partitioning are not resumable.
+                treat_as_sorted = False
+            increment_state(
+                state_dict,
+                replication_key=self.replication_key,
+                latest_record=latest_record,
+                is_sorted=False,
+                check_sorted=False,
+            )
+
+    def compare_start_date(self, value: str, start_date_value: str) -> str:
+        """Compare a bookmark value to a start date and return the most recent value.
+
+        If the replication key is a datetime-formatted string, this method will parse
+        the value and compare it to the start date. Otherwise, the bookmark value is
+        returned.
+
+        If the tap uses a non-datetime replication key (e.g. an UNIX timestamp), the
+        developer is encouraged to override this method to provide custom logic for
+        comparing the bookmark value to the start date.
+
+        Args:
+            value: The replication key value (may include ||id suffix or be a simple timestamp).
+            start_date_value: The start date value from the config.
+
+        Returns:
+            The most recent value between the bookmark and start date.
+            Note: Returns the original format of 'value' if it's more recent.
+        """
+        parsed_value, _ = self._parse_state(value)
+
+        if parsed_value is not None and start_date_value is not None:
+            if self._parse_datetime(parsed_value) >= self._parse_datetime(start_date_value):
+                return value  # We want to return the entire value including the Id. This value is what is used when building the query to fetch the records.
+            else:
+                return start_date_value
+        
+        # fallback to original implementation
+        return max(parsed_value, start_date_value, key=self._parse_datetime)
+    
+    def _get_stream_state_value(self, latest_record: dict[str, t.Any]) -> str:
+        replication_key_value = to_json_compatible(latest_record[self.replication_key])
+        buffer_seconds = self.config.get("replication_key_buffer_seconds")
+
+        buffer_time = None if buffer_seconds is None else self._get_sync_start_time() - datetime.timedelta(seconds=buffer_seconds) 
+
+        # Check if we should use buffer time (when caught up)
+        use_buffer_time = False
+        if buffer_time is not None:
+            try:
+                latest_record_time = self._parse_datetime(replication_key_value)
+                use_buffer_time = latest_record_time >= buffer_time
+            except (ValueError, TypeError):
+                # If we can't parse as datetime, use special format
+                self.logger.warning(f"Could not parse replication key value {replication_key_value} as datetime for stream {self.name}")
+                pass
+
+        if use_buffer_time:
+            return buffer_time.isoformat()
+        else:
+            id_column_name = self._get_id_column_name()
+            id_value = to_json_compatible(latest_record[id_column_name])
+
+            if isinstance(id_value, (int, float)) or (isinstance(id_value, str) and id_value.isdigit()):
+                id_value = f"{int(id_value):020d}"  # Pad to 20 digits for consistent string comparison
+
+            return f"{replication_key_value}{self.SPECIAL_STATE_DELIMITER}{id_value}"
 
 class PostgresLogBasedStream(SQLStream):
     """Stream class for Postgres log-based streams."""
