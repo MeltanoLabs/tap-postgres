@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.10'",
@@ -575,6 +575,7 @@ wheels = [
 name = "meltanolabs-tap-postgres"
 source = { editable = "." }
 dependencies = [
+    { name = "paramiko" },
     { name = "psycopg2-binary" },
     { name = "singer-sdk", extra = ["faker"] },
     { name = "sqlalchemy" },
@@ -613,6 +614,7 @@ typing = [
 
 [package.metadata]
 requires-dist = [
+    { name = "paramiko", specifier = ">=3,<4" },
     { name = "psycopg2-binary", specifier = "==2.9.10" },
     { name = "singer-sdk", extras = ["faker"], specifier = "~=0.47.0" },
     { name = "sqlalchemy", specifier = "==2.0.41" },

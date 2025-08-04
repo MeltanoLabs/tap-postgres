@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
+    "paramiko>=3,<4",
     "psycopg2-binary==2.9.10",
     "sqlalchemy==2.0.41",
     "sshtunnel==0.4.0",
