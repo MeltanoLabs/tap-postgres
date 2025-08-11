@@ -524,6 +524,15 @@ wheels = [
 ]
 
 [[package]]
+name = "invoke"
+version = "2.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/42/127e6d792884ab860defc3f4d80a8f9812e48ace584ffc5a346de58cdc6c/invoke-2.2.0.tar.gz", hash = "sha256:ee6cbb101af1a859c7fe84f2a264c059020b0cb7fe3535f9424300ab568f6bd5", size = 299835, upload-time = "2023-07-12T18:05:17.998Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0a/66/7f8c48009c72d73bc6bbe6eb87ac838d6a526146f7dab14af671121eb379/invoke-2.2.0-py3-none-any.whl", hash = "sha256:6ea924cc53d4f78e3d98bc436b08069a03077e6f85ad1ddaa8a116d7dad15820", size = 160274, upload-time = "2023-07-12T18:05:16.294Z" },
+]
+
+[[package]]
 name = "joblib"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -614,7 +623,7 @@ typing = [
 
 [package.metadata]
 requires-dist = [
-    { name = "paramiko", specifier = ">=3,<4" },
+    { name = "paramiko", specifier = ">=3" },
     { name = "psycopg2-binary", specifier = "==2.9.10" },
     { name = "singer-sdk", extras = ["faker"], specifier = "~=0.48.0" },
     { name = "sqlalchemy", specifier = "==2.0.41" },
@@ -720,16 +729,17 @@ wheels = [
 
 [[package]]
 name = "paramiko"
-version = "3.5.1"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bcrypt" },
     { name = "cryptography" },
+    { name = "invoke" },
     { name = "pynacl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/15/ad6ce226e8138315f2451c2aeea985bf35ee910afb477bae7477dc3a8f3b/paramiko-3.5.1.tar.gz", hash = "sha256:b2c665bc45b2b215bd7d7f039901b14b067da00f3a11e6640995fd58f2664822", size = 1566110, upload-time = "2025-02-04T02:37:59.783Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/e7/81fdcbc7f190cdb058cffc9431587eb289833bdd633e2002455ca9bb13d4/paramiko-4.0.0.tar.gz", hash = "sha256:6a25f07b380cc9c9a88d2b920ad37167ac4667f8d9886ccebd8f90f654b5d69f", size = 1630743, upload-time = "2025-08-04T01:02:03.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/f8/c7bd0ef12954a81a1d3cea60a13946bd9a49a0036a5927770c461eade7ae/paramiko-3.5.1-py3-none-any.whl", hash = "sha256:43b9a0501fc2b5e70680388d9346cf252cfb7d00b0667c39e80eb43a408b8f61", size = 227298, upload-time = "2025-02-04T02:37:57.672Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/90/a744336f5af32c433bd09af7854599682a383b37cfd78f7de263de6ad6cb/paramiko-4.0.0-py3-none-any.whl", hash = "sha256:0e20e00ac666503bf0b4eda3b6d833465a2b7aff2e2b3d79a8bba5ef144ee3b9", size = 223932, upload-time = "2025-08-04T01:02:02.029Z" },
 ]
 
 [[package]]
@@ -1409,14 +1419,14 @@ wheels = [
 
 [[package]]
 name = "types-paramiko"
-version = "3.5.0.20250801"
+version = "4.0.0.20250806"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/c4/4df427c835e9c795662241410732ab936c6f58be798ec25ce7015771c448/types_paramiko-3.5.0.20250801.tar.gz", hash = "sha256:e79ff84eaf44f2a5ad811743edef5d9c0cd6632a264a526f00405b87db1ec99b", size = 28838, upload-time = "2025-08-01T03:48:52.777Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/0d/5cdd81c503b36bb7e141cdc815612ebfb4eb2b77e9537ac273e1f44aa8fd/types_paramiko-4.0.0.20250806.tar.gz", hash = "sha256:786b3f49cf18b7f7ad0424e2b8ab25ada4f372e601888780fcf280b89d5afd2f", size = 28533, upload-time = "2025-08-06T03:28:03.355Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/5b/0f0bb1e45f7547d081ae9d490a88c6f6031d0f2c97459236e0a2a8b27207/types_paramiko-3.5.0.20250801-py3-none-any.whl", hash = "sha256:3e02a0fcf2b7e7b213e0cd569f7223ff9af417052a4d149d84172ebaa6fd742e", size = 39705, upload-time = "2025-08-01T03:48:51.855Z" },
+    { url = "https://files.pythonhosted.org/packages/33/c2/adf6772668fc0a808243bbfc1a887719b56f59de7c583193c95ae68101c6/types_paramiko-4.0.0.20250806-py3-none-any.whl", hash = "sha256:fe116e8e3391433eb0a7e33d79fbf0849c5755296f6da59834caa1878cf077fa", size = 38700, upload-time = "2025-08-06T03:28:02.134Z" },
 ]
 
 [[package]]
