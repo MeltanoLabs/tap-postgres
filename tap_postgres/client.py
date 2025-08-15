@@ -369,17 +369,12 @@ class PostgresLogBasedStream(SQLStream):
 
         row = {}
 
-        upsert_actions = {"I", "U"}
-        delete_actions = {"D"}
-        truncate_actions = {"T"}
-        transaction_actions = {"B", "C"}
-
-        if message_payload["action"] in upsert_actions:
+        if message_payload["action"] in {"I", "U"}:
             for column in message_payload["columns"]:
                 row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update({"_sdc_deleted_at": None})
             row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in delete_actions:
+        elif message_payload["action"] == "D":
             for column in message_payload["identity"]:
                 row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update(
@@ -390,7 +385,7 @@ class PostgresLogBasedStream(SQLStream):
                 }
             )
             row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in truncate_actions:
+        elif message_payload["action"] == "T":
             self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a truncate action) "
@@ -398,7 +393,7 @@ class PostgresLogBasedStream(SQLStream):
                 ),
                 message.payload,
             )
-        elif message_payload["action"] in transaction_actions:
+        elif message_payload["action"] in {"B", "C"}:
             self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a transaction beginning "
