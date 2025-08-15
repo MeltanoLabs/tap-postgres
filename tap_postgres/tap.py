@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 import paramiko
 from singer_sdk import SQLStream, SQLTap, Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
+from singer_sdk.contrib.msgspec import MsgSpecWriter
 from singer_sdk.singerlib import Catalog, Metadata, Schema
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
@@ -38,6 +39,7 @@ class TapPostgres(SQLTap):
     name = "tap-postgres"
     package_name = "meltanolabs-tap-postgres"
     default_stream_class = PostgresStream
+    message_writer_class = MsgSpecWriter
 
     def __init__(
         self,
