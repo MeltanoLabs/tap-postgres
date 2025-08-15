@@ -370,21 +370,28 @@ class PostgresLogBasedStream(SQLStream):
         row = {}
 
         if message_payload["action"] in {"I", "U"}:
-            for column in message_payload["columns"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update({"_sdc_deleted_at": None})
-            row.update({"_sdc_lsn": message.data_start})
+            row.update(
+                {
+                    column["name"]: self._parse_column_value(column, cursor)
+                    for column in message_payload["columns"]
+                }
+            )
+            row.update({"_sdc_deleted_at": None, "_sdc_lsn": message.data_start})
         elif message_payload["action"] == "D":
-            for column in message_payload["identity"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
+            row.update(
+                {
+                    column["name"]: self._parse_column_value(column, cursor)
+                    for column in message_payload["identity"]
+                }
+            )
             row.update(
                 {
                     "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
                         r"%Y-%m-%dT%H:%M:%SZ"
-                    )
+                    ),
+                    "_sdc_lsn": message.data_start,
                 }
             )
-            row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] == "T":
             self.logger.debug(
                 (
