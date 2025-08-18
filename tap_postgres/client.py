@@ -297,7 +297,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects."""
-        status_interval = 5.0  # if no records in 5 seconds the tap can exit
+        status_interval = 1.0  # if no records in 1 second the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
