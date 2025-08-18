@@ -323,6 +323,10 @@ class PostgresLogBasedStream(SQLStream):
                 "add-tables": self.fully_qualified_name,
             },
         )
+        rlist = [logical_replication_cursor]
+        wlist = []
+        xlist = []
+        now_ = datetime.datetime.now
 
         # Using scaffolding layout from:
         # https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
@@ -336,19 +340,13 @@ class PostgresLogBasedStream(SQLStream):
                 timeout = (
                     status_interval
                     - (
-                        datetime.datetime.now()
-                        - logical_replication_cursor.feedback_timestamp
+                        now_() - logical_replication_cursor.feedback_timestamp
                     ).total_seconds()
                 )
                 try:
                     # If the timeout has passed and the cursor still has no new
                     # messages, the sync has completed.
-                    if (
-                        select.select(
-                            [logical_replication_cursor], [], [], max(0, timeout)
-                        )[0]
-                        == []
-                    ):
+                    if not select.select(rlist, wlist, xlist, max(0, timeout))[0]:
                         break
                 except InterruptedError:
                     pass
