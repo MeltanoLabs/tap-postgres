@@ -1,6 +1,6 @@
 ---
 # Can't put docker-compose in ssh_tunnel dir because of https://github.com/isbang/compose-action/issues/29 and its tie to our Github action. Easiest to just drop this file in the root directory
-version: "2.1" #Borrowed heavily from https://github.com/pahaz/sshtunnel/blob/master/e2e_tests/docker-compose.yaml
+# Borrowed heavily from https://github.com/pahaz/sshtunnel/blob/master/e2e_tests/docker-compose.yaml
 services:
   ssh:
     image: ghcr.io/linuxserver/openssh-server:9.1_p1-r2-ls106 # This docker repo has added breaking changes a lot in the last month, pinning this.
@@ -21,7 +21,7 @@ services:
       - inner
 
   postgres_no_ssl:
-    image: postgres:${POSTGRES_VERSION:-latest}
+    image: postgres:${POSTGRES_VERSION:-17}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -30,7 +30,7 @@ services:
       - "5432:5432"
 
   postgresdb:
-    image: postgres:${POSTGRES_VERSION:-latest}
+    image: postgres:${POSTGRES_VERSION:-17}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -40,7 +40,7 @@ services:
         ipv4_address: 10.5.0.5
 
   postgres_ssl:
-    image: postgres:${POSTGRES_VERSION:-latest}
+    image: postgres:${POSTGRES_VERSION:-17}
     command: postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key -c ssl_ca_file=/var/lib/postgresql/ca.crt -c hba_file=/var/lib/postgresql/pg_hba.conf
     environment:
       POSTGRES_USER: postgres
@@ -61,7 +61,7 @@ services:
     build:
       context: .
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-latest}
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-17}
     command: postgres -c wal_level=logical -c max_replication_slots=10 -c max_wal_senders=10
     environment:
       POSTGRES_USER: postgres
