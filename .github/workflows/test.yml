@@ -57,7 +57,6 @@ jobs:
         - "3.12"
         - "3.11"
         - "3.10"
-        - "3.9"
         postgres-version:
         - "17"
         include:
