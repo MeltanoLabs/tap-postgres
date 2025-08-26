@@ -396,7 +396,10 @@ class TapPostgres(SQLTap):
         if config["ssl_enable"]:
             ssl_mode = config["ssl_mode"]
             query.update({"sslmode": ssl_mode})
-            if ssl_mode in ("verify-ca", "verify-full") and config.get("ssl_certificate_authority"):
+            if (
+                ssl_mode in ("verify-ca", "verify-full")
+                and config.get("ssl_certificate_authority")
+            ):
                 query["sslrootcert"] = self.filepath_or_certificate(
                     value=config["ssl_certificate_authority"],
                     alternative_name=config["ssl_storage_directory"] + "/root.crt",
