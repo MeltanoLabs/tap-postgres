@@ -297,7 +297,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects."""
-        status_interval = 5.0  # if no records in 5 seconds the tap can exit
+        status_interval = 1.0  # if no records in 1 second the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
@@ -323,6 +323,10 @@ class PostgresLogBasedStream(SQLStream):
                 "add-tables": self.fully_qualified_name,
             },
         )
+        rlist = [logical_replication_cursor]
+        wlist = []
+        xlist = []
+        now_ = datetime.datetime.now
 
         # Using scaffolding layout from:
         # https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
@@ -336,19 +340,13 @@ class PostgresLogBasedStream(SQLStream):
                 timeout = (
                     status_interval
                     - (
-                        datetime.datetime.now()
-                        - logical_replication_cursor.feedback_timestamp
+                        now_() - logical_replication_cursor.feedback_timestamp
                     ).total_seconds()
                 )
                 try:
                     # If the timeout has passed and the cursor still has no new
                     # messages, the sync has completed.
-                    if (
-                        select.select(
-                            [logical_replication_cursor], [], [], max(0, timeout)
-                        )[0]
-                        == []
-                    ):
+                    if not select.select(rlist, wlist, xlist, max(0, timeout))[0]:
                         break
                 except InterruptedError:
                     pass
@@ -369,28 +367,30 @@ class PostgresLogBasedStream(SQLStream):
 
         row = {}
 
-        upsert_actions = {"I", "U"}
-        delete_actions = {"D"}
-        truncate_actions = {"T"}
-        transaction_actions = {"B", "C"}
-
-        if message_payload["action"] in upsert_actions:
-            for column in message_payload["columns"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update({"_sdc_deleted_at": None})
-            row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in delete_actions:
-            for column in message_payload["identity"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
+        if message_payload["action"] in {"I", "U"}:
+            row.update(
+                {
+                    column["name"]: self._parse_column_value(column, cursor)
+                    for column in message_payload["columns"]
+                }
+            )
+            row.update({"_sdc_deleted_at": None, "_sdc_lsn": message.data_start})
+        elif message_payload["action"] == "D":
+            row.update(
+                {
+                    column["name"]: self._parse_column_value(column, cursor)
+                    for column in message_payload["identity"]
+                }
+            )
             row.update(
                 {
                     "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
                         r"%Y-%m-%dT%H:%M:%SZ"
-                    )
+                    ),
+                    "_sdc_lsn": message.data_start,
                 }
             )
-            row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in truncate_actions:
+        elif message_payload["action"] == "T":
             self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a truncate action) "
@@ -398,7 +398,7 @@ class PostgresLogBasedStream(SQLStream):
                 ),
                 message.payload,
             )
-        elif message_payload["action"] in transaction_actions:
+        elif message_payload["action"] in {"B", "C"}:
             self.logger.debug(
                 (
                     "A message payload of %s (corresponding to a transaction beginning "
