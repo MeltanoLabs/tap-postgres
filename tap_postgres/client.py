@@ -124,7 +124,7 @@ def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
     """
     if isinstance(elem, datetime.date):  # not copied, original logic
         return elem.isoformat()
-    if isinstance(elem, (datetime.datetime,)):  # copied
+    if isinstance(elem, datetime.datetime):  # copied
         return singer_sdk.helpers._typing.to_json_compatible(elem)
     if isinstance(elem, datetime.timedelta):  # copied
         epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
