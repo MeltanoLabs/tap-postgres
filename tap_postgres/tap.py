@@ -489,7 +489,6 @@ class TapPostgres(SQLTap):
         """
         for key_class in (
             paramiko.RSAKey,
-            paramiko.DSSKey,
             paramiko.ECDSAKey,
             paramiko.Ed25519Key,
         ):
