@@ -12,9 +12,10 @@ from os import chmod, path
 from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
-from singer_sdk import SQLStream, SQLTap, Stream
+from singer_sdk import Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
+from singer_sdk.sql import SQLStream, SQLTap
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
@@ -499,7 +500,7 @@ class TapPostgres(SQLTap):
         self.ssh_tunnel: SSHTunnelForwarder = SSHTunnelForwarder(
             ssh_address_or_host=(ssh_config["host"], ssh_config["port"]),
             ssh_username=ssh_config["username"],
-            ssh_private_key=self.guess_key_type(ssh_config["private_key"]),
+            ssh_pkey=self.guess_key_type(ssh_config["private_key"]),
             ssh_private_key_password=ssh_config.get("private_key_password"),
             remote_bind_address=(url.host, url.port),
         )

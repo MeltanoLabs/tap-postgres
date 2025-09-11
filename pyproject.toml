@@ -31,7 +31,7 @@ dependencies = [
     "psycopg2-binary==2.9.10",
     "sqlalchemy==2.0.43",
     "sshtunnel==0.4.0",
-    "singer-sdk[faker]~=0.49.0",
+    "singer-sdk[faker,sql]~=0.49.0",
 ]
 
 [project.urls]
@@ -132,3 +132,6 @@ convention = "google"
 
 [tool.pytest.ini_options]
 addopts = '--durations=10'
+filterwarnings = [
+  "error",
+]
