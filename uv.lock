@@ -540,7 +540,7 @@ typing = [
 requires-dist = [
     { name = "paramiko", specifier = ">=3,<4" },
     { name = "psycopg2-binary", specifier = "==2.9.10" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.48.0" },
+    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.49.0" },
     { name = "sqlalchemy", specifier = "==2.0.43" },
     { name = "sshtunnel", specifier = "==0.4.0" },
 ]
@@ -1102,7 +1102,7 @@ wheels = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.48.1"
+version = "0.49.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "backoff" },
@@ -1125,9 +1125,9 @@ dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
     { name = "universal-pathlib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/da/3a417c0419be66fe430545bae6aac4180bc7e4e29309844e393af49297b1/singer_sdk-0.48.1.tar.gz", hash = "sha256:f6ac6ba9a184713b328c0f271b811560b51c25f1eb3d8469abdb2f9a66fd6578", size = 1304568, upload-time = "2025-08-21T20:27:36.964Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/f4/2edd3101dd3473f7007399f9217ab406ce7b8a453a1e69d7b0a176087f51/singer_sdk-0.49.0.tar.gz", hash = "sha256:114740234b2642f1614e3566d09385e8a6f76aabc595f72961b6cd0d03d4ddb8", size = 1311050, upload-time = "2025-09-11T21:37:05.076Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/f2/530806543b702c9ff8a9cc007bd19301d64c27f437fae2d55ee792a48afe/singer_sdk-0.48.1-py3-none-any.whl", hash = "sha256:63d969e06f69a7a94b84917f9a8c22b8e5bd8b87ee7082c77e2436e0c14cfdc0", size = 194422, upload-time = "2025-08-21T20:27:35.211Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/3e/981807880586c845eb523115a296abcc16b6515d2049a42b9f74eb199f26/singer_sdk-0.49.0-py3-none-any.whl", hash = "sha256:898067117349074ed21c0fb27037ba16068e5ef93e73144a1313d82f096492c6", size = 201051, upload-time = "2025-09-11T21:37:02.918Z" },
 ]
 
 [package.optional-dependencies]
