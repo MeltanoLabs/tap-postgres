@@ -73,11 +73,11 @@ def teardown_test_table(table_name, sqlalchemy_url):
         conn.execute(sa.text(f"DROP TABLE {table_name}"))
 
 
-custom_test_replication_key = suites.TestSuite(
+custom_test_replication_key = suites.SingerTestSuite(
     kind="tap", tests=[TapTestReplicationKey]
 )
 
-custom_test_selected_columns_only = suites.TestSuite(
+custom_test_selected_columns_only = suites.SingerTestSuite(
     kind="tap", tests=[TapTestSelectedColumnsOnly]
 )
 
