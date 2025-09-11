@@ -1,6 +1,8 @@
 import copy
 import datetime
 import decimal
+import json
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -42,6 +44,15 @@ NO_SQLALCHEMY_CONFIG = {
 }
 
 
+def _load_catalog(path: Path) -> Catalog:
+    return Catalog.from_dict(json.loads(path.read_text()))
+
+
+DATADIR = Path("tests/resources")
+FULL_CATALOG = _load_catalog(DATADIR / "data.json")
+SELECTED_COLUMNS_ONLY_CATALOG = _load_catalog(DATADIR / "data_selected_columns_only.json")
+
+
 def setup_test_table(table_name, sqlalchemy_url):
     """setup any state specific to the execution of the given module."""
     engine = sa.create_engine(sqlalchemy_url, future=True)
@@ -73,9 +84,7 @@ def teardown_test_table(table_name, sqlalchemy_url):
         conn.execute(sa.text(f"DROP TABLE {table_name}"))
 
 
-custom_test_replication_key = suites.SingerTestSuite(
-    kind="tap", tests=[TapTestReplicationKey]
-)
+custom_test_replication_key = suites.SingerTestSuite(kind="tap", tests=[TapTestReplicationKey])
 
 custom_test_selected_columns_only = suites.SingerTestSuite(
     kind="tap", tests=[TapTestSelectedColumnsOnly]
@@ -84,14 +93,14 @@ custom_test_selected_columns_only = suites.SingerTestSuite(
 TapPostgresTest = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
-    catalog="tests/resources/data.json",
+    catalog=FULL_CATALOG,
     custom_suites=[custom_test_replication_key],
 )
 
 TapPostgresTestNOSQLALCHEMY = get_tap_test_class(
     tap_class=TapPostgres,
     config=NO_SQLALCHEMY_CONFIG,
-    catalog="tests/resources/data.json",
+    catalog=FULL_CATALOG,
     custom_suites=[custom_test_replication_key],
 )
 
@@ -100,7 +109,7 @@ TapPostgresTestNOSQLALCHEMY = get_tap_test_class(
 TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
     tap_class=TapPostgres,
     config=SAMPLE_CONFIG,
-    catalog="tests/resources/data_selected_columns_only.json",
+    catalog=SELECTED_COLUMNS_ONLY_CATALOG,
     custom_suites=[custom_test_selected_columns_only],
 )
 
@@ -182,17 +191,10 @@ def test_temporal_datatypes():
     )
     test_runner.sync_all()
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
+            assert schema_message["schema"]["properties"]["column_date"]["format"] == "date"
             assert (
-                schema_message["schema"]["properties"]["column_date"]["format"]
-                == "date"
-            )
-            assert (
-                schema_message["schema"]["properties"]["column_timestamp"]["format"]
-                == "date-time"
+                schema_message["schema"]["properties"]["column_timestamp"]["format"] == "date-time"
             )
     assert test_runner.records[altered_table_name][0] == {
         "column_date": "2022-03-19",
@@ -246,10 +248,7 @@ def test_jsonb_json():
     )
     test_runner.sync_all()
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             assert schema_message["schema"]["properties"]["column_jsonb"] == {
                 "type": [
                     "string",
@@ -320,10 +319,7 @@ def test_jsonb_array():
     )
     test_runner.sync_all()
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             assert schema_message["schema"]["properties"]["column_jsonb_array"] == {
                 "items": {
                     "type": [
@@ -393,10 +389,7 @@ def test_json_as_object():
     )
     test_runner.sync_all()
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             assert schema_message["schema"]["properties"]["column_jsonb"] == {
                 "type": [
                     "object",
@@ -467,10 +460,7 @@ def test_numeric_types():
     test_runner.sync_all()
 
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             props = schema_message["schema"]["properties"]
             assert "number" in props["my_numeric"]["type"]
             assert "number" in props["my_real"]["type"]
@@ -523,10 +513,7 @@ def test_hstore():
     test_runner.sync_all()
 
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             assert schema_message["schema"]["properties"]["hstore_column"] == {
                 "type": ["object", "null"],
                 "additionalProperties": True,
@@ -640,10 +627,7 @@ def test_invalid_python_dates():  # noqa: PLR0912
     test_runner.sync_all()
 
     for schema_message in test_runner.schema_messages:
-        if (
-            "stream" in schema_message
-            and schema_message["stream"] == altered_table_name
-        ):
+        if "stream" in schema_message and schema_message["stream"] == altered_table_name:
             assert schema_message["schema"]["properties"]["date"]["type"] == [
                 "string",
                 "null",

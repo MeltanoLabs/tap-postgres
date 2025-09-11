@@ -70,9 +70,7 @@ def test_string_array_column():
     as arrays (ex: "text[]") LOG_BASED replication can properly decode their value.
     """
     table_name = "test_array_column"
-    engine = sa.create_engine(
-        "postgresql://postgres:postgres@localhost:5434/postgres", future=True
-    )
+    engine = sa.create_engine("postgresql://postgres:postgres@localhost:5434/postgres", future=True)
 
     metadata_obj = sa.MetaData()
     table = sa.Table(

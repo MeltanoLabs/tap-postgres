@@ -130,9 +130,7 @@ def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
         epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
         timedelta_from_epoch = epoch + elem
         if timedelta_from_epoch.tzinfo is None:
-            timedelta_from_epoch = timedelta_from_epoch.replace(
-                tzinfo=datetime.timezone.utc
-            )
+            timedelta_from_epoch = timedelta_from_epoch.replace(tzinfo=datetime.timezone.utc)
         return timedelta_from_epoch.isoformat()
     if isinstance(elem, datetime.time):  # copied
         return str(elem)
@@ -336,17 +334,14 @@ class PostgresLogBasedStream(SQLStream):
                 timeout = (
                     status_interval
                     - (
-                        datetime.datetime.now()
-                        - logical_replication_cursor.feedback_timestamp
+                        datetime.datetime.now() - logical_replication_cursor.feedback_timestamp
                     ).total_seconds()
                 )
                 try:
                     # If the timeout has passed and the cursor still has no new
                     # messages, the sync has completed.
                     if (
-                        select.select(
-                            [logical_replication_cursor], [], [], max(0, timeout)
-                        )[0]
+                        select.select([logical_replication_cursor], [], [], max(0, timeout))[0]
                         == []
                     ):
                         break
@@ -383,11 +378,7 @@ class PostgresLogBasedStream(SQLStream):
             for column in message_payload["identity"]:
                 row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update(
-                {
-                    "_sdc_deleted_at": datetime.datetime.utcnow().strftime(
-                        r"%Y-%m-%dT%H:%M:%SZ"
-                    )
-                }
+                {"_sdc_deleted_at": datetime.datetime.utcnow().strftime(r"%Y-%m-%dT%H:%M:%SZ")}
             )
             row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
