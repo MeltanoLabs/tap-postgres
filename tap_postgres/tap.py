@@ -71,9 +71,7 @@ class TapPostgres(SQLTap):
         assert (
             (self.config.get("sqlalchemy_url") is not None)
             or (self.config.get("ssl_enable") is False)
-            or (
-                self.config.get("ssl_mode") in {"disable", "allow", "prefer", "require"}
-            )
+            or (self.config.get("ssl_mode") in {"disable", "allow", "prefer", "require"})
             or (
                 self.config.get("ssl_mode") in {"verify-ca", "verify-full"}
                 and self.config.get("ssl_certificate_authority") is not None
@@ -141,33 +139,25 @@ class TapPostgres(SQLTap):
             th.StringType,
             secret=True,
             description=(
-                "Password used to authenticate. "
-                "Note if sqlalchemy_url is set this will be ignored."
+                "Password used to authenticate. Note if sqlalchemy_url is set this will be ignored."
             ),
         ),
         th.Property(
             "database",
             th.StringType,
-            description=(
-                "Database name. "
-                + "Note if sqlalchemy_url is set this will be ignored."
-            ),
+            description=("Database name. " + "Note if sqlalchemy_url is set this will be ignored."),
         ),
         th.Property(
             "max_record_count",
             th.IntegerType,
             default=None,
-            description=(
-                "Optional. The maximum number of records to return in a single stream."
-            ),
+            description=("Optional. The maximum number of records to return in a single stream."),
         ),
         th.Property(
             "sqlalchemy_url",
             th.StringType,
             secret=True,
-            description=(
-                "Example postgresql://[username]:[password]@localhost:5432/[db_name]"
-            ),
+            description=("Example postgresql://[username]:[password]@localhost:5432/[db_name]"),
         ),
         th.Property(
             "filter_schemas",
@@ -191,9 +181,7 @@ class TapPostgres(SQLTap):
         th.Property(
             "json_as_object",
             th.BooleanType,
-            description=(
-                "Defaults to false, if true, json and jsonb fields will be Objects."
-            ),
+            description=("Defaults to false, if true, json and jsonb fields will be Objects."),
             default=False,
         ),
         th.Property(
@@ -232,8 +220,7 @@ class TapPostgres(SQLTap):
                     th.StringType,
                     required=False,
                     description=(
-                        "Host of the bastion server, this is the host "
-                        "we'll connect to via ssh"
+                        "Host of the bastion server, this is the host we'll connect to via ssh"
                     ),
                 ),
                 th.Property(
@@ -262,9 +249,7 @@ class TapPostgres(SQLTap):
                     required=False,
                     secret=True,
                     default=None,
-                    description=(
-                        "Private Key Password, leave None if no password is set"
-                    ),
+                    description=("Private Key Password, leave None if no password is set"),
                 ),
             ),
             required=False,
@@ -396,9 +381,7 @@ class TapPostgres(SQLTap):
         if config["ssl_enable"]:
             ssl_mode = config["ssl_mode"]
             query.update({"sslmode": ssl_mode})
-            if ssl_mode in ("verify-ca", "verify-full") and config.get(
-                "ssl_certificate_authority"
-            ):
+            if ssl_mode in ("verify-ca", "verify-full") and config.get("ssl_certificate_authority"):
                 query["sslrootcert"] = self.filepath_or_certificate(
                     value=config["ssl_certificate_authority"],
                     alternative_name=config["ssl_storage_directory"] + "/root.crt",
@@ -583,10 +566,7 @@ class TapPostgres(SQLTap):
         for stream in super().catalog.streams:
             stream_modified = False
             new_stream = copy.deepcopy(stream)
-            if (
-                new_stream.replication_method == "LOG_BASED"
-                and new_stream.schema.properties
-            ):
+            if new_stream.replication_method == "LOG_BASED" and new_stream.schema.properties:
                 for property in new_stream.schema.properties.values():
                     if "null" not in property.type:
                         if isinstance(property.type, list):
@@ -641,12 +621,8 @@ class TapPostgres(SQLTap):
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(
-                    PostgresLogBasedStream(
-                        self, catalog_entry, connector=self.connector
-                    )
+                    PostgresLogBasedStream(self, catalog_entry, connector=self.connector)
                 )
             else:
-                streams.append(
-                    PostgresStream(self, catalog_entry, connector=self.connector)
-                )
+                streams.append(PostgresStream(self, catalog_entry, connector=self.connector))
         return streams

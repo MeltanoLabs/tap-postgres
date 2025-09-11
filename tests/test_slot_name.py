@@ -37,9 +37,7 @@ def test_multiple_slots(default_config: dict):
     tap_1 = TapPostgres(config=config_1, setup_mapper=False)
     tap_2 = TapPostgres(config=config_2, setup_mapper=False)
 
-    assert (
-        tap_1.config["replication_slot_name"] != tap_2.config["replication_slot_name"]
-    )
+    assert tap_1.config["replication_slot_name"] != tap_2.config["replication_slot_name"]
     assert tap_1.config["replication_slot_name"] == "slot_1"
     assert tap_2.config["replication_slot_name"] == "slot_2"
 

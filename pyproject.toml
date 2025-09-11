@@ -93,6 +93,9 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+[tool.ruff]
+line-length = 100
+
 [tool.ruff.lint]
 select = [
   "F",    # Pyflakes
