@@ -501,7 +501,7 @@ source = { editable = "." }
 dependencies = [
     { name = "paramiko" },
     { name = "psycopg2-binary" },
-    { name = "singer-sdk", extra = ["faker"] },
+    { name = "singer-sdk", extra = ["faker", "sql"] },
     { name = "sqlalchemy" },
     { name = "sshtunnel" },
 ]
@@ -540,7 +540,7 @@ typing = [
 requires-dist = [
     { name = "paramiko", specifier = ">=3,<4" },
     { name = "psycopg2-binary", specifier = "==2.9.10" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.49.0" },
+    { name = "singer-sdk", extras = ["faker", "sql"], specifier = "~=0.49.0" },
     { name = "sqlalchemy", specifier = "==2.0.43" },
     { name = "sshtunnel", specifier = "==0.4.0" },
 ]
@@ -1133,6 +1133,9 @@ wheels = [
 [package.optional-dependencies]
 faker = [
     { name = "faker" },
+]
+sql = [
+    { name = "sqlalchemy" },
 ]
 testing = [
     { name = "pytest" },
