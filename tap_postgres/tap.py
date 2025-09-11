@@ -12,9 +12,10 @@ from os import chmod, path
 from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
-from singer_sdk import SQLStream, SQLTap, Stream
+from singer_sdk import Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
+from singer_sdk.sql import SQLStream, SQLTap
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 from sshtunnel import SSHTunnelForwarder
