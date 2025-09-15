@@ -316,6 +316,15 @@ class PostgresStream(SQLStream):
             if end_val is not None:
                 query = query.where(replication_key_col <= end_val)
 
+        # Apply custom WHERE conditions
+        custom_where = self.config.get("custom_where_conditions", {})
+        stream_where = custom_where.get(self.name)
+        
+        if stream_where:
+            # Apply the custom WHERE clause using text()
+            query = query.where(sa.text(stream_where))
+            self.logger.info(f"Applied custom WHERE condition for stream {self.name}: {stream_where}")
+
         if self.ABORT_AT_RECORD_COUNT is not None:
             # Limit record count to one greater than the abort threshold. This ensures
             # `MaxRecordsLimitException` exception is properly raised by caller
@@ -496,7 +505,11 @@ class PostgresLogBasedStream(SQLStream):
             )
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
-        """Return a generator of row-type dictionary objects."""
+        """Return a generator of row-type dictionary objects.
+        
+        Note: Custom where clauses are not supported for log-based replication
+        streams as they read from the WAL logs directly rather than querying tables.
+        """
         status_interval = 5.0  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
