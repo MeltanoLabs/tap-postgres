@@ -334,6 +334,26 @@ class PostgresStream(SQLStream):
 
         if self.max_record_count():
             query = query.limit(self.max_record_count())
+        
+        # Generate and log the SQL query for debugging
+        try:
+            # Compile the query with literal binds to show actual values
+            compiled = query.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True}
+            )
+            sql_string = str(compiled)
+            # Log for public-Request or any stream you're debugging
+            self._debug_log_for_stream(
+                f"Executing SQL query:\n{sql_string}",
+                level="info"
+            )
+        except Exception as e:
+            # Fallback if literal_binds fails (e.g., with certain parameter types)
+            self._debug_log_for_stream(
+                f"SQL query (without literal binds): {str(query)}",
+                level="info"
+            )
 
         with self.connector._connect() as conn:
             for record in conn.execute(query).mappings():
@@ -357,6 +377,9 @@ class PostgresStream(SQLStream):
         # Advance state bookmark values if applicable
         if latest_record and self.replication_method == 'INCREMENTAL':
             if not self.replication_key:
+                self._debug_log_for_stream(
+                    f"Could not detect replication key for '{self.name}', skipping state increment"
+                )
                 msg = (
                     f"Could not detect replication key for '{self.name}' "
                     f"stream(replication method={self.replication_method})"
@@ -369,6 +392,9 @@ class PostgresStream(SQLStream):
             if not treat_as_sorted and self.state_partitioning_keys is not None:
                 # Streams with custom state partitioning are not resumable.
                 treat_as_sorted = False
+            self._debug_log_for_stream(
+                f"Incrementing state for '{self.name}' with replication key {self.replication_key} and latest record {latest_record}"
+            )
             increment_state(
                 state_dict,
                 replication_key=self.replication_key,
@@ -376,6 +402,30 @@ class PostgresStream(SQLStream):
                 is_sorted=False,
                 check_sorted=False,
             )
+    
+    def _debug_log_for_stream(self, log_message: str, level: str = "info", streams: list = None):
+        """Log messages for specific streams for debugging.
+        
+        Args:
+            log_message: The message to log
+            level: Log level - 'debug', 'info', 'warning', 'error'
+            streams: List of stream names to log for. If None, defaults to ['public-Request']
+        """
+        target_streams = streams or ['public-Request']
+        
+        if self.name in target_streams:
+            # Add stream name prefix for easier filtering
+            prefixed_message = f"[{self.name}] {log_message}"
+            
+            # Use appropriate log level
+            if level == "debug":
+                self.logger.debug(prefixed_message)
+            elif level == "warning":
+                self.logger.warning(prefixed_message)
+            elif level == "error":
+                self.logger.error(prefixed_message)
+            else:  # default to info
+                self.logger.info(prefixed_message)
 
     def compare_start_date(self, value: str, start_date_value: str) -> str:
         """Compare a bookmark value to a start date and return the most recent value.
