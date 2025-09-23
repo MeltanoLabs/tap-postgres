@@ -15,7 +15,7 @@ Built with the [Meltano Singer SDK](https://sdk.meltano.com).
 
 ## Supported Python and PostgreSQL Versions
 
-This tap is tested with all actively supported [Python](https://devguide.python.org/versions/#supported-versions) and [PostgreSQL](https://www.postgresql.org/support/versioning/) versions. At the time of writing, this includes Python 3.9 through 3.13 and PostgreSQL 13 through 17.
+This tap is tested with all actively supported [Python](https://devguide.python.org/versions/#supported-versions) and [PostgreSQL](https://www.postgresql.org/support/versioning/) versions. At the time of writing, this includes Python 3.10 through 3.13 and PostgreSQL 13 through 17.
 
 ## Settings
 
