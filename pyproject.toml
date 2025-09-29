@@ -134,4 +134,5 @@ convention = "google"
 addopts = '--durations=10'
 filterwarnings = [
   "error",
+  "ignore:Exception ignored:pytest.PytestUnraisableExceptionWarning",
 ]

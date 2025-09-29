@@ -58,16 +58,16 @@ jobs:
         - "3.11"
         - "3.10"
         postgres-version:
-        - "17"
+        - "18"
         include:
-        - python-version: "3.13"
-          postgres-version: "13"
         - python-version: "3.13"
           postgres-version: "14"
         - python-version: "3.13"
           postgres-version: "15"
         - python-version: "3.13"
           postgres-version: "16"
+        - python-version: "3.13"
+          postgres-version: "17"
 
     steps:
     - name: Checkout code
