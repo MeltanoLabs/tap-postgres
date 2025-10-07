@@ -29,6 +29,14 @@ from tap_postgres.client import (
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
+# Try to import MsgSpecWriter for better performance
+try:
+    from singer_sdk.contrib.msgspec import MsgSpecWriter
+
+    _MSGSPEC_AVAILABLE = True
+except ImportError:
+    _MSGSPEC_AVAILABLE = False
+
 
 REPLICATION_SLOT_PATTERN = "^(?!pg_)[A-Za-z0-9_]{1,63}$"
 
@@ -39,6 +47,10 @@ class TapPostgres(SQLTap):
     name = "tap-postgres"
     package_name = "meltanolabs-tap-postgres"
     default_stream_class = PostgresStream
+
+    # Use MsgSpecWriter if available for ~15-20% performance improvement
+    if _MSGSPEC_AVAILABLE:
+        message_writer_class = MsgSpecWriter
 
     def __init__(
         self,
