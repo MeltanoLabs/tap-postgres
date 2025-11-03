@@ -53,6 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
+        - "3.14"
         - "3.13"
         - "3.12"
         - "3.11"
@@ -60,13 +61,13 @@ jobs:
         postgres-version:
         - "18"
         include:
-        - python-version: "3.13"
+        - python-version: "3.14"
           postgres-version: "14"
-        - python-version: "3.13"
+        - python-version: "3.14"
           postgres-version: "15"
-        - python-version: "3.13"
+        - python-version: "3.14"
           postgres-version: "16"
-        - python-version: "3.13"
+        - python-version: "3.14"
           postgres-version: "17"
 
     steps:
