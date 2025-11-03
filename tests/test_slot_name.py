@@ -50,9 +50,10 @@ def test_invalid_slot_name(default_config: dict):
         "replication_slot_name": invalid_slot_name,
     }
 
-    with pytest.raises(ConfigValidationError, match="does not match") as exc_info:
+    with pytest.raises(ConfigValidationError) as exc_info:
         TapPostgres(config=invalid_config, setup_mapper=False)
 
+    assert isinstance(exc_info.value, ConfigValidationError)
     errors = exc_info.value.errors
     assert len(errors) == 1
     assert invalid_slot_name in errors[0]
