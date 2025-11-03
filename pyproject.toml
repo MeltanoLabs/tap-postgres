@@ -28,10 +28,9 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "paramiko>=3,<4",
+    "paramiko>=4",
     "psycopg2-binary==2.9.11",
     "sqlalchemy==2.0.44",
-    "sshtunnel==0.4.0",
     "singer-sdk[faker,sql]~=0.52.0",
 ]
 optional-dependencies.msgspec = [
@@ -62,7 +61,7 @@ testing = [
 ]
 typing = [
     "mypy>=1.8.0",
-    "types-paramiko>=3.3.0.0,<4",
+    "types-paramiko>=4",
     "types-simplejson>=3.19.0.2",
     "types-sqlalchemy>=1.4.53.38",
     "types-jsonschema>=4.19.0.3",
@@ -80,12 +79,6 @@ exclude = "tests"
 python_version = "3.13"
 warn_unused_configs = true
 warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-ignore_missing_imports = true
-module = [
-    "sshtunnel",
-]
 
 [build-system]
 requires = [
