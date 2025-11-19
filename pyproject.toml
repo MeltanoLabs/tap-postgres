@@ -31,7 +31,7 @@ dependencies = [
     "paramiko>=4",
     "psycopg2-binary==2.9.11",
     "sqlalchemy==2.0.44",
-    "singer-sdk[faker,sql]~=0.52.0",
+    "singer-sdk[faker,sql]~=0.53.0",
 ]
 optional-dependencies.msgspec = [
     "msgspec>=0.19.0",
