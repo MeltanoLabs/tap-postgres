@@ -427,12 +427,16 @@ class PostgresLogBasedStream(SQLStream):
         # For numeric types, check if empty string should be treated as null.
         column_type = column.get("type", "")
         numeric_types = [
-            "int", "numeric", "decimal", "real", "double", "float", "bigint",
-            "smallint"
+            "int",
+            "numeric",
+            "decimal",
+            "real",
+            "double",
+            "float",
+            "bigint",
+            "smallint",
         ]
-        if value == "" and any(
-            numeric_type in column_type for numeric_type in numeric_types
-        ):
+        if value == "" and any(numeric_type in column_type for numeric_type in numeric_types):
             return None
 
         return value
