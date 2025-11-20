@@ -413,9 +413,33 @@ class PostgresLogBasedStream(SQLStream):
         # array types returns a string encoded in sql format, e.g. '{a,b}'
         # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
         if column["type"] == "text[]":
-            return psycopg2.extensions.STRINGARRAY(column["value"], cursor)
+            value = column.get("value")
+            if value is None:
+                return None
+            return psycopg2.extensions.STRINGARRAY(value, cursor)
 
-        return column["value"]
+        # Handle null values explicitly.
+        # wal2json represents nulls as JSON null, which becomes None in Python.
+        value = column.get("value")
+        if value is None:
+            return None
+
+        # For numeric types, check if empty string should be treated as null.
+        column_type = column.get("type", "")
+        numeric_types = [
+            "int",
+            "numeric",
+            "decimal",
+            "real",
+            "double",
+            "float",
+            "bigint",
+            "smallint",
+        ]
+        if value == "" and any(numeric_type in column_type for numeric_type in numeric_types):
+            return None
+
+        return value
 
     def logical_replication_connection(self):
         """A logical replication connection to the database.
