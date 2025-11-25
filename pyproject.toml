@@ -52,7 +52,7 @@ dev = [
     { include-group = "typing" },
 ]
 lint = [
-    "ruff~=0.11.0",
+    "ruff>=0.14",
 ]
 testing = [
     "hypothesis>=6.122.1",
