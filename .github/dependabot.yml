@@ -19,6 +19,8 @@ updates:
         dependency-type: production
         update-types:
           - "patch"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "pip"
     directory: "/.github/workflows"
     schedule:
@@ -29,6 +31,8 @@ updates:
       ci:
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -39,3 +43,5 @@ updates:
       actions:
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
