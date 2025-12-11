@@ -82,7 +82,7 @@ warn_unused_ignores = true
 
 [build-system]
 requires = [
-  "hatchling==1.27",
+  "hatchling==1.28",
   "hatch-vcs==0.5",
 ]
 build-backend = "hatchling.build"
@@ -134,3 +134,7 @@ filterwarnings = [
   "error",
   "ignore:Exception ignored:pytest.PytestUnraisableExceptionWarning",
 ]
+
+[tool.uv]
+exclude-newer = "7 days"
+required-version = ">=0.9.17"
