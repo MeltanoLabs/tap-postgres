@@ -15,20 +15,20 @@ repos:
   - id: trailing-whitespace
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.14.8
+  rev: v0.14.10
   hooks:
   - id: ruff-check
     args: [--fix]
   - id: ruff-format
 
 - repo: https://github.com/astral-sh/uv-pre-commit
-  rev: 0.9.17
+  rev: 0.9.21
   hooks:
   - id: uv-lock
   - id: uv-sync
 
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.35.0
+  rev: 0.36.0
   hooks:
   - id: check-compose-spec
   - id: check-dependabot
