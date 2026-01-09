@@ -529,7 +529,7 @@ class TapPostgres(SQLTap):
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):
-            # Return a new URL with SSH tunnel parameters
+            # Return new parameters with SSH tunnel config
             connection_parameters = self.ssh_tunnel_connect(
                 ssh_config=ssh_config, connection_parameters=connection_parameters
             )
