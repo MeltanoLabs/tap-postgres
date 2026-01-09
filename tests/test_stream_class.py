@@ -4,10 +4,14 @@ import sqlalchemy as sa
 from singer_sdk.singerlib import CatalogEntry, MetadataMapping, Schema
 
 from tap_postgres.client import PostgresConnector, PostgresStream
+from tap_postgres.connection_parameters import ConnectionParameters
 from tap_postgres.tap import TapPostgres
 
 
 class DummyConnector(PostgresConnector):
+    def __init__(self, config: dict) -> None:
+        super().__init__(config, ConnectionParameters.from_tap_config(config))
+
     def get_table(
         self,
         full_table_name: str,
@@ -58,7 +62,7 @@ def test_build_query():
         ),
         table="test_table",
     )
-    stream = PostgresStream(tap, catalog_entry.to_dict(), connector=DummyConnector())
+    stream = PostgresStream(tap, catalog_entry.to_dict(), connector=DummyConnector(config=config))
     assert (
         str(stream.build_query().compile()).replace("\n", "")
         == "SELECT test_table.id FROM test_table WHERE id % 2 = 0 AND id % 3 = 0"

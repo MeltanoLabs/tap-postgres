@@ -17,6 +17,7 @@ import singer_sdk.helpers._typing
 import sqlalchemy as sa
 import sqlalchemy.types
 from psycopg2 import extras
+from singer_sdk import Tap
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
@@ -29,6 +30,8 @@ if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine.reflection import Inspector
+
+    from tap_postgres.connection_parameters import ConnectionParameters
 
 
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
@@ -155,14 +158,14 @@ class PostgresConnector(SQLConnector):
 
     def __init__(
         self,
-        config: dict | None = None,
-        sqlalchemy_url: str | None = None,
+        config: dict,
+        connection_parameters: ConnectionParameters,
     ) -> None:
         """Initialize the SQL connector.
 
         Args:
           config: The parent tap or target object's config.
-          sqlalchemy_url: Optional URL for the connection.
+          connection_parameters: Connection parameters.
 
         """
         # Dates in postgres don't all convert to python datetime objects, so we
@@ -179,7 +182,12 @@ class PostgresConnector(SQLConnector):
             psycopg2.extensions.register_type(string_dates)
             psycopg2.extensions.register_type(string_date_arrays)
 
-        super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
+        self.connection_parameters = connection_parameters
+
+        super().__init__(
+            config=config,
+            sqlalchemy_url=connection_parameters.render_as_sqlalchemy_url(),
+        )
 
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.
@@ -233,6 +241,20 @@ class PostgresLogBasedStream(SQLStream):
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     replication_key = "_sdc_lsn"
+
+    connection_parameters: ConnectionParameters
+
+    def __init__(
+        self,
+        tap: Tap,
+        catalog_entry: dict,
+        connection_parameters: ConnectionParameters,
+        connector: SQLConnector | None = None,
+    ) -> None:
+        """Initialize Postgres log-based stream."""
+        self.connection_parameters = connection_parameters
+
+        super().__init__(tap, catalog_entry, connector)
 
     @property
     def config(self) -> Mapping[str, t.Any]:
@@ -295,7 +317,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects."""
-        status_interval = 5.0  # if no records in 5 seconds the tap can exit
+        status_interval = 5  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
@@ -446,15 +468,9 @@ class PostgresLogBasedStream(SQLStream):
 
         Uses a direct psycopg2 implementation rather than through sqlalchemy.
         """
-        connection_string = (
-            f"dbname={self.config['database']} "
-            f"user={self.config['user']} "
-            f"password={self.config['password']} "
-            f"host={self.config['host']} "
-            f"port={self.config['port']}"
-        )
+        connection_parameters = self.connection_parameters
+
         return psycopg2.connect(
-            connection_string,
-            application_name="tap_postgres",
+            connection_parameters.render_as_psycopg2_dsn(),
             connection_factory=extras.LogicalReplicationConnection,
         )
