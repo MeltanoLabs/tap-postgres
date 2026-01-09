@@ -30,6 +30,8 @@ if t.TYPE_CHECKING:
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine.reflection import Inspector
 
+    from tap_postgres.connection_parameters import ConnectionParameters
+
 
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
     """Custom SQL to JSON Schema conversion for Postgres."""
@@ -155,14 +157,14 @@ class PostgresConnector(SQLConnector):
 
     def __init__(
         self,
-        config: dict | None = None,
-        sqlalchemy_url: str | None = None,
+        config: dict,
+        connection_parameters: ConnectionParameters,
     ) -> None:
         """Initialize the SQL connector.
 
         Args:
           config: The parent tap or target object's config.
-          sqlalchemy_url: Optional URL for the connection.
+          connection_parameters: Connection parameters.
 
         """
         # Dates in postgres don't all convert to python datetime objects, so we
@@ -179,7 +181,12 @@ class PostgresConnector(SQLConnector):
             psycopg2.extensions.register_type(string_dates)
             psycopg2.extensions.register_type(string_date_arrays)
 
-        super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
+        self.connection_parameters = connection_parameters
+
+        super().__init__(
+            config=config,
+            sqlalchemy_url=connection_parameters.render_as_sqlalchemy_url(),
+        )
 
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.
@@ -446,15 +453,9 @@ class PostgresLogBasedStream(SQLStream):
 
         Uses a direct psycopg2 implementation rather than through sqlalchemy.
         """
-        connection_string = (
-            f"dbname={self.config['database']} "
-            f"user={self.config['user']} "
-            f"password={self.config['password']} "
-            f"host={self.config['host']} "
-            f"port={self.config['port']}"
-        )
+        connection_parameters = self.connector.connection_parameters
+
         return psycopg2.connect(
-            connection_string,
-            application_name="tap_postgres",
+            connection_parameters.render_as_psycopg2_dsn(),
             connection_factory=extras.LogicalReplicationConnection,
         )

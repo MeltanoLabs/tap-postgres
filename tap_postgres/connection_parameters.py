@@ -12,15 +12,15 @@ from os import chmod, makedirs, path
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy.engine.url import make_url
 from sqlalchemy.engine import URL
+from sqlalchemy.engine.url import make_url
 
 APPLICATION_NAME = "tap_postgres"
 
 
 @dataclass(frozen=True, slots=True)
 class ConnectionParameters:
-    """Postgres connection parameters derived from tap config."""
+    """Postgres connection parameters."""
 
     host: str
     port: int
@@ -28,6 +28,65 @@ class ConnectionParameters:
     user: str
     password: str
     options: dict[str, str]
+
+    @staticmethod
+    def from_tap_config(config: dict[str, Any]) -> ConnectionParameters:
+        """Build the connection parameters from tap config.
+
+        Args:
+            config: Tap config.
+
+        Returns:
+            ConnectionParameters with base connection fields and SQLAlchemy query parameters.
+        """
+        if sqlalchemy_url := config.get("sqlalchemy_url"):
+            url = make_url(sqlalchemy_url)
+
+            if (
+                url.host is None
+                or url.database is None
+                or url.username is None
+                or url.password is None
+            ):
+                msg = "sqlalchemy_url must include host, database, username, and password"
+                raise ValueError(msg)
+
+            return ConnectionParameters(
+                host=url.host,
+                port=int(url.port or 5432),
+                database=url.database,
+                user=url.username,
+                password=url.password,
+                options=_build_options_from_sqlalchemy_url(sqlalchemy_url),
+            )
+
+        return ConnectionParameters(
+            host=config["host"],
+            port=int(config["port"]),
+            database=config["database"],
+            user=config["user"],
+            password=config["password"],
+            options=_build_options(config),
+        )
+
+    def with_host_and_port(self, host: str, port: int) -> ConnectionParameters:
+        """Return a new ConnectionParameters with the given host and port.
+
+        Args:
+            host: New host value.
+            port: New port value.
+
+        Returns:
+            New ConnectionParameters with updated host and port.
+        """
+        return ConnectionParameters(
+            host=host,
+            port=port,
+            database=self.database,
+            user=self.user,
+            password=self.password,
+            options=self.options,
+        )
 
     def render_as_sqlalchemy_url(self) -> str:
         """Render connection parameters as a SQLAlchemy URL string.
@@ -70,8 +129,7 @@ def _filepath_or_certificate(
     alternative_path: Path,
     restrict_permissions: bool = False,
 ) -> str:
-    """
-    Provide the appropriate key-value pair based on a filepath or raw value.
+    """Provide the appropriate key-value pair based on a filepath or raw value.
 
     For SSL configuration options, support is provided for either raw values in
     .env file or filepaths to a file containing a certificate. This function
@@ -84,6 +142,7 @@ def _filepath_or_certificate(
         alternative_path: The filename to use in case `value` is not a filepath.
         restrict_permissions: Whether to restrict permissions on a newly created
             file. On UNIX systems, private keys cannot have public access.
+
     Returns:
         Filepath for a certificate/key value
     """
@@ -120,9 +179,7 @@ def _build_options(config: dict[str, Any]) -> dict[str, str]:
         ssl_mode = config["ssl_mode"]
         options["sslmode"] = ssl_mode
 
-        if ssl_mode in ("verify-ca", "verify-full") and config.get(
-            "ssl_certificate_authority"
-        ):
+        if ssl_mode in ("verify-ca", "verify-full") and config.get("ssl_certificate_authority"):
             options["sslrootcert"] = _filepath_or_certificate(
                 value=config["ssl_certificate_authority"],
                 alternative_path=storage_dir / "root.crt",
@@ -158,64 +215,3 @@ def _build_options_from_sqlalchemy_url(sqlalchemy_url: str) -> dict[str, str]:
         if value is not None:
             options[key] = str(value)
     return options
-
-
-def build_connection_parameters(config: dict[str, Any]) -> ConnectionParameters:
-    """Build the connection parameters from tap config.
-
-    Args:
-        config: Tap config.
-
-    Returns:
-        ConnectionParameters with base connection fields and SQLAlchemy query parameters.
-    """
-    if sqlalchemy_url := config.get("sqlalchemy_url"):
-        url = make_url(sqlalchemy_url)
-
-        if (
-            url.host is None
-            or url.database is None
-            or url.username is None
-            or url.password is None
-        ):
-            msg = "sqlalchemy_url must include host, database, username, and password"
-            raise ValueError(msg)
-
-        return ConnectionParameters(
-            host=url.host,
-            port=int(url.port or 5432),
-            database=url.database,
-            user=url.username,
-            password=url.password,
-            options=_build_options_from_sqlalchemy_url(sqlalchemy_url),
-        )
-
-    return ConnectionParameters(
-        host=config["host"],
-        port=int(config["port"]),
-        database=config["database"],
-        user=config["user"],
-        password=config["password"],
-        options=_build_options(config),
-    )
-
-
-def render_connection_parameters_as_sqlalchemy_url(
-    params: ConnectionParameters,
-) -> str:
-    """Render connection parameters as a SQLAlchemy URL string.
-
-    Args:
-        params: Connection parameters.
-    Returns:
-        SQLAlchemy URL string.
-    """
-    return URL.create(
-        drivername="postgresql+psycopg2",
-        username=params.user,
-        password=params.password,
-        host=params.host,
-        port=params.port,
-        database=params.database,
-        query=params.options,
-    ).render_as_string(hide_password=False)
