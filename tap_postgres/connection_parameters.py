@@ -56,7 +56,7 @@ class ConnectionParameters:
                 port=int(url.port or 5432),
                 database=url.database,
                 user=url.username,
-                password=url.password,
+                password=str(url.password),
                 options=_build_options_from_sqlalchemy_url(sqlalchemy_url),
             )
 
@@ -66,7 +66,7 @@ class ConnectionParameters:
             database=config["database"],
             user=config["user"],
             password=config["password"],
-            options=_build_options(config),
+            options=_build_options_from_tap_config(config),
         )
 
     def with_host_and_port(self, host: str, port: int) -> ConnectionParameters:
@@ -124,42 +124,7 @@ class ConnectionParameters:
         return connection_string
 
 
-def _filepath_or_certificate(
-    value: str,
-    alternative_path: Path,
-    restrict_permissions: bool = False,
-) -> str:
-    """Provide the appropriate key-value pair based on a filepath or raw value.
-
-    For SSL configuration options, support is provided for either raw values in
-    .env file or filepaths to a file containing a certificate. This function
-    attempts to parse a value as a filepath, and if no file is found, assumes the
-    value is a certificate and creates a file named `alternative_path` to store the
-    file.
-
-    Args:
-        value: Either a filepath or a raw value to be written to a file.
-        alternative_path: The filename to use in case `value` is not a filepath.
-        restrict_permissions: Whether to restrict permissions on a newly created
-            file. On UNIX systems, private keys cannot have public access.
-
-    Returns:
-        Filepath for a certificate/key value
-    """
-    if path.isfile(value):
-        return value
-
-    makedirs(Path(alternative_path).parent, exist_ok=True)
-
-    with open(alternative_path, "wb") as alternative_file:
-        alternative_file.write(value.encode("utf-8"))
-    if restrict_permissions:
-        chmod(alternative_path, 0o600)
-
-    return alternative_path
-
-
-def _build_options(config: dict[str, Any]) -> dict[str, str]:
+def _build_options_from_tap_config(config: dict[str, Any]) -> dict[str, str]:
     """Build the postgresql options dict from config.
 
     Args:
@@ -198,6 +163,41 @@ def _build_options(config: dict[str, Any]) -> dict[str, str]:
         )
 
     return options
+
+
+def _filepath_or_certificate(
+    value: str,
+    alternative_path: Path,
+    restrict_permissions: bool = False,
+) -> str:
+    """Provide the appropriate key-value pair based on a filepath or raw value.
+
+    For SSL configuration options, support is provided for either raw values in
+    .env file or filepaths to a file containing a certificate. This function
+    attempts to parse a value as a filepath, and if no file is found, assumes the
+    value is a certificate and creates a file named `alternative_path` to store the
+    file.
+
+    Args:
+        value: Either a filepath or a raw value to be written to a file.
+        alternative_path: The filename to use in case `value` is not a filepath.
+        restrict_permissions: Whether to restrict permissions on a newly created
+            file. On UNIX systems, private keys cannot have public access.
+
+    Returns:
+        Filepath for a certificate/key value
+    """
+    if path.isfile(value):
+        return value
+
+    makedirs(Path(alternative_path).parent, exist_ok=True)
+
+    with open(alternative_path, "wb") as alternative_file:
+        alternative_file.write(value.encode("utf-8"))
+    if restrict_permissions:
+        chmod(alternative_path, 0o600)
+
+    return str(alternative_path)
 
 
 def _build_options_from_sqlalchemy_url(sqlalchemy_url: str) -> dict[str, str]:
