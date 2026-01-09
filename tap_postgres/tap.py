@@ -718,7 +718,12 @@ class TapPostgres(SQLTap):
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(
-                    PostgresLogBasedStream(self, catalog_entry, connector=self.connector)
+                    PostgresLogBasedStream(
+                        self,
+                        catalog_entry,
+                        connection_parameters=self.connector.connection_parameters,
+                        connector=self.connector,
+                    )
                 )
             else:
                 streams.append(PostgresStream(self, catalog_entry, connector=self.connector))

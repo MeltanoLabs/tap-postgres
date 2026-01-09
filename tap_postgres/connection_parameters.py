@@ -10,10 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import chmod, makedirs, path
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 APPLICATION_NAME = "tap_postgres"
 
@@ -30,7 +33,7 @@ class ConnectionParameters:
     options: dict[str, str]
 
     @staticmethod
-    def from_tap_config(config: dict[str, Any]) -> ConnectionParameters:
+    def from_tap_config(config: Mapping[str, Any]) -> ConnectionParameters:
         """Build the connection parameters from tap config.
 
         Args:
@@ -124,7 +127,7 @@ class ConnectionParameters:
         return connection_string
 
 
-def _build_options_from_tap_config(config: dict[str, Any]) -> dict[str, str]:
+def _build_options_from_tap_config(config: Mapping[str, Any]) -> dict[str, str]:
     """Build the postgresql options dict from config.
 
     Args:

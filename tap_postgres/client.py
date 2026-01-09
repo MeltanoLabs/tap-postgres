@@ -17,6 +17,7 @@ import singer_sdk.helpers._typing
 import sqlalchemy as sa
 import sqlalchemy.types
 from psycopg2 import extras
+from singer_sdk import Tap
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
@@ -241,6 +242,20 @@ class PostgresLogBasedStream(SQLStream):
 
     replication_key = "_sdc_lsn"
 
+    connection_parameters: ConnectionParameters
+
+    def __init__(
+        self,
+        tap: Tap,
+        catalog_entry: dict,
+        connection_parameters: ConnectionParameters,
+        connector: SQLConnector | None = None,
+    ) -> None:
+        """Initialize Postgres log-based stream."""
+        self.connection_parameters = connection_parameters
+
+        super().__init__(tap, catalog_entry, connector)
+
     @property
     def config(self) -> Mapping[str, t.Any]:
         """Return a read-only config dictionary."""
@@ -302,7 +317,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects."""
-        status_interval = 5.0  # if no records in 5 seconds the tap can exit
+        status_interval = 5  # if no records in 5 seconds the tap can exit
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
@@ -453,7 +468,7 @@ class PostgresLogBasedStream(SQLStream):
 
         Uses a direct psycopg2 implementation rather than through sqlalchemy.
         """
-        connection_parameters = self.connector.connection_parameters
+        connection_parameters = self.connection_parameters
 
         return psycopg2.connect(
             connection_parameters.render_as_psycopg2_dsn(),
