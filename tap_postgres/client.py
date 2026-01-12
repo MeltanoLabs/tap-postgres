@@ -158,14 +158,14 @@ class PostgresConnector(SQLConnector):
 
     def __init__(
         self,
-        config: dict,
-        connection_parameters: ConnectionParameters,
+        config: dict | None = None,
+        sqlalchemy_url: str | None = None,
     ) -> None:
         """Initialize the SQL connector.
 
         Args:
           config: The parent tap or target object's config.
-          connection_parameters: Connection parameters.
+          sqlalchemy_url: Optional URL for the connection.
 
         """
         # Dates in postgres don't all convert to python datetime objects, so we
@@ -182,10 +182,25 @@ class PostgresConnector(SQLConnector):
             psycopg2.extensions.register_type(string_dates)
             psycopg2.extensions.register_type(string_date_arrays)
 
-        self.connection_parameters = connection_parameters
+        super().__init__(config=config, sqlalchemy_url=sqlalchemy_url)
 
-        super().__init__(
-            config=config,
+    @classmethod
+    def from_connection_parameters(
+        cls,
+        config: Mapping[str, t.Any],
+        connection_parameters: ConnectionParameters,
+    ) -> t.Self:
+        """Instantiate the connector from connection parameters.
+
+        Args:
+            config: Tap config dictionary.
+            connection_parameters: Connection parameters object.
+
+        Returns:
+            An instance of PostgresConnector.
+        """
+        return cls(
+            config=dict(config),
             sqlalchemy_url=connection_parameters.render_as_sqlalchemy_url(),
         )
 

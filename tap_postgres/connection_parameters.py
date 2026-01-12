@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import chmod, makedirs, path
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
@@ -32,8 +32,8 @@ class ConnectionParameters:
     password: str
     options: dict[str, str]
 
-    @staticmethod
-    def from_tap_config(config: Mapping[str, Any]) -> ConnectionParameters:
+    @classmethod
+    def from_tap_config(cls, config: Mapping[str, Any]) -> Self:
         """Build the connection parameters from tap config.
 
         Args:
@@ -54,7 +54,7 @@ class ConnectionParameters:
                 msg = "sqlalchemy_url must include host, database, username, and password"
                 raise ValueError(msg)
 
-            return ConnectionParameters(
+            return cls(
                 host=url.host,
                 port=int(url.port or 5432),
                 database=url.database,
@@ -63,7 +63,7 @@ class ConnectionParameters:
                 options=_build_options_from_sqlalchemy_url(sqlalchemy_url),
             )
 
-        return ConnectionParameters(
+        return cls(
             host=config["host"],
             port=int(config["port"]),
             database=config["database"],

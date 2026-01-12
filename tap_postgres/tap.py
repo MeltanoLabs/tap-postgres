@@ -524,19 +524,20 @@ class TapPostgres(SQLTap):
 
         """
         # We mutate these parameters if SSH tunneling is enabled
-        connection_parameters = ConnectionParameters.from_tap_config(self.config)
+        self.connection_parameters = ConnectionParameters.from_tap_config(self.config)
 
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):
             # Return new parameters with SSH tunnel config
-            connection_parameters = self.ssh_tunnel_connect(
-                ssh_config=ssh_config, connection_parameters=connection_parameters
+            self.connection_parameters = self.ssh_tunnel_connect(
+                ssh_config=ssh_config,
+                connection_parameters=self.connection_parameters,
             )
 
-        return PostgresConnector(
-            config=dict(self.config),
-            connection_parameters=connection_parameters,
+        return PostgresConnector.from_connection_parameters(
+            config=self.config,
+            connection_parameters=self.connection_parameters,
         )
 
     def guess_key_type(self, key_data: str) -> paramiko.PKey:
@@ -721,7 +722,7 @@ class TapPostgres(SQLTap):
                     PostgresLogBasedStream(
                         self,
                         catalog_entry,
-                        connection_parameters=self.connector.connection_parameters,
+                        connection_parameters=self.connection_parameters,
                         connector=self.connector,
                     )
                 )
