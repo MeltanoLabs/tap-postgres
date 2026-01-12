@@ -12,6 +12,7 @@ from os import chmod, makedirs, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from psycopg2.extensions import make_dsn
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
 
@@ -113,18 +114,14 @@ class ConnectionParameters:
         Returns:
             PostgreSQL DSN string.
         """
-        connection_string = (
-            f"host={self.host}"
-            f" user={self.user}"
-            f" password={self.password}"
-            f" port={self.port}"
-            f" dbname={self.database}"
+        return make_dsn(
+            host=self.host,
+            port=self.port,
+            dbname=self.database,
+            user=self.user,
+            password=self.password,
+            **self.options,
         )
-
-        for key, value in self.options.items():
-            connection_string += f" {key}={value}"
-
-        return connection_string
 
 
 def _build_options_from_tap_config(config: Mapping[str, Any]) -> dict[str, str]:

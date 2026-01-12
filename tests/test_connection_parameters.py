@@ -194,6 +194,6 @@ def test_connection_parameters_renders_as_psycopg2_dsn(tmp_path: Path) -> None:
     dsn = parameters.render_as_psycopg2_dsn()
 
     assert dsn == (
-        "host=localhost user=postgres password=postgres port=5432 dbname=postgres "
+        "host=localhost port=5432 dbname=postgres user=postgres password=postgres "
         "application_name=tap_postgres sslmode=require"
     )
