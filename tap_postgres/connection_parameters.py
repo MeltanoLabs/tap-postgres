@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from os import chmod, makedirs, path
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.url import make_url
@@ -33,7 +33,7 @@ class ConnectionParameters:
     options: dict[str, str]
 
     @classmethod
-    def from_tap_config(cls, config: Mapping[str, Any]) -> Self:
+    def from_tap_config(cls, config: Mapping[str, Any]) -> ConnectionParameters:
         """Build the connection parameters from tap config.
 
         Args:

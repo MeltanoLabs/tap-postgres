@@ -189,7 +189,7 @@ class PostgresConnector(SQLConnector):
         cls,
         config: Mapping[str, t.Any],
         connection_parameters: ConnectionParameters,
-    ) -> t.Self:
+    ) -> PostgresConnector:
         """Instantiate the connector from connection parameters.
 
         Args:
