@@ -8,7 +8,7 @@ clients (SQLAlchemy/psycopg2).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from os import chmod, makedirs, path
+from os import chmod, path
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -190,7 +190,7 @@ def _filepath_or_certificate(
     if path.isfile(value):
         return value
 
-    makedirs(Path(alternative_path).parent, exist_ok=True)
+    Path(alternative_path).parent.mkdir(parents=True, exist_ok=True)
 
     with open(alternative_path, "wb") as alternative_file:
         alternative_file.write(value.encode("utf-8"))
