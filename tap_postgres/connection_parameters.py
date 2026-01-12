@@ -61,7 +61,7 @@ class ConnectionParameters:
                 database=url.database,
                 user=url.username,
                 password=str(url.password),
-                options=_build_options_from_sqlalchemy_url(sqlalchemy_url),
+                options=_build_options_from_sqlalchemy_url(url),
             )
 
         return cls(
@@ -200,14 +200,8 @@ def _filepath_or_certificate(
     return str(alternative_path)
 
 
-def _build_options_from_sqlalchemy_url(sqlalchemy_url: str) -> dict[str, str]:
-    """Build connection options from a SQLAlchemy URL.
-
-    Only a limited set of libpq/psycopg2 options are supported here.
-    `application_name` is always enforced and cannot be overridden.
-    """
-    url = make_url(sqlalchemy_url)
-
+def _build_options_from_sqlalchemy_url(url: URL) -> dict[str, str]:
+    """Build connection options from a SQLAlchemy URL."""
     options: dict[str, str] = {
         "application_name": APPLICATION_NAME,
     }
