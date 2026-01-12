@@ -88,7 +88,7 @@ services:
       args:
         POSTGRES_VERSION: ${POSTGRES_VERSION:-17}
     command: >
-      postgres 
+      postgres
       -c ssl=on
       -c ssl_cert_file=/var/lib/postgresql/server.crt
       -c ssl_key_file=/var/lib/postgresql/server.key
