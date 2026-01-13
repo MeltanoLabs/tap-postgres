@@ -56,7 +56,7 @@ lint = [
 ]
 testing = [
     "hypothesis>=6.122.1",
-    "pytest>=8",
+    "pytest>=9",
     "singer-sdk[testing]",
 ]
 typing = [
@@ -128,12 +128,21 @@ sqlalchemy = "sa"
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.pytest.ini_options]
-addopts = '--durations=10'
+[tool.pytest]
+addopts = [
+  "--durations=10",
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+]
 filterwarnings = [
   "error",
   "ignore:Exception ignored:pytest.PytestUnraisableExceptionWarning",
 ]
+log_level = "INFO"
+minversion = "9"
+testpaths = ["tests"]
+xfail_strict = true
 
 [tool.uv]
 exclude-newer = "7 days"

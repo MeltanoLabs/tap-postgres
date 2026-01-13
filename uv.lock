@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.10"
 
 [options]
-exclude-newer = "2026-01-06T19:09:33.072372Z"
+exclude-newer = "2026-01-06T19:45:10.319512Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -708,7 +708,7 @@ provides-extras = ["msgspec"]
 dev = [
     { name = "hypothesis", specifier = ">=6.122.1" },
     { name = "mypy", specifier = ">=1.8.0" },
-    { name = "pytest", specifier = ">=8" },
+    { name = "pytest", specifier = ">=9" },
     { name = "ruff", specifier = ">=0.14" },
     { name = "singer-sdk", extras = ["testing"] },
     { name = "types-jsonschema", specifier = ">=4.19.0.3" },
@@ -720,7 +720,7 @@ dev = [
 lint = [{ name = "ruff", specifier = ">=0.14" }]
 testing = [
     { name = "hypothesis", specifier = ">=6.122.1" },
-    { name = "pytest", specifier = ">=8" },
+    { name = "pytest", specifier = ">=9" },
     { name = "singer-sdk", extras = ["testing"] },
 ]
 typing = [
