@@ -406,7 +406,11 @@ def test_json_as_object():
             }
 
     assert len(rows) == len(test_runner.records[altered_table_name])
-    for expected_row, actual_row in zip(rows, test_runner.records[altered_table_name]):
+    for expected_row, actual_row in zip(
+        rows,
+        test_runner.records[altered_table_name],
+        strict=False,
+    ):
         assert actual_row == expected_row
 
 
@@ -520,7 +524,11 @@ def test_hstore():
             }
 
     assert len(rows) == len(test_runner.records[altered_table_name])
-    for expected_row, actual_row in zip(rows, test_runner.records[altered_table_name]):
+    for expected_row, actual_row in zip(
+        rows,
+        test_runner.records[altered_table_name],
+        strict=False,
+    ):
         assert actual_row == expected_row
 
 
