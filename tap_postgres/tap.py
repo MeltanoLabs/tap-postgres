@@ -11,25 +11,23 @@ import sys
 import threading
 from contextlib import suppress
 from functools import cached_property
-from os import chmod, path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import paramiko
 from singer_sdk import Stream
 from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
 from singer_sdk.sql import SQLStream, SQLTap
-from sqlalchemy.engine import URL
-from sqlalchemy.engine.url import make_url
 
 from tap_postgres.client import (
     PostgresConnector,
     PostgresLogBasedStream,
     PostgresStream,
 )
+from tap_postgres.connection_parameters import ConnectionParameters
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Sequence
 
 # Try to import MsgSpecWriter for better performance
 try:
@@ -234,11 +232,6 @@ class TapPostgres(SQLTap):
             "Need either the sqlalchemy_url to be set or host, port, user,"
             + " and password to be set"
         )
-
-        # If log-based replication is used, sqlalchemy_url can't be used.
-        assert (self.config.get("sqlalchemy_url") is None) or (
-            self.config.get("replication_mode") != "LOG_BASED"
-        ), "A sqlalchemy_url can't be used with log-based replication"
 
         # If sqlalchemy_url is not being used and ssl_enable is on, ssl_mode must have
         # one of six allowable values. If ssl_mode is verify-ca or verify-full, a
@@ -523,95 +516,6 @@ class TapPostgres(SQLTap):
         ),
     ).to_dict()
 
-    def get_sqlalchemy_url(self, config: Mapping[str, Any]) -> str:
-        """Generate a SQLAlchemy URL.
-
-        Args:
-            config: The configuration for the connector.
-        """
-        if config.get("sqlalchemy_url"):
-            return cast("str", config["sqlalchemy_url"])
-
-        sqlalchemy_url = URL.create(
-            drivername="postgresql+psycopg2",
-            username=config["user"],
-            password=config["password"],
-            host=config["host"],
-            port=config["port"],
-            database=config["database"],
-            query=self.get_sqlalchemy_query(config=config),
-        )
-        return cast("str", sqlalchemy_url)
-
-    def get_sqlalchemy_query(self, config: Mapping[str, Any]) -> dict:
-        """Get query values to be used for sqlalchemy URL creation.
-
-        Args:
-            config: The configuration for the connector.
-
-        Returns:
-            A dictionary with key-value pairs for the sqlalchemy query.
-        """
-        query = {}
-
-        # ssl_enable is for verifying the server's identity to the client.
-        if config["ssl_enable"]:
-            ssl_mode = config["ssl_mode"]
-            query.update({"sslmode": ssl_mode})
-            if ssl_mode in ("verify-ca", "verify-full") and config.get("ssl_certificate_authority"):
-                query["sslrootcert"] = self.filepath_or_certificate(
-                    value=config["ssl_certificate_authority"],
-                    alternative_name=config["ssl_storage_directory"] + "/root.crt",
-                )
-
-        # ssl_client_certificate_enable is for verifying the client's identity to the
-        # server.
-        if config["ssl_client_certificate_enable"]:
-            query["sslcert"] = self.filepath_or_certificate(
-                value=config["ssl_client_certificate"],
-                alternative_name=config["ssl_storage_directory"] + "/cert.crt",
-            )
-            query["sslkey"] = self.filepath_or_certificate(
-                value=config["ssl_client_private_key"],
-                alternative_name=config["ssl_storage_directory"] + "/pkey.key",
-                restrict_permissions=True,
-            )
-        return query
-
-    def filepath_or_certificate(
-        self,
-        value: str,
-        alternative_name: str,
-        restrict_permissions: bool = False,
-    ) -> str:
-        """Provide the appropriate key-value pair based on a filepath or raw value.
-
-        For SSL configuration options, support is provided for either raw values in
-        .env file or filepaths to a file containing a certificate. This function
-        attempts to parse a value as a filepath, and if no file is found, assumes the
-        value is a certificate and creates a file named `alternative_name` to store the
-        file.
-
-        Args:
-            value: Either a filepath or a raw value to be written to a file.
-            alternative_name: The filename to use in case `value` is not a filepath.
-            restrict_permissions: Whether to restrict permissions on a newly created
-                file. On UNIX systems, private keys cannot have public access.
-
-        Returns:
-            A dictionary with key-value pairs for the sqlalchemy query
-
-        """
-        if path.isfile(value):
-            return value
-
-        with open(alternative_name, "wb") as alternative_file:
-            alternative_file.write(value.encode("utf-8"))
-        if restrict_permissions:
-            chmod(alternative_name, 0o600)
-
-        return alternative_name
-
     @cached_property
     def connector(self) -> PostgresConnector:
         """Get a configured connector for this Tap.
@@ -619,17 +523,21 @@ class TapPostgres(SQLTap):
         Connector is a singleton (one instance is used by the Tap and Streams).
 
         """
-        # We mutate this url to use the ssh tunnel if enabled
-        url = make_url(self.get_sqlalchemy_url(config=self.config))
+        # We mutate these parameters if SSH tunneling is enabled
+        self.connection_parameters = ConnectionParameters.from_tap_config(self.config)
+
         ssh_config = self.config.get("ssh_tunnel", {})
 
         if ssh_config.get("enable", False):
-            # Return a new URL with SSH tunnel parameters
-            url = self.ssh_tunnel_connect(ssh_config=ssh_config, url=url)
+            # Return new parameters with SSH tunnel config
+            self.connection_parameters = self.ssh_tunnel_connect(
+                ssh_config=ssh_config,
+                connection_parameters=self.connection_parameters,
+            )
 
-        return PostgresConnector(
-            config=dict(self.config),
-            sqlalchemy_url=url.render_as_string(hide_password=False),
+        return PostgresConnector.from_connection_parameters(
+            config=self.config,
+            connection_parameters=self.connection_parameters,
         )
 
     def guess_key_type(self, key_data: str) -> paramiko.PKey:
@@ -666,17 +574,19 @@ class TapPostgres(SQLTap):
         )
         raise ValueError(errmsg)
 
-    def ssh_tunnel_connect(self, *, ssh_config: dict[str, Any], url: URL) -> URL:
+    def ssh_tunnel_connect(
+        self, *, ssh_config: dict[str, Any], connection_parameters: ConnectionParameters
+    ) -> ConnectionParameters:
         """Connect to the SSH Tunnel and swap the URL to use the tunnel.
 
         Args:
             ssh_config: The SSH Tunnel configuration
-            url: The original URL to connect to.
+            connection_parameters: The original connection parameters to connect to.
 
         Returns:
-            The new URL to connect to, using the tunnel.
+            The new connection parameters to connect to, using the tunnel.
         """
-        if url.host is None or url.port is None:
+        if connection_parameters.host is None or connection_parameters.port is None:
             msg = "Database host and port must be specified when using SSH tunnel"
             raise ValueError(msg)
 
@@ -685,7 +595,10 @@ class TapPostgres(SQLTap):
             ssh_username=ssh_config["username"],
             ssh_pkey=self.guess_key_type(ssh_config["private_key"]),
             ssh_private_key_password=ssh_config.get("private_key_password"),
-            remote_bind_address=(url.host, url.port),
+            remote_bind_address=(
+                connection_parameters.host,
+                connection_parameters.port,
+            ),
         )
         self.ssh_tunnel.start()
         self.logger.info("SSH Tunnel started")
@@ -696,9 +609,9 @@ class TapPostgres(SQLTap):
         signal.signal(signal.SIGINT, self.catch_signal)
 
         # Swap the URL to use the tunnel
-        return url.set(
-            host=self.ssh_tunnel.local_bind_host,
-            port=self.ssh_tunnel.local_bind_port,
+        return connection_parameters.with_host_and_port(
+            host=connection_parameters.host,
+            port=connection_parameters.port,
         )
 
     def clean_up(self) -> None:
@@ -806,7 +719,12 @@ class TapPostgres(SQLTap):
         for catalog_entry in self.catalog_dict["streams"]:
             if catalog_entry["replication_method"] == "LOG_BASED":
                 streams.append(
-                    PostgresLogBasedStream(self, catalog_entry, connector=self.connector)
+                    PostgresLogBasedStream(
+                        self,
+                        catalog_entry,
+                        connection_parameters=self.connection_parameters,
+                        connector=self.connector,
+                    )
                 )
             else:
                 streams.append(PostgresStream(self, catalog_entry, connector=self.connector))
