@@ -16,6 +16,6 @@ SAMPLE_CONFIG = {
 
 
 def test_ssh_tunnel():
-    """We expect the SSH environment to already be up"""
+    """We expect the SSH environment to already be up."""
     tap = TapPostgres(config=SAMPLE_CONFIG)
     tap.sync_all()

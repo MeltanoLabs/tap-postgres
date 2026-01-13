@@ -141,9 +141,16 @@ def test_connection_parameters_from_sqlalchemy_url_parses_fields(
     }
 
 
-def test_connection_parameters_from_sqlalchemy_url_defaults_port_and_keeps_ssl_paths(
-    tmp_path: Path,
-) -> None:
+def test_from_sqlalchemy_url_default_port() -> None:
+    cfg = {
+        "sqlalchemy_url": ("postgresql://user:pass@localhost/mydb"),
+    }
+
+    parameters = ConnectionParameters.from_tap_config(cfg)
+    assert parameters.port == 5432  # noqa: PLR2004
+
+
+def test_from_sqlalchemy_url_and_preserves_ssl_paths(tmp_path: Path) -> None:
     rootcert = tmp_path / "root.crt"
     rootcert.write_text("CA", encoding="utf-8")
 
@@ -154,8 +161,6 @@ def test_connection_parameters_from_sqlalchemy_url_defaults_port_and_keeps_ssl_p
     }
 
     parameters = ConnectionParameters.from_tap_config(cfg)
-
-    assert parameters.port == 5432  # noqa: PLR2004
     assert parameters.options == {
         "application_name": "tap_postgres",
         "sslmode": "verify-full",
@@ -163,7 +168,7 @@ def test_connection_parameters_from_sqlalchemy_url_defaults_port_and_keeps_ssl_p
     }
 
 
-def test_connection_parameters_renders_as_sqlalchemy_url(tmp_path: Path) -> None:
+def test_renders_as_sqlalchemy_url(tmp_path: Path) -> None:
     cfg = _base_config(tmp_path)
     cfg.update(
         {
@@ -181,7 +186,7 @@ def test_connection_parameters_renders_as_sqlalchemy_url(tmp_path: Path) -> None
     )
 
 
-def test_connection_parameters_renders_as_psycopg2_dsn(tmp_path: Path) -> None:
+def test_renders_as_psycopg2_dsn(tmp_path: Path) -> None:
     cfg = _base_config(tmp_path)
     cfg.update(
         {
@@ -197,3 +202,54 @@ def test_connection_parameters_renders_as_psycopg2_dsn(tmp_path: Path) -> None:
         "host=localhost port=5432 dbname=postgres user=postgres password=postgres "
         "application_name=tap_postgres sslmode=require"
     )
+
+
+def test_with_host_and_port():
+    """Unit test for ConnectionParameters.with_host_and_port method."""
+    # Create original connection parameters (pointing to remote database)
+    original = ConnectionParameters(
+        host="remote-db.example.com",
+        port=5432,
+        database="testdb",
+        user="testuser",
+        password="testpass",
+        options={"sslmode": "require", "application_name": "tap_postgres"},
+    )
+
+    ssh_tunnel_host = "127.0.0.1"
+    ssh_tunnel_port = 12345
+
+    # Simulate what ssh_tunnel_connect does: update to tunnel's local bind address
+    updated = original.with_host_and_port(
+        host=ssh_tunnel_host,  # tunnel's local_bind_host
+        port=ssh_tunnel_port,  # tunnel's local_bind_port
+    )
+
+    assert updated.host == ssh_tunnel_host
+    assert updated.port == ssh_tunnel_port
+
+    # Verify other parameters are preserved
+    assert updated.database == original.database == "testdb"
+    assert updated.user == original.user == "testuser"
+    assert updated.password == original.password == "testpass"
+    assert (
+        updated.options
+        == original.options
+        == {"sslmode": "require", "application_name": "tap_postgres"}
+    )
+
+    # Verify original parameters are unchanged (immutability check)
+    assert original.host == "remote-db.example.com"
+    assert original.port == 5432  # noqa: PLR2004
+
+    # Verify the connection strings use the tunnel address
+    sqlalchemy_url = updated.render_as_sqlalchemy_url()
+    psycopg2_dsn = updated.render_as_psycopg2_dsn()
+
+    assert ssh_tunnel_host in sqlalchemy_url
+    assert str(ssh_tunnel_port) in sqlalchemy_url
+    assert original.host not in sqlalchemy_url
+
+    assert f"host={ssh_tunnel_host}" in psycopg2_dsn
+    assert f"port={ssh_tunnel_port}" in psycopg2_dsn
+    assert original.host not in psycopg2_dsn

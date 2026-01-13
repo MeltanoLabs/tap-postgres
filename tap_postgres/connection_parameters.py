@@ -73,7 +73,7 @@ class ConnectionParameters:
             options=_build_options_from_tap_config(config),
         )
 
-    def with_host_and_port(self, host: str, port: int) -> ConnectionParameters:
+    def with_host_and_port(self, *, host: str, port: int) -> ConnectionParameters:
         """Return a new ConnectionParameters with the given host and port.
 
         Args:
