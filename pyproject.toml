@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
     "paramiko>=4",
     "psycopg2-binary==2.9.11",
-    "sqlalchemy==2.0.45",
+    "sqlalchemy==2.0.46",
     "singer-sdk[faker,sql]~=0.53.0",
 ]
 optional-dependencies.msgspec = [
