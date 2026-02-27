@@ -30,8 +30,21 @@ def test_base_connection_parameters(tmp_path: Path) -> None:
         "database": "postgres",
         "user": "postgres",
         "password": "postgres",
+        "drivername": "postgresql+psycopg2",
         "options": {"application_name": "tap_postgres"},
     }
+
+
+def test_connection_parameters_from_sqlalchemy_url_sets_drivername(tmp_path: Path) -> None:
+    cfg = _base_config(tmp_path)
+    cfg.update(
+        {
+            "sqlalchemy_url": "postgresql+my_custom_driver://user:pass@localhost:5432/postgres",
+        }
+    )
+
+    parameters = ConnectionParameters.from_tap_config(cfg)
+    assert parameters.drivername == "postgresql+my_custom_driver"
 
 
 def test_connection_parameters_ssl_require_sets_sslmode_only(
@@ -133,6 +146,7 @@ def test_connection_parameters_from_sqlalchemy_url_parses_fields(
         "database": "mydb",
         "user": "user",
         "password": "pass",
+        "drivername": "postgresql",
         "options": {
             "application_name": "another-name",
             "sslmode": "require",
