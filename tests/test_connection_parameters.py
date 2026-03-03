@@ -30,8 +30,66 @@ def test_base_connection_parameters(tmp_path: Path) -> None:
         "database": "postgres",
         "user": "postgres",
         "password": "postgres",
+        "drivername": "postgresql+psycopg2",
         "options": {"application_name": "tap_postgres"},
     }
+
+
+def test_connection_parameters_from_sqlalchemy_url_sets_drivername(tmp_path: Path) -> None:
+    cfg = _base_config(tmp_path)
+    cfg.update(
+        {
+            "sqlalchemy_url": "postgresql+my_custom_driver://user:pass@localhost:5432/postgres",
+        }
+    )
+
+    parameters = ConnectionParameters.from_tap_config(cfg)
+    assert parameters.drivername == "postgresql+my_custom_driver"
+
+
+def test_connection_parameters_from_complex_sqlalchemy_url(tmp_path: Path) -> None:
+    """This was taken from a comment by @mateusz.
+
+    https://github.com/MeltanoLabs/tap-postgres/issues/737#issuecomment-3986701467.
+    """
+    cfg = _base_config(tmp_path)
+    cfg.update(
+        {
+            "sqlalchemy_url": "awspostgres+psycopg://ABCDEF%3Asys_user:password@datawarehouse.abcdef.ap-southeast-2.rds.amazonaws.com:5432/datawarehouse?sslmode=verify-full&sslrootcert=crt%2Fap-southeast-2-bundle.pem",
+        }
+    )
+
+    parameters = ConnectionParameters.from_tap_config(cfg)
+    assert parameters.drivername == "awspostgres+psycopg"
+    assert parameters.host == "datawarehouse.abcdef.ap-southeast-2.rds.amazonaws.com"
+    assert parameters.port == 5432
+    assert parameters.database == "datawarehouse"
+    assert parameters.user == "ABCDEF:sys_user"
+    assert parameters.password == "password"
+    assert parameters.options == {
+        "application_name": "tap_postgres",  # Added by us
+        "sslmode": "verify-full",
+        "sslrootcert": "crt/ap-southeast-2-bundle.pem",
+    }
+    assert (
+        parameters.render_as_sqlalchemy_url()
+        == (
+            "awspostgres+psycopg://ABCDEF%3Asys_user:password"  # username + password (encoded)
+            "@datawarehouse.abcdef.ap-southeast-2.rds.amazonaws.com:5432"  # host + port
+            "/datawarehouse"  # database
+            "?application_name=tap_postgres&sslmode=verify-full&sslrootcert=crt%2Fap-southeast-2-bundle.pem"  # options  # noqa: E501
+        )
+    )
+    assert parameters.render_as_psycopg2_dsn() == (
+        "host=datawarehouse.abcdef.ap-southeast-2.rds.amazonaws.com "
+        "port=5432 "
+        "dbname=datawarehouse "
+        "user=ABCDEF:sys_user "
+        "password=password "
+        "application_name=tap_postgres "
+        "sslmode=verify-full "
+        "sslrootcert=crt/ap-southeast-2-bundle.pem"
+    )
 
 
 def test_connection_parameters_ssl_require_sets_sslmode_only(
@@ -107,7 +165,7 @@ def test_connection_parameters_writes_client_cert_and_key(tmp_path: Path) -> Non
 
     # Private keys must not be world-readable.
     mode = os.stat(key_path).st_mode & 0o777
-    assert mode == 0o600  # noqa: PLR2004
+    assert mode == 0o600
 
 
 def test_connection_parameters_from_sqlalchemy_url_parses_fields(
@@ -133,6 +191,7 @@ def test_connection_parameters_from_sqlalchemy_url_parses_fields(
         "database": "mydb",
         "user": "user",
         "password": "pass",
+        "drivername": "postgresql",
         "options": {
             "application_name": "another-name",
             "sslmode": "require",
@@ -147,7 +206,7 @@ def test_from_sqlalchemy_url_default_port() -> None:
     }
 
     parameters = ConnectionParameters.from_tap_config(cfg)
-    assert parameters.port == 5432  # noqa: PLR2004
+    assert parameters.port == 5432
 
 
 def test_from_sqlalchemy_url_and_preserves_ssl_paths(tmp_path: Path) -> None:
@@ -240,7 +299,7 @@ def test_with_host_and_port():
 
     # Verify original parameters are unchanged (immutability check)
     assert original.host == "remote-db.example.com"
-    assert original.port == 5432  # noqa: PLR2004
+    assert original.port == 5432
 
     # Verify the connection strings use the tunnel address
     sqlalchemy_url = updated.render_as_sqlalchemy_url()

@@ -14,11 +14,9 @@ import typing as t
 from types import MappingProxyType
 
 import psycopg2
-import singer_sdk.helpers._typing
 import sqlalchemy as sa
 import sqlalchemy.types
 from psycopg2 import extras
-from singer_sdk import Tap
 from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
@@ -28,11 +26,17 @@ from sqlalchemy.dialects import postgresql
 if t.TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
+    from singer_sdk import Tap
     from singer_sdk.helpers.types import Context
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine.reflection import Inspector
 
     from tap_postgres.connection_parameters import ConnectionParameters
+
+
+def _now_utc() -> str:
+    """Return the current UTC time as a string."""
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
@@ -102,54 +106,6 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
             "type": ["object", "null"],
             "additionalProperties": True,
         }
-
-
-def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
-    """Overrides Singer SDK type conformance.
-
-    Most logic here is from singer_sdk.helpers._typing._conform_primitive_property, as
-    marked by "# copied". This is a full override rather than calling the "super"
-    because the final piece of logic in the super `if is_boolean_type(property_schema):`
-    is flawed. is_boolean_type will return True if the schema contains a boolean
-    anywhere. Therefore, a jsonschema type like ["boolean", "integer"] will return true
-    and will have its values coerced to either True or False. In practice, this occurs
-    for columns with JSONB type: no guarantees can be made about their data, so the
-    schema has every possible data type, including boolean. Without this override, all
-    JSONB columns would be coerced to True or False.
-
-    Modifications:
-     - prevent dates from turning into datetimes.
-     - prevent collapsing values to booleans. (discussed above)
-
-    Converts a primitive (i.e. not object or array) to a json compatible type.
-
-    Returns:
-        The appropriate json compatible type.
-    """
-    if isinstance(elem, datetime.date):  # not copied, original logic
-        return elem.isoformat()
-    if isinstance(elem, datetime.datetime):  # copied
-        return singer_sdk.helpers._typing.to_json_compatible(elem)
-    if isinstance(elem, datetime.timedelta):  # copied
-        epoch = datetime.datetime.fromtimestamp(0, datetime.timezone.utc)
-        timedelta_from_epoch = epoch + elem
-        if timedelta_from_epoch.tzinfo is None:
-            timedelta_from_epoch = timedelta_from_epoch.replace(tzinfo=datetime.timezone.utc)
-        return timedelta_from_epoch.isoformat()
-    if isinstance(elem, datetime.time):  # copied
-        return str(elem)
-    if isinstance(elem, bytes):  # copied, modified to import is_boolean_type
-        # for BIT value, treat 0 as False and anything else as True
-        # Will only due this for booleans, not `bytea` data.
-        return (
-            elem != b"\x00"
-            if singer_sdk.helpers._typing.is_boolean_type(property_schema)
-            else elem.hex()
-        )
-    return elem
-
-
-singer_sdk.helpers._typing._conform_primitive_property = patched_conform
 
 
 class PostgresConnector(SQLConnector):
@@ -327,7 +283,7 @@ class PostgresLogBasedStream(SQLStream):
                 treat_as_sorted = False
             increment_state(
                 state_dict,
-                replication_key=self.replication_key,
+                replication_key=self.replication_key,  # ty:ignore[invalid-argument-type]
                 latest_record=latest_record,
                 is_sorted=treat_as_sorted,
                 check_sorted=self.check_sorted,
@@ -425,9 +381,11 @@ class PostgresLogBasedStream(SQLStream):
             for column in message_payload["identity"]:
                 row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update(
-                {"_sdc_deleted_at": datetime.datetime.utcnow().strftime(r"%Y-%m-%dT%H:%M:%SZ")}
+                {
+                    "_sdc_deleted_at": _now_utc(),
+                    "_sdc_lsn": message.data_start,
+                }
             )
-            row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(
                 (

@@ -32,6 +32,7 @@ class ConnectionParameters:
     user: str
     password: str
     options: dict[str, str]
+    drivername: str = "postgresql+psycopg2"
 
     @classmethod
     def from_tap_config(cls, config: Mapping[str, Any]) -> ConnectionParameters:
@@ -61,6 +62,7 @@ class ConnectionParameters:
                 database=url.database,
                 user=url.username,
                 password=str(url.password),
+                drivername=url.drivername,
                 options=_build_options_from_sqlalchemy_url(url),
             )
 
@@ -99,7 +101,7 @@ class ConnectionParameters:
             SQLAlchemy URL string.
         """
         return URL.create(
-            drivername="postgresql+psycopg2",
+            drivername=self.drivername,
             username=self.user,
             password=self.password,
             host=self.host,

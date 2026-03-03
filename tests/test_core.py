@@ -114,7 +114,7 @@ TapPostgresTestSelectedColumnsOnly = get_tap_test_class(
 )
 
 
-class TestTapPostgres(TapPostgresTest):
+class TestTapPostgres(TapPostgresTest):  # ty:ignore[unsupported-base]
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -125,7 +125,7 @@ class TestTapPostgres(TapPostgresTest):
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
 
-class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801
+class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801  # ty:ignore[unsupported-base]
     table_name = TABLE_NAME
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -136,7 +136,7 @@ class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801
         teardown_test_table(self.table_name, self.sqlalchemy_url)
 
 
-class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):
+class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):  # ty:ignore[unsupported-base]
     table_name = TABLE_NAME_SELECTED_COLUMNS_ONLY
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
@@ -199,7 +199,7 @@ def test_temporal_datatypes():
     assert test_runner.records[altered_table_name][0] == {
         "column_date": "2022-03-19",
         "column_time": "06:04:19.222000",
-        "column_timestamp": "1918-02-03T13:00:01",
+        "column_timestamp": "1918-02-03T13:00:01.000000+00:00",
     }
 
 

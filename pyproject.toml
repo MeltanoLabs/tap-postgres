@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
     "paramiko>=4",
     "psycopg2-binary==2.9.11",
-    "sqlalchemy==2.0.46",
+    "sqlalchemy==2.0.48",
     "singer-sdk[faker,sql]~=0.53.0",
 ]
 optional-dependencies.msgspec = [
@@ -60,12 +60,13 @@ testing = [
     "singer-sdk[testing]",
 ]
 typing = [
+    { include-group = "testing" },
     "mypy>=1.8.0",
     "types-paramiko>=4",
     "types-simplejson>=3.19.0.2",
-    "types-sqlalchemy>=1.4.53.38",
     "types-jsonschema>=4.19.0.3",
     "types-psycopg2>=2.9.21.20240118",
+    "ty>=0.0.20",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -82,7 +83,7 @@ warn_unused_ignores = true
 
 [build-system]
 requires = [
-  "hatchling==1.28",
+  "hatchling==1.29.0",
   "hatch-vcs==0.5",
 ]
 build-backend = "hatchling.build"
@@ -124,6 +125,7 @@ sqlalchemy = "sa"
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
   "D",
+  "PLR2004",  # magic-value-comparison
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -146,4 +148,38 @@ testpaths = ["tests"]
 xfail_strict = true
 
 [tool.uv]
-required-version = ">=0.9.17"
+required-version = ">=0.10"
+
+[tool.tox]
+envlist = [
+  "format",
+  { product = [
+    { prefix = "3.", start = 10 },
+  ] },
+  "lint",
+]
+isolated_build = true
+min_version = "4.43"
+requires = ["tox>=4.43", "tox-uv"]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+dependency_groups = ["testing"]
+commands = [["pytest"]]
+
+[tool.tox.env.format]
+skip_install = true
+dependency_groups = ["lint"]
+commands = [
+  ["ruff", "check", "tap_postgres/"],
+  ["ruff", "format", "tap_postgres/"],
+]
+
+[tool.tox.env.lint]
+skip_install = true
+dependency_groups = ["lint", "typing"]
+commands = [
+  ["ruff", "check", "--diff", "tap_postgres/"],
+  ["ruff", "format", "--check", "tap_postgres/"],
+  ["mypy", "."],
+]
