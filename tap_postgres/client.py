@@ -34,6 +34,11 @@ if t.TYPE_CHECKING:
     from tap_postgres.connection_parameters import ConnectionParameters
 
 
+def _now_utc() -> str:
+    """Return the current UTC time as a string."""
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
     """Custom SQL to JSON Schema conversion for Postgres."""
 
@@ -148,7 +153,7 @@ def patched_conform(elem: t.Any, property_schema: dict) -> t.Any:
     return elem
 
 
-singer_sdk.helpers._typing._conform_primitive_property = patched_conform
+singer_sdk.helpers._typing._conform_primitive_property = patched_conform  # ty:ignore[invalid-assignment]
 
 
 class PostgresConnector(SQLConnector):
@@ -324,7 +329,7 @@ class PostgresLogBasedStream(SQLStream):
                 treat_as_sorted = False
             increment_state(
                 state_dict,
-                replication_key=self.replication_key,
+                replication_key=self.replication_key,  # ty:ignore[invalid-argument-type]
                 latest_record=latest_record,
                 is_sorted=treat_as_sorted,
                 check_sorted=self.check_sorted,
@@ -415,9 +420,11 @@ class PostgresLogBasedStream(SQLStream):
             for column in message_payload["identity"]:
                 row.update({column["name"]: self._parse_column_value(column, cursor)})
             row.update(
-                {"_sdc_deleted_at": datetime.datetime.utcnow().strftime(r"%Y-%m-%dT%H:%M:%SZ")}
+                {
+                    "_sdc_deleted_at": _now_utc(),
+                    "_sdc_lsn": message.data_start,
+                }
             )
-            row.update({"_sdc_lsn": message.data_start})
         elif message_payload["action"] in truncate_actions:
             self.logger.debug(
                 (

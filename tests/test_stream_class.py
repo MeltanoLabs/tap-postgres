@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from singer_sdk.singerlib import CatalogEntry, MetadataMapping, Schema
 
@@ -7,14 +9,18 @@ from tap_postgres.client import PostgresConnector, PostgresStream
 from tap_postgres.connection_parameters import ConnectionParameters
 from tap_postgres.tap import TapPostgres
 
+if TYPE_CHECKING:
+    from singer_sdk.sql.connector import FullyQualifiedName
+
 
 class DummyConnector(PostgresConnector):
     def __init__(self, config: dict) -> None:
-        super().__init__(config, ConnectionParameters.from_tap_config(config))
+        params = ConnectionParameters.from_tap_config(config)
+        super().__init__(config, params.render_as_sqlalchemy_url())
 
     def get_table(
         self,
-        full_table_name: str,
+        full_table_name: str | FullyQualifiedName,
         column_names: list[str] | None = None,
     ) -> sa.Table:
         return sa.Table("test_table", sa.MetaData(), sa.Column("id", sa.Integer))
