@@ -258,6 +258,8 @@ class PostgresLogBasedStream(SQLStream):
 
     replication_key = "_sdc_lsn"
 
+    _WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
+
     connection_parameters: ConnectionParameters
 
     def __init__(
@@ -461,12 +463,7 @@ class PostgresLogBasedStream(SQLStream):
         This is invalid JSON. We fix it by removing the extra quotes:
             "type":"EnumName"
         """
-        # Pattern matches "type":"" followed by a word and then ""
-        # e.g., "type":""OrderStatus"" -> "type":"OrderStatus"
-        # The malformed output has literal double-double quotes around enum names
-        pattern = r'"type":""([^"]+)""'
-        replacement = r'"type":"\1"'
-        return re.sub(pattern, replacement, payload)
+        return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
 
     def _parse_column_value(self, column, cursor):
         # When using log based replication, the wal2json output for columns of
