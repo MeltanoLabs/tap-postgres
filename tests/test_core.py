@@ -199,7 +199,7 @@ def test_temporal_datatypes():
     assert test_runner.records[altered_table_name][0] == {
         "column_date": "2022-03-19",
         "column_time": "06:04:19.222000",
-        "column_timestamp": "1918-02-03T13:00:01",
+        "column_timestamp": "1918-02-03T13:00:01.000000+00:00",
     }
 
 
