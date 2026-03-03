@@ -147,4 +147,38 @@ testpaths = ["tests"]
 xfail_strict = true
 
 [tool.uv]
-required-version = ">=0.9.17"
+required-version = ">=0.10"
+
+[tool.tox]
+envlist = [
+  "format",
+  { product = [
+    { prefix = "3.", start = 10 },
+  ] },
+  "lint",
+]
+isolated_build = true
+min_version = "4.43"
+requires = ["tox>=4.43", "tox-uv"]
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+dependency_groups = ["testing"]
+commands = [["pytest"]]
+
+[tool.tox.env.format]
+skip_install = true
+dependency_groups = ["lint"]
+commands = [
+  ["ruff", "check", "tap_postgres/"],
+  ["ruff", "format", "tap_postgres/"],
+]
+
+[tool.tox.env.lint]
+skip_install = true
+dependency_groups = ["lint", "typing"]
+commands = [
+  ["ruff", "check", "--diff", "tap_postgres/"],
+  ["ruff", "format", "--check", "tap_postgres/"],
+  ["mypy", "."],
+]
