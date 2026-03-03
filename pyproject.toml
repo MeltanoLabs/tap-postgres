@@ -60,12 +60,13 @@ testing = [
     "singer-sdk[testing]",
 ]
 typing = [
+    { include-group = "testing" },
     "mypy>=1.8.0",
     "types-paramiko>=4",
     "types-simplejson>=3.19.0.2",
-    "types-sqlalchemy>=1.4.53.38",
     "types-jsonschema>=4.19.0.3",
     "types-psycopg2>=2.9.21.20240118",
+    "ty>=0.0.20",
 ]
 
 [tool.hatch.build.targets.sdist]
