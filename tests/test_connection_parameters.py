@@ -107,7 +107,7 @@ def test_connection_parameters_writes_client_cert_and_key(tmp_path: Path) -> Non
 
     # Private keys must not be world-readable.
     mode = os.stat(key_path).st_mode & 0o777
-    assert mode == 0o600  # noqa: PLR2004
+    assert mode == 0o600
 
 
 def test_connection_parameters_from_sqlalchemy_url_parses_fields(
@@ -147,7 +147,7 @@ def test_from_sqlalchemy_url_default_port() -> None:
     }
 
     parameters = ConnectionParameters.from_tap_config(cfg)
-    assert parameters.port == 5432  # noqa: PLR2004
+    assert parameters.port == 5432
 
 
 def test_from_sqlalchemy_url_and_preserves_ssl_paths(tmp_path: Path) -> None:
@@ -240,7 +240,7 @@ def test_with_host_and_port():
 
     # Verify original parameters are unchanged (immutability check)
     assert original.host == "remote-db.example.com"
-    assert original.port == 5432  # noqa: PLR2004
+    assert original.port == 5432
 
     # Verify the connection strings use the tunnel address
     sqlalchemy_url = updated.render_as_sqlalchemy_url()
