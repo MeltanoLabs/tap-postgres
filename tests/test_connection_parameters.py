@@ -62,7 +62,7 @@ def test_connection_parameters_from_complex_sqlalchemy_url(tmp_path: Path) -> No
     parameters = ConnectionParameters.from_tap_config(cfg)
     assert parameters.drivername == "awspostgres+psycopg"
     assert parameters.host == "datawarehouse.abcdef.ap-southeast-2.rds.amazonaws.com"
-    assert parameters.port == 5432  # noqa: PLR2004
+    assert parameters.port == 5432
     assert parameters.database == "datawarehouse"
     assert parameters.user == "ABCDEF:sys_user"
     assert parameters.password == "password"
