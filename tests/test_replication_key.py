@@ -152,9 +152,7 @@ def test_null_replication_key_without_start_date():
         catalog=tap_catalog,
     )
     test_runner.sync_all()
-    assert (
-        len(test_runner.records[altered_table_name]) == 3  # noqa: PLR2004
-    )  # All three records.
+    assert len(test_runner.records[altered_table_name]) == 3  # All three records.
 
 
 class TapTestReplicationKey(TapTestTemplate):
