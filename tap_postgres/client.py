@@ -213,6 +213,7 @@ class PostgresLogBasedStream(SQLStream):
     TYPE_CONFORMANCE_LEVEL = TypeConformanceLevel.ROOT_ONLY
 
     replication_key = "_sdc_lsn"
+    is_sorted = True
 
     _WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
 
