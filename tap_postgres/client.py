@@ -17,7 +17,6 @@ import psycopg2
 import sqlalchemy as sa
 import sqlalchemy.types
 from psycopg2 import extras
-from singer_sdk.helpers._state import increment_state
 from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
@@ -261,34 +260,28 @@ class PostgresLogBasedStream(SQLStream):
         *,
         context: Context | None = None,
     ) -> None:
-        """Update state of stream or partition with data from the provided record.
+        """Update state bookmark with max-forward-only LSN advancement.
 
-        The default implementation does not advance any bookmarks unless
-        `self.replication_method == 'INCREMENTAL'`. For us, `self.replication_method ==
-        'LOG_BASED'`, so an override is required.
+        The base class only advances bookmarks for INCREMENTAL streams.
+        LOG_BASED streams need this override to track the replication position.
+
+        WAL records are delivered in LSN order overall, but records near
+        transaction boundaries can arrive with LSN values slightly below the
+        stored bookmark (e.g. when start_replication resumes mid-transaction).
+        We silently skip those rather than crashing with InvalidStreamSortException.
         """
-        # This also creates a state entry if one does not yet exist:
-        state_dict = self.get_context_state(context)
+        if not latest_record or not self.replication_key:
+            return
 
-        # Advance state bookmark values if applicable
-        if latest_record:  # This is the only line that has been overridden.
-            if not self.replication_key:
-                msg = (
-                    f"Could not detect replication key for '{self.name}' "
-                    f"stream(replication method={self.replication_method})"
-                )
-                raise ValueError(msg)
-            treat_as_sorted = self.is_sorted
-            if not treat_as_sorted and self.state_partitioning_keys is not None:
-                # Streams with custom state partitioning are not resumable.
-                treat_as_sorted = False
-            increment_state(
-                state_dict,
-                replication_key=self.replication_key,  # ty:ignore[invalid-argument-type]
-                latest_record=latest_record,
-                is_sorted=treat_as_sorted,
-                check_sorted=self.check_sorted,
-            )
+        state_dict = self.get_context_state(context)
+        new_value = latest_record.get(self.replication_key)
+        if new_value is None:
+            return
+
+        old_value = state_dict.get("replication_key_value")
+        if old_value is None or new_value >= old_value:
+            state_dict["replication_key"] = self.replication_key
+            state_dict["replication_key_value"] = new_value
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects."""
