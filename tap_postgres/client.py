@@ -315,7 +315,8 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
         replication_slot_name = self.config.get(
-            "replication_slot_name", "tappostgres",
+            "replication_slot_name",
+            "tappostgres",
         )
 
         logical_replication_cursor.start_replication(
@@ -367,15 +368,16 @@ class PostgresLogBasedStream(SQLStream):
 
             try:
                 ready = select.select(
-                    [logical_replication_cursor], [], [], 1.0,
+                    [logical_replication_cursor],
+                    [],
+                    [],
+                    1.0,
                 )[0]
             except InterruptedError:
                 ready = True
 
             if not ready:
-                data_idle = (
-                    datetime.datetime.now() - last_data_message
-                ).total_seconds()
+                data_idle = (datetime.datetime.now() - last_data_message).total_seconds()
                 if data_idle >= idle_exit_seconds:
                     self.logger.info(
                         "No data messages for %.0f seconds, ending sync "
@@ -443,8 +445,7 @@ class PostgresLogBasedStream(SQLStream):
         try:
             replication_cursor.send_feedback(flush_lsn=flush_lsn)
             self.logger.info(
-                "Advanced replication slot confirmed position from %d to %d "
-                "(delta %.2f MB)",
+                "Advanced replication slot confirmed position from %d to %d (delta %.2f MB)",
                 start_lsn,
                 flush_lsn,
                 (flush_lsn - start_lsn) / (1024 * 1024),
