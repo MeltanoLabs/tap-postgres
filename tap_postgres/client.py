@@ -374,7 +374,7 @@ class PostgresLogBasedStream(SQLStream):
                     1.0,
                 )[0]
             except InterruptedError:
-                ready = True
+                ready = [logical_replication_cursor]
 
             if not ready:
                 data_idle = (datetime.datetime.now() - last_data_message).total_seconds()
@@ -468,7 +468,10 @@ class PostgresLogBasedStream(SQLStream):
                 conn.autocommit = True
                 with conn.cursor() as cur:
                     cur.execute("SELECT pg_current_wal_flush_lsn()")
-                    lsn_str = cur.fetchone()[0]  # e.g. '6/4A3B2C10'
+                    row = cur.fetchone()
+                    if row is None:
+                        return None
+                    lsn_str = row[0]  # e.g. '6/4A3B2C10'
                     hi, lo = lsn_str.split("/")
                     return (int(hi, 16) << 32) + int(lo, 16)
             finally:
