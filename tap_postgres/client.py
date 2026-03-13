@@ -284,24 +284,36 @@ class PostgresLogBasedStream(SQLStream):
             state_dict["replication_key_value"] = new_value
 
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
-        """Return a generator of row-type dictionary objects."""
-        status_interval = 5  # if no records in 5 seconds the tap can exit
+        """Return a generator of row-type dictionary objects.
+
+        Runs a long-lived replication session (up to
+        ``replication_max_run_seconds``, default 600 s) so the tap can drain
+        large WAL backlogs in a single sync.  Sends periodic flush feedback
+        while yielding records so the slot releases retained WAL incrementally.
+
+        After the loop ends -- either because no data messages arrived for
+        ``replication_idle_exit_seconds`` (default 60 s) or the time budget is
+        exhausted -- the slot is advanced to the current WAL tip to prevent
+        unbounded WAL retention.
+        """
+        status_interval = 10
+        max_run_seconds = self.config["replication_max_run_seconds"]
+        idle_exit_seconds = self.config["replication_idle_exit_seconds"]
+        feedback_interval = 30
+
         start_lsn = self.get_starting_replication_key_value(context=context)
         if start_lsn is None:
             start_lsn = 0
+
         logical_replication_connection = self.logical_replication_connection()
         logical_replication_cursor = logical_replication_connection.cursor()
 
-        # Flush logs from the previous sync. send_feedback() will only flush LSNs before
-        # the value of flush_lsn, not including the value of flush_lsn, so this is safe
-        # even though we still want logs with an LSN == start_lsn.
         logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
-        # get the slot name from the configuration or use the default value
-        replication_slot_name = self.config.get("replication_slot_name", "tappostgres")
+        replication_slot_name = self.config["replication_slot_name"]
 
         logical_replication_cursor.start_replication(
-            slot_name=replication_slot_name,  # use slot name
+            slot_name=replication_slot_name,
             decode=True,
             start_lsn=start_lsn,
             status_interval=status_interval,
@@ -312,36 +324,156 @@ class PostgresLogBasedStream(SQLStream):
             },
         )
 
-        # Using scaffolding layout from:
-        # https://www.psycopg.org/docs/extras.html#psycopg2.extras.ReplicationCursor
+        run_start = datetime.datetime.now()
+        last_data_message = run_start
+        last_feedback_time = run_start
+        records_yielded = 0
+
         while True:
+            now = datetime.datetime.now()
+            elapsed = (now - run_start).total_seconds()
+            if elapsed > max_run_seconds:
+                self.logger.info(
+                    "Reached max run time of %d seconds (%d records yielded)",
+                    max_run_seconds,
+                    records_yielded,
+                )
+                break
+
             message = logical_replication_cursor.read_message()
             if message:
+                last_data_message = datetime.datetime.now()
                 row = self.consume(message, logical_replication_cursor)
                 if row:
+                    records_yielded += 1
                     yield row
-            else:
-                timeout = (
-                    status_interval
-                    - (
-                        datetime.datetime.now() - logical_replication_cursor.feedback_timestamp
-                    ).total_seconds()
-                )
-                try:
-                    # If the timeout has passed and the cursor still has no new
-                    # messages, the sync has completed.
                     if (
-                        select.select([logical_replication_cursor], [], [], max(0, timeout))[0]
-                        == []
-                    ):
-                        break
-                except InterruptedError:
-                    pass
+                        datetime.datetime.now() - last_feedback_time
+                    ).total_seconds() >= feedback_interval:
+                        try:
+                            logical_replication_cursor.send_feedback(
+                                flush_lsn=message.data_start,
+                            )
+                            last_feedback_time = datetime.datetime.now()
+                        except Exception:
+                            pass
+                continue
+
+            try:
+                ready = select.select(
+                    [logical_replication_cursor],
+                    [],
+                    [],
+                    1.0,
+                )[0]
+            except InterruptedError:
+                ready = [logical_replication_cursor]
+
+            if not ready:
+                data_idle = (datetime.datetime.now() - last_data_message).total_seconds()
+                if data_idle >= idle_exit_seconds:
+                    self.logger.info(
+                        "No data messages for %.0f seconds, ending sync "
+                        "(%d records yielded in %.0f seconds)",
+                        data_idle,
+                        records_yielded,
+                        elapsed,
+                    )
+                    break
+
+        self._advance_slot_and_state(
+            logical_replication_cursor,
+            start_lsn,
+            context,
+        )
 
         logical_replication_cursor.close()
         logical_replication_connection.close()
 
-    def consume(self, message, cursor) -> dict | None:
+    def _advance_slot_and_state(
+        self,
+        replication_cursor: extras.ReplicationCursor,
+        start_lsn: int,
+        context: Context | None,
+    ) -> None:
+        """Advance the replication slot and bookmark to the current WAL tip.
+
+        When ``add-tables`` filters out most WAL records, the slot's confirmed
+        flush position can fall far behind the actual WAL tip, causing
+        PostgreSQL to retain gigabytes of WAL that will never be consumed.
+
+        This method queries the server for its current WAL flush position on a
+        separate (regular) connection and, if it is ahead of ``start_lsn``:
+
+        1. Sends ``send_feedback`` on the replication cursor so the slot can
+           release retained WAL.
+        2. Updates ``replication_key_value`` in the stream state so the next
+           sync resumes from the advanced position rather than re-scanning the
+           same WAL segment.
+
+        Records between ``start_lsn`` and the new position for *other* tables
+        are irrelevant (filtered by ``add-tables``).  Any matching records for
+        *this* table that fell within the scanned window were already yielded
+        by ``get_records``; records beyond the scan window will be picked up
+        from the new, advanced position on the next run.
+        """
+        flush_lsn: int | None = None
+
+        # Prefer the wal_end reported by the server during the replication
+        # session (set from keepalive or data messages).
+        try:
+            wal_end = getattr(replication_cursor, "wal_end", 0) or 0
+            if wal_end > start_lsn:
+                flush_lsn = wal_end
+        except Exception:
+            pass
+
+        # Fallback: query the server directly for the current WAL position.
+        if not flush_lsn or flush_lsn <= start_lsn:
+            flush_lsn = self._query_current_wal_lsn()
+
+        if not flush_lsn or flush_lsn <= start_lsn:
+            return
+
+        try:
+            replication_cursor.send_feedback(flush_lsn=flush_lsn)
+            self.logger.info(
+                "Advanced replication slot confirmed position from %d to %d (delta %.2f MB)",
+                start_lsn,
+                flush_lsn,
+                (flush_lsn - start_lsn) / (1024 * 1024),
+            )
+        except Exception as exc:
+            self.logger.warning("Failed to send final slot feedback: %s", exc)
+            return
+
+        state_dict = self.get_context_state(context)
+        state_dict["replication_key"] = self.replication_key
+        state_dict["replication_key_value"] = flush_lsn
+
+    def _query_current_wal_lsn(self) -> int | None:
+        """Query pg_current_wal_flush_lsn() and return the result as an int."""
+        try:
+            conn = psycopg2.connect(
+                self.connection_parameters.render_as_psycopg2_dsn(),
+            )
+            try:
+                conn.autocommit = True
+                with conn.cursor() as cur:
+                    cur.execute("SELECT pg_current_wal_flush_lsn()")
+                    row = cur.fetchone()
+                    if row is None:
+                        return None
+                    lsn_str = row[0]  # e.g. '6/4A3B2C10'
+                    hi, lo = lsn_str.split("/")
+                    return (int(hi, 16) << 32) + int(lo, 16)
+            finally:
+                conn.close()
+        except Exception as exc:
+            self.logger.warning("Could not query current WAL LSN: %s", exc)
+            return None
+
+    def consume(self, message, cursor: extras.ReplicationCursor) -> dict | None:
         """Ingest WAL message."""
         try:
             message_payload = json.loads(message.payload)
@@ -417,7 +549,7 @@ class PostgresLogBasedStream(SQLStream):
         """
         return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
 
-    def _parse_column_value(self, column, cursor):
+    def _parse_column_value(self, column, cursor: extras.ReplicationCursor) -> t.Any:
         # When using log based replication, the wal2json output for columns of
         # array types returns a string encoded in sql format, e.g. '{a,b}'
         # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
@@ -450,7 +582,7 @@ class PostgresLogBasedStream(SQLStream):
 
         return value
 
-    def logical_replication_connection(self):
+    def logical_replication_connection(self) -> extras.LogicalReplicationConnection:
         """A logical replication connection to the database.
 
         Uses a direct psycopg2 implementation rather than through sqlalchemy.

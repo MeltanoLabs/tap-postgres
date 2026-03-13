@@ -42,6 +42,12 @@ plugins:
     - name: ssl_client_private_key
       kind: password
       sensitive: true
+    - name: replication_max_run_seconds
+      kind: integer
+      description: Max seconds the LOG_BASED replication loop will run before exiting (default 600).
+    - name: replication_idle_exit_seconds
+      kind: integer
+      description: Exit LOG_BASED replication if no data messages arrive for this many seconds (default 60).
     config:
       sqlalchemy_url: postgresql://postgres:postgres@localhost:5432/postgres
     select:
