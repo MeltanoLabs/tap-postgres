@@ -399,7 +399,7 @@ class PostgresLogBasedStream(SQLStream):
 
     def _advance_slot_and_state(
         self,
-        replication_cursor,
+        replication_cursor: extras.ReplicationCursor,
         start_lsn: int,
         context: Context | None,
     ) -> None:
@@ -480,7 +480,7 @@ class PostgresLogBasedStream(SQLStream):
             self.logger.warning("Could not query current WAL LSN: %s", exc)
             return None
 
-    def consume(self, message, cursor) -> dict | None:
+    def consume(self, message, cursor: extras.ReplicationCursor) -> dict | None:
         """Ingest WAL message."""
         try:
             message_payload = json.loads(message.payload)
@@ -556,7 +556,7 @@ class PostgresLogBasedStream(SQLStream):
         """
         return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
 
-    def _parse_column_value(self, column, cursor):
+    def _parse_column_value(self, column, cursor: extras.ReplicationCursor) -> t.Any:
         # When using log based replication, the wal2json output for columns of
         # array types returns a string encoded in sql format, e.g. '{a,b}'
         # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
@@ -589,7 +589,7 @@ class PostgresLogBasedStream(SQLStream):
 
         return value
 
-    def logical_replication_connection(self):
+    def logical_replication_connection(self) -> extras.LogicalReplicationConnection:
         """A logical replication connection to the database.
 
         Uses a direct psycopg2 implementation rather than through sqlalchemy.
