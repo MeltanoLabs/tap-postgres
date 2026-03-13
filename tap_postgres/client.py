@@ -297,12 +297,8 @@ class PostgresLogBasedStream(SQLStream):
         unbounded WAL retention.
         """
         status_interval = 10
-        max_run_seconds = int(
-            self.config.get("replication_max_run_seconds", 600),
-        )
-        idle_exit_seconds = int(
-            self.config.get("replication_idle_exit_seconds", 60),
-        )
+        max_run_seconds = self.config["replication_max_run_seconds"]
+        idle_exit_seconds = self.config["replication_idle_exit_seconds"]
         feedback_interval = 30
 
         start_lsn = self.get_starting_replication_key_value(context=context)
@@ -314,10 +310,7 @@ class PostgresLogBasedStream(SQLStream):
 
         logical_replication_cursor.send_feedback(flush_lsn=start_lsn)
 
-        replication_slot_name = self.config.get(
-            "replication_slot_name",
-            "tappostgres",
-        )
+        replication_slot_name = self.config["replication_slot_name"]
 
         logical_replication_cursor.start_replication(
             slot_name=replication_slot_name,
