@@ -1299,11 +1299,11 @@ wheels = [
 
 [[package]]
 name = "simpleeval"
-version = "1.0.4"
+version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fd/d6/c25276f8aafd69172852a0f3564cf71b4339bae88d2609ee0843fb1eb6f7/simpleeval-1.0.4.tar.gz", hash = "sha256:32df6dfd5ca09212a7d8b45625b7a2b6aba697ad061a7b0f30938d7d158227fe", size = 37046, upload-time = "2026-03-11T07:40:38.666Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/ea/42430694f12bfb20ac00f1c4ae0e489ef23b302ea6abe6266934bb749bf6/simpleeval-1.0.5.tar.gz", hash = "sha256:b6b7933fffe13a345ada9917f8579c72e7b8afcfb7f7759b18fdd068aaa60486", size = 40853, upload-time = "2026-03-13T09:22:49.449Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/bf/3b1df358e83606ab12fae5861e759ae18084599cfaa9c828b6f8c7cbef03/simpleeval-1.0.4-py3-none-any.whl", hash = "sha256:380318357214f4abb98a0527bd598417707e5416ea13d4b67debf3f67c506c22", size = 17249, upload-time = "2026-03-11T07:40:36.543Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/9c/43d7a2845fdf72f21572a0d7c33076cb69c2c73db9a297a5bfc6b87ebb54/simpleeval-1.0.5-py3-none-any.whl", hash = "sha256:c0de42a9f7849b7bc8c51338295341126f103a2a86beceffebafd9388e3cdfce", size = 18608, upload-time = "2026-03-13T09:22:47.875Z" },
 ]
 
 [[package]]
