@@ -678,6 +678,7 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "singer-sdk", extra = ["faker", "sql"] },
     { name = "sqlalchemy" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
 
 [package.optional-dependencies]
@@ -725,6 +726,7 @@ requires-dist = [
     { name = "psycopg2-binary", specifier = "==2.9.11" },
     { name = "singer-sdk", extras = ["faker", "sql"], specifier = "~=0.53.0" },
     { name = "sqlalchemy", specifier = "==2.0.48" },
+    { name = "typing-extensions", marker = "python_full_version < '3.12'", specifier = ">=4.15.0" },
 ]
 provides-extras = ["msgspec"]
 
