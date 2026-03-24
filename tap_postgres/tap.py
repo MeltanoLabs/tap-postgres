@@ -280,6 +280,24 @@ class TapPostgres(SQLTap):
             ),
         ),
         th.Property(
+            "replication_max_run_seconds",
+            th.IntegerType,
+            default=600,
+            description=(
+                "The maximum number of seconds to run the replication loop for. "
+                "Only applicable when replication_method is LOG_BASED."
+            ),
+        ),
+        th.Property(
+            "replication_idle_exit_seconds",
+            th.IntegerType,
+            default=60,
+            description=(
+                "The number of seconds to wait for data messages before exiting the replication "
+                "loop. Only applicable when replication_method is LOG_BASED."
+            ),
+        ),
+        th.Property(
             "host",
             th.StringType,
             description=(
