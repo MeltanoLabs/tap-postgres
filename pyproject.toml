@@ -32,6 +32,7 @@ dependencies = [
     "psycopg2-binary==2.9.11",
     "sqlalchemy==2.0.48",
     "singer-sdk[faker,sql]~=0.53.0",
+    "typing-extensions>=4.15.0 ; python_full_version < '3.12'",
 ]
 optional-dependencies.msgspec = [
     "msgspec>=0.19.0",
@@ -182,4 +183,5 @@ commands = [
   ["ruff", "check", "--diff", "tap_postgres/"],
   ["ruff", "format", "--check", "tap_postgres/"],
   ["mypy", "."],
+  ["ty", "check", "tap_postgres"],
 ]
