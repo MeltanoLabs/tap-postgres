@@ -38,6 +38,7 @@ def test_build_query():
                 "custom_where_clauses": ["id % 2 = 0", "id % 3 = 0"],
             },
         },
+        "max_record_count": 155,
     }
     tap = TapPostgres(config=config, setup_mapper=False)
     catalog_entry = CatalogEntry(
@@ -71,5 +72,5 @@ def test_build_query():
     stream = PostgresStream(tap, catalog_entry.to_dict(), connector=DummyConnector(config=config))
     assert (
         str(stream.build_query().compile()).replace("\n", "")
-        == "SELECT test_table.id FROM test_table WHERE id % 2 = 0 AND id % 3 = 0"
+        == "SELECT test_table.id FROM test_table WHERE id % 2 = 0 AND id % 3 = 0 LIMIT :param_1"
     )

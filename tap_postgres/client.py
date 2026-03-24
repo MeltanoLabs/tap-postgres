@@ -10,6 +10,7 @@ import functools
 import json
 import re
 import select
+import sys
 import typing as t
 from types import MappingProxyType
 
@@ -22,6 +23,11 @@ from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
 from sqlalchemy.dialects import postgresql
 
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
 if t.TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
@@ -29,6 +35,8 @@ if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine.reflection import Inspector
+    from sqlalchemy.sql.schema import Table
+    from sqlalchemy.sql.selectable import Select
 
     from tap_postgres.connection_parameters import ConnectionParameters
 
@@ -47,6 +55,7 @@ class PostgresSQLToJSONSchema(SQLToJSONSchema):
         self.dates_as_string = dates_as_string
         self.json_as_object = json_as_object
 
+    @override
     @classmethod
     def from_config(cls, config: dict) -> PostgresSQLToJSONSchema:
         """Instantiate the SQL to JSON Schema converter from a config dictionary."""
@@ -160,6 +169,7 @@ class PostgresConnector(SQLConnector):
             sqlalchemy_url=connection_parameters.render_as_sqlalchemy_url(),
         )
 
+    @override
     def get_schema_names(self, engine: Engine, inspected: Inspector) -> list[str]:
         """Return a list of schema names in DB, or overrides with user-provided values.
 
@@ -188,13 +198,23 @@ class PostgresStream(SQLStream):
         """Return the maximum number of records to fetch in a single query."""
         return self.config.get("max_record_count")
 
+    @override
+    def apply_query_limit(self, query: Select) -> Select:
+        query = super().apply_query_limit(query)
+
+        if max_records := self.max_record_count():
+            query = query.limit(max_records)
+
+        return query
+
+    @override
     def apply_query_filters(
         self,
-        query: sa.sql.Select,
-        table: sa.Table,
+        query: Select,
+        table: Table,
         *,
         context: Context | None = None,
-    ) -> sa.sql.Select:
+    ) -> Select:
         """Apply query filters to the query."""
         query = super().apply_query_filters(query, table, context=context)
         stream_options = self.config.get("stream_options", {}).get(self.name, {})
@@ -235,6 +255,7 @@ class PostgresLogBasedStream(SQLStream):
         """Return a read-only config dictionary."""
         return MappingProxyType(self._config)
 
+    @override
     @functools.cached_property
     def effective_schema(self) -> dict:
         """Override schema for log-based replication adding _sdc columns."""
@@ -254,6 +275,7 @@ class PostgresLogBasedStream(SQLStream):
 
         return schema_dict
 
+    @override
     def _increment_stream_state(
         self,
         latest_record: dict[str, t.Any],
@@ -274,7 +296,7 @@ class PostgresLogBasedStream(SQLStream):
             return
 
         state_dict = self.get_context_state(context)
-        new_value = latest_record.get(self.replication_key)
+        new_value = latest_record.get(self.replication_key)  # ty:ignore[invalid-argument-type]
         if new_value is None:
             return
 
@@ -283,6 +305,7 @@ class PostgresLogBasedStream(SQLStream):
             state_dict["replication_key"] = self.replication_key
             state_dict["replication_key_value"] = new_value
 
+    @override
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects.
 
