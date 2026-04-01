@@ -629,7 +629,7 @@ class TapPostgres(SQLTap):
         # Swap the URL to use the tunnel
         return connection_parameters.with_host_and_port(
             host=self.ssh_tunnel.local_bind_host,
-            port=self.ssh_tunnel.local_bind_port,  # type: ignore[arg-type]
+            port=self.ssh_tunnel.local_bind_port,  # type: ignore[arg-type]  # ty:ignore[invalid-argument-type]
         )
 
     def clean_up(self) -> None:
