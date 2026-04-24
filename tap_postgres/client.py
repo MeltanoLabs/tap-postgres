@@ -366,10 +366,12 @@ class PostgresLogBasedStream(SQLStream):
             message = logical_replication_cursor.read_message()
             if message:
                 last_data_message = datetime.datetime.now()
-                row = self.consume(message, logical_replication_cursor)
-                if row:
-                    records_yielded += 1
-                    yield row
+                payload = self._parse_wal_message(message.payload, logical_replication_cursor)
+                if payload is not None:
+                    row = self.consume(payload, message.data_start)
+                    if row:
+                        records_yielded += 1
+                        yield row
                     if (
                         datetime.datetime.now() - last_feedback_time
                     ).total_seconds() >= feedback_interval:
@@ -496,71 +498,61 @@ class PostgresLogBasedStream(SQLStream):
             self.logger.warning("Could not query current WAL LSN: %s", exc)
             return None
 
-    def consume(self, message, cursor: extras.ReplicationCursor) -> dict | None:
-        """Ingest WAL message."""
-        try:
-            message_payload = json.loads(message.payload)
-        except json.JSONDecodeError:
-            # wal2json outputs PostgreSQL enum types with unescaped quotes
-            # e.g., "type":""EnumName"" instead of "type":"EnumName"
-            # Try to fix this by removing the extra quotes around type values
-            fixed_payload = self._fix_wal2json_enum_quotes(message.payload)
-            try:
-                message_payload = json.loads(fixed_payload)
-            except json.JSONDecodeError:
-                self.logger.warning(
-                    "A message payload of %s could not be converted to JSON",
-                    message.payload,
-                )
-                return {}
+    def consume(self, payload: dict, lsn: int) -> dict | None:
+        """Build a Singer row dict from a parsed wal2json payload.
 
-        row = {}
+        Returns:
+            A dict suitable for emission as a RECORD, or None for non-data messages
+            (truncate, transaction begin/commit, unrecognized actions that were logged)
 
+        This method is cursor-independent! ``text[]`` values in ``payload`` are expected
+        to have been pre-parsed into Python lists (see ``_pre_parse_text_arrays``).
+        ``lsn`` is the ``message.data_start`` value from the replication cursor,
+        used both as the ``_sdc_lsn`` column and as the state bookmark.
+        """
         upsert_actions = {"I", "U"}
         delete_actions = {"D"}
         truncate_actions = {"T"}
         transaction_actions = {"B", "C"}
 
-        if message_payload["action"] in upsert_actions:
-            for column in message_payload["columns"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update({"_sdc_deleted_at": None})
-            row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in delete_actions:
-            for column in message_payload["identity"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update(
-                {
-                    "_sdc_deleted_at": _now_utc(),
-                    "_sdc_lsn": message.data_start,
-                }
-            )
-        elif message_payload["action"] in truncate_actions:
-            self.logger.debug(
-                (
-                    "A message payload of %s (corresponding to a truncate action) "
-                    "could not be processed."
-                ),
-                message.payload,
-            )
-        elif message_payload["action"] in transaction_actions:
-            self.logger.debug(
-                (
-                    "A message payload of %s (corresponding to a transaction beginning "
-                    "or commit) could not be processed."
-                ),
-                message.payload,
-            )
-        else:
-            raise RuntimeError(
-                (
-                    "A message payload of %s (corresponding to an unknown action type) "
-                    "could not be processed."
-                ),
-                message.payload,
-            )
+        action = payload["action"]
 
-        return row
+        if action in upsert_actions:
+            row = {
+                column["name"]: self._parse_column_value(column) for column in payload["columns"]
+            }
+            row["_sdc_deleted_at"] = None
+            row["_sdc_lsn"] = lsn
+            return row
+
+        if action in delete_actions:
+            row = {
+                column["name"]: self._parse_column_value(column) for column in payload["identity"]
+            }
+            row["_sdc_deleted_at"] = _now_utc()
+            row["_sdc_lsn"] = lsn
+            return row
+
+        if action in truncate_actions:
+            self.logger.debug(
+                "A message payload of %s (corresponding to a truncate action) "
+                "could not be processed.",
+                payload,
+            )
+            return None
+
+        if action in transaction_actions:
+            self.logger.debug(
+                "A message payload of %s (corresponding to a transaction begin "
+                "or commit) could not be processed.",
+                payload,
+            )
+            return None
+
+        raise RuntimeError(
+            f"A message payload of {payload!r} (corresponding to an unknown "
+            f"action type {action!r}) could not be processed."
+        )
 
     def _fix_wal2json_enum_quotes(self, payload: str) -> str:
         """Fix malformed JSON from wal2json for PostgreSQL enum types.
@@ -572,24 +564,31 @@ class PostgresLogBasedStream(SQLStream):
         """
         return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
 
-    def _parse_column_value(self, column, cursor: extras.ReplicationCursor) -> t.Any:
-        # When using log based replication, the wal2json output for columns of
-        # array types returns a string encoded in sql format, e.g. '{a,b}'
-        # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
-        if column["type"] == "text[]":
-            value = column.get("value")
-            if value is None:
-                return None
-            return psycopg2.extensions.STRINGARRAY(value, cursor)
+    def _parse_column_value(self, column: dict) -> t.Any:
+        """Parse a single wal2json column dict into a Python value.
 
-        # Handle null values explicitly.
-        # wal2json represents nulls as JSON null, which becomes None in Python.
+        Handles nullability, numeric-empty-string, and ``text[]``. A string value here
+        is a programming error, but we handle it gracefully with a last-resort parse.
+        """
         value = column.get("value")
         if value is None:
             return None
 
-        # For numeric types, check if empty string should be treated as null.
         column_type = column.get("type", "")
+
+        if column_type == "text[]":
+            if isinstance(value, list):
+                return value
+            # fallback, reachable only if a caller forgot to call _pre_parse_text_arrays
+            # STRINGARRAY with cursor=None works for UTF-8 connections
+            # which is the majority case
+            self.logger.warning(
+                "Encountered unparsed text[] value in _parse_column_value; falling back "
+                "to cursor-less STRINGARRAY parse. This indicates a missing call "
+                "to _pre_parse_text_arrays()."
+            )
+            return psycopg2.extensions.STRINGARRAY(value, None)
+
         numeric_types = [
             "int",
             "numeric",
@@ -616,3 +615,49 @@ class PostgresLogBasedStream(SQLStream):
             connection_parameters.render_as_psycopg2_dsn(),
             connection_factory=extras.LogicalReplicationConnection,
         )
+
+    def _parse_wal_message(
+        self, raw_payload: str, cursor: extras.ReplicationCursor | None
+    ) -> dict | None:
+        """Parse raw wal2json JSON payload into a dict.
+
+        Handles known wal2json enum-quoting bug (``"type":""EnumName""``)
+        via one retry after regex repair. Returns None if the payload can't be decoded
+        even after repair, in which case the caller should log and skip.
+
+        When ``cursor`` is provided, pre-parses ``text[]`` column values into Python lists
+        using psycopg2's ``STRINGARRAY`` type caster. This must be done while the cursor
+        is still alive, since ``STRINGARRAY`` reads conn-level encoding info from it.
+        """
+        try:
+            payload = json.loads(raw_payload)
+        except json.JSONDecodeError:
+            fixed_payload = self._fix_wal2json_enum_quotes(raw_payload)
+            try:
+                payload = json.loads(fixed_payload)
+            except json.JSONDecodeError:
+                self.logger.warning(
+                    "A message payload of %s could not be converted to JSON",
+                    raw_payload,
+                )
+                return None
+
+        if cursor is not None:
+            self._pre_parse_text_arrays(payload, cursor)
+
+        return payload
+
+    @staticmethod
+    def _pre_parse_text_arrays(payload: dict, cursor: extras.ReplicationCursor) -> None:
+        """Pre-parse ``text[]`` column values in a wal2json payload, in-place.
+
+        wal2json returns ``text[]`` values as Postgres's array literal string (e.g. '{a,b,c}').
+        Converting to a Python list requires ``STRINGARRAY``, which needs a live cursor
+        for encoding context. Calling this during the WAL read (while the cursor is alive)
+        means downstream code — ``consume()``, etc. — can operate on plain Python lists
+        with no cursor dependency.
+        """
+        for key in ("columns", "identity"):
+            for column in payload.get(key, ()) or ():
+                if column.get("type") == "text[]" and column.get("value") is not None:
+                    column["value"] = psycopg2.extensions.STRINGARRAY(column["value"], cursor)
