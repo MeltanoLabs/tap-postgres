@@ -41,6 +41,13 @@ if t.TYPE_CHECKING:
     from tap_postgres.connection_parameters import ConnectionParameters
 
 
+_UPSERT_ACTIONS = {"I", "U"}
+_DELETE_ACTIONS = {"D"}
+_TRUNCATE_ACTIONS = {"T"}
+_TRANSACTION_ACTIONS = {"B", "C"}
+_NUMERIC_TYPES = ("int", "numeric", "decimal", "real", "double", "float", "bigint", "smallint")
+
+
 def _now_utc() -> str:
     """Return the current UTC time as a string."""
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -510,14 +517,9 @@ class PostgresLogBasedStream(SQLStream):
         ``lsn`` is the ``message.data_start`` value from the replication cursor,
         used both as the ``_sdc_lsn`` column and as the state bookmark.
         """
-        upsert_actions = {"I", "U"}
-        delete_actions = {"D"}
-        truncate_actions = {"T"}
-        transaction_actions = {"B", "C"}
-
         action = payload["action"]
 
-        if action in upsert_actions:
+        if action in _UPSERT_ACTIONS:
             row = {
                 column["name"]: self._parse_column_value(column) for column in payload["columns"]
             }
@@ -525,7 +527,7 @@ class PostgresLogBasedStream(SQLStream):
             row["_sdc_lsn"] = lsn
             return row
 
-        if action in delete_actions:
+        if action in _DELETE_ACTIONS:
             row = {
                 column["name"]: self._parse_column_value(column) for column in payload["identity"]
             }
@@ -533,7 +535,7 @@ class PostgresLogBasedStream(SQLStream):
             row["_sdc_lsn"] = lsn
             return row
 
-        if action in truncate_actions:
+        if action in _TRUNCATE_ACTIONS:
             self.logger.debug(
                 "A message payload of %s (corresponding to a truncate action) "
                 "could not be processed.",
@@ -541,7 +543,7 @@ class PostgresLogBasedStream(SQLStream):
             )
             return None
 
-        if action in transaction_actions:
+        if action in _TRANSACTION_ACTIONS:
             self.logger.debug(
                 "A message payload of %s (corresponding to a transaction begin "
                 "or commit) could not be processed.",
@@ -589,17 +591,7 @@ class PostgresLogBasedStream(SQLStream):
             )
             return psycopg2.extensions.STRINGARRAY(value, None)
 
-        numeric_types = [
-            "int",
-            "numeric",
-            "decimal",
-            "real",
-            "double",
-            "float",
-            "bigint",
-            "smallint",
-        ]
-        if value == "" and any(numeric_type in column_type for numeric_type in numeric_types):
+        if value == "" and any(numeric_type in column_type for numeric_type in _NUMERIC_TYPES):
             return None
 
         return value
