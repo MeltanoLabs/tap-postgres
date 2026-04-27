@@ -13,7 +13,7 @@ if t.TYPE_CHECKING:
 
 
 # wal2json emits enum type names with unescaped double quotes, producing invalid JSON
-# like ``"type":""EnumName""`` ... strip the extra quotes via regex and reparse
+# like "type":""EnumName"" ... strip the extra quotes via regex and re-parse
 _WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
 
 
@@ -21,20 +21,15 @@ def normalize_fqn(schema: str, table: str) -> str:
     """Generate canonical, fully-qualified name for dispatch.
 
     This is the source of truth for matching a WAL message to a registered stream.
-    Both sides — the tap (when registering streams with the reader) and the WAL reader
-    (when dispatching a parsed payload) — MUST call this function with the raw schema
+    Both sides -- the tap (when registering streams with the reader) and the WAL reader
+    (when dispatching a parsed payload) -- *must* call this function with the raw schema
     and table name strings.
 
-    wal2json's format-version=2 output includes ``"schema"`` and ``"table"``
-    fields as the raw, unquoted identifier names (Postgres stores identifiers
-    case-folded to lowercase unless they were originally quoted at DDL time;
-    wal2json reports whatever Postgres has stored). We therefore use the raw
-    names joined by a single dot, with no quoting and no case folding.
+    wal2json's format-version=2 output includes ``"schema"`` and ``"table"`` fields
+    as the raw, unquoted identifier names (wal2json reports whatever Postgres has stored).
+    Therefore, use the raw names joined by a single dot, with no quoting and no case folding.
 
-    Do NOT use ``SQLStream.fully_qualified_name`` for dispatch: some SDK
-    versions quote identifiers (e.g. ``"public"."MyTable"``) or use a
-    hyphen-separated ``tap_stream_id`` form, neither of which matches
-    wal2json output.
+    Do *not* use ``SQLStream.fully_qualified_name`` for dispatch.
     """
     return f"{schema}.{table}"
 
@@ -49,7 +44,6 @@ def escape_for_add_tables(identifier: str) -> str:
     References:
         - https://github.com/eulerto/wal2json#parameters
     """
-    # backslash first, then separators
     return identifier.replace("\\", "\\\\").replace(",", "\\,").replace(".", "\\.")
 
 
@@ -72,13 +66,12 @@ def parse_wal_message(raw_payload: str, cursor: extras.ReplicationCursor | None)
     """Parse a raw wal2json JSON payload into a Python dict.
 
     Handles the known wal2json enum-quoting bug via one retry after regex repair.
-    Returns ``None`` if the payload can't be decoded even after repair, in which
-    case the caller should log and skip.
+    Returns None if the payload can't be decoded even after repair, in which case
+    the caller should log and skip.
 
-    When ``cursor`` is provided, pre-parses ``text[]`` column values into Python
-    lists using psycopg2's ``STRINGARRAY`` type caster. This must be done while
-    the cursor is still alive, since ``STRINGARRAY`` reads connection-level
-    encoding info from it.
+    When ``cursor`` is provided, pre-parses ``text[]`` column values into Python lists
+    using psycopg2's ``STRINGARRAY`` type caster. This must be done while the cursor is alive,
+    since ``STRINGARRAY`` reads connection-level encoding info from it.
     """
     try:
         payload = json.loads(raw_payload)
@@ -107,12 +100,10 @@ def fix_wal2json_enum_quotes(payload: str) -> str:
 def pre_parse_text_arrays(payload: dict, cursor: extras.ReplicationCursor) -> None:
     """Pre-parse ``text[]`` column values in a wal2json payload, in place.
 
-    wal2json returns ``text[]`` values as Postgres's array literal string (e.g.
-    ``'{a,b,c}'``). Converting to a Python list requires
-    ``psycopg2.extensions.STRINGARRAY``, which needs a live cursor for encoding
-    context. Calling this during the WAL read (while the cursor is alive) means
-    downstream code — ``consume()``, etc. — can operate on plain Python lists
-    with no cursor dependency.
+    wal2json returns ``text[]`` values as Postgres's array literal string (e.g. '{a,b,c}').
+    Converting to a Python list requires ``psycopg2.extensions.STRINGARRAY``, which needs
+    a live cursor for encoding context. Calling this during the WAL read means downstream code
+    -- ``consume()``, etc. -- can operate on plain Python lists with no cursor dependency.
     """
     for key in ("columns", "identity"):
         for column in payload.get(key, ()) or ():

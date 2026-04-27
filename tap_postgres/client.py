@@ -317,17 +317,14 @@ class PostgresLogBasedStream(SQLStream):
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Iterate records for this LOG_BASED stream.
 
-        Under the single-connection model (default), the first call into get_records()
-        across any LOG_BASED stream triggers the shared WAL reader, which emits records
-        for *all* selected LOG_BASED streams via their ``emit_record()`` adapter —
-        bypassing this generator entirely. Subsequent sibling calls are no-ops.
+        When using the single-connection WAL reader, the first call into get_records()
+        across any LOG_BASED stream triggers which emits records for *all* selected
+        LOG_BASED streams via their ``emit_record()`` adapter — bypassing this generator.
+        Subsequent sibling calls are no-ops.
 
-        The yield-nothing behavior is intentional: ``Stream._sync_records()`` iterates
-        whatever this returns, so an empty iterable produces zero additional record messages
-        from the SDK's per-stream loop, while leaving SCHEMA emission, metrics,
+        Yielding nothing is fine, since an empty iterable produces zero additional record
+        messages from the SDK's per-stream loop, while leaving SCHEMA emission, metrics,
         and state finalization intact.
-
-        Under the legacy per-stream model, falls back to the original WAL reading loop.
         """
         if not self._tap.config.get("log_based_single_connection", True):
             yield from self._get_records_per_stream(context)
@@ -342,15 +339,13 @@ class PostgresLogBasedStream(SQLStream):
     def _get_records_per_stream(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects.
 
-        Runs a long-lived replication session (up to
-        ``replication_max_run_seconds``, default 600 s) so the tap can drain
-        large WAL backlogs in a single sync.  Sends periodic flush feedback
+        Runs a long-lived replication session (up to ``replication_max_run_seconds``)
+        so the tap can drain large WAL backlogs in a single sync. Sends periodic flush feedback
         while yielding records so the slot releases retained WAL incrementally.
 
         After the loop ends -- either because no data messages arrived for
-        ``replication_idle_exit_seconds`` (default 60 s) or the time budget is
-        exhausted -- the slot is advanced to the current WAL tip to prevent
-        unbounded WAL retention.
+        ``replication_idle_exit_seconds`` or total time budget is exhausted -- the slot
+        is advanced to the current WAL tip to prevent unbounded WAL retention.
         """
         status_interval = 10
         max_run_seconds = self.config["replication_max_run_seconds"]
@@ -470,13 +465,10 @@ class PostgresLogBasedStream(SQLStream):
     def emit_record(self, record: dict, *, context: Context | None = None) -> None:
         """Emit one record as a Singer RECORD message and advance state.
 
-        This is meant to decouple the shared WAL reader ``SingleConnectionWALReader``
-        from singer-sdk's per-record internals. It does the following, in order:
-
-        1. stream map transformation (aliasing, field renames, filters)
-        2. type conformance according to ``TYPE_CONFORMANCE_LEVEL``
-        3. emission of one or more RECORD messages to stdout
-        4. advancement of stream's replication bookmark based on ``record["_sdc_lsn"]``
+        This is meant to decouple ``SingleConnectionWALReader`` from singer-sdk's
+        per-record internals. It does the following: stream map transformation =>
+        type conformance => emission of one or more RECORD messages to stdout =>
+        advancement of stream's replication bookmark.
 
         STATE message emission is *not* done here; that's the caller's responsibility.
         """
@@ -572,11 +564,6 @@ class PostgresLogBasedStream(SQLStream):
         Returns:
             A dict suitable for emission as a RECORD, or None for non-data messages
             (truncate, transaction begin/commit, unrecognized actions that were logged)
-
-        This method is cursor-independent! ``text[]`` values in ``payload`` are expected
-        to have been pre-parsed into Python lists (see ``_pre_parse_text_arrays``).
-        ``lsn`` is the ``message.data_start`` value from the replication cursor,
-        used both as the ``_sdc_lsn`` column and as the state bookmark.
         """
         action = payload["action"]
 

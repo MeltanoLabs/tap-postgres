@@ -768,10 +768,9 @@ class TapPostgres(SQLTap):
     def _sync_log_based_streams_shared(self) -> None:
         """Run the single-connection WAL reader across all selected LOG_BASED streams.
 
-        Called exactly once per tap invocation, on the first call into
-        ``PostgresLogBasedStream.get_records()`` from any LOG_BASED stream. Sibling streams'
-        ``get_records()`` calls become no-ops via the ``_shared_wal_run_completed`` flag
-        on the tap instance.
+        Called once per tap invocation, on first call into ``PostgresLogBasedStream.get_records()``
+        from any LOG_BASED stream. Sibling streams' ``get_records()`` calls become no-ops
+        via the ``_shared_wal_run_completed`` flag on the tap instance.
         """
         streams = [
             s for s in self.streams.values() if isinstance(s, PostgresLogBasedStream) and s.selected
