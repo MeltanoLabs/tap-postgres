@@ -25,6 +25,7 @@ from tap_postgres.client import (
     PostgresStream,
 )
 from tap_postgres.connection_parameters import ConnectionParameters
+from tap_postgres.wal_reader import SingleConnectionWALReader
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -532,6 +533,18 @@ class TapPostgres(SQLTap):
                 "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
             ),
         ),
+        th.Property(
+            "log_based_single_connection",
+            th.BooleanType,
+            default=True,
+            description=(
+                "Use a single replication connection to sync all LOG_BASED streams "
+                "in one pass over the WAL. This avoids redundant WAL scans when "
+                "multiple tables use LOG_BASED replication. Only applicable when "
+                "replication_method is LOG_BASED. Set to ``false`` to revert to the "
+                "per-stream connection model (one WAL scan per stream)."
+            ),
+        ),
     ).to_dict()
 
     @cached_property
@@ -751,3 +764,66 @@ class TapPostgres(SQLTap):
             else:
                 streams.append(PostgresStream(self, catalog_entry, connector=connector))
         return streams
+
+    def sync_all(self) -> None:
+        """Sync all streams, using a single WAL connection for LOG_BASED.
+
+        When ``log_based_single_connection`` is ``true`` (the default),
+        LOG_BASED streams are synced together via
+        ``SingleConnectionWALReader``; other streams go through the SDK's
+        normal per-stream sync path. When ``false``, every stream uses
+        the SDK path (the legacy behavior).
+        """
+        use_single_conn = self.config.get("log_based_single_connection", True)
+
+        log_based: list[PostgresLogBasedStream] = []
+        others: list[Stream] = []
+        for stream in self.streams.values():
+            if not stream.selected:
+                continue
+            if isinstance(stream, PostgresLogBasedStream) and use_single_conn:
+                log_based.append(stream)
+            else:
+                others.append(stream)
+
+        # non-LOG_BASED streams first
+        # so their state is emitted before the long-running WAL read
+        for stream in others:
+            stream.sync()
+            stream.finalize_state_progress_markers()
+
+        # LOG_BASED streams via the shared reader
+        if log_based:
+            self._sync_log_based_streams(log_based)
+
+    def _sync_log_based_streams(self, streams: list[PostgresLogBasedStream]) -> None:
+        """Run the single-connection WAL reader over the given streams."""
+        # schema emission for each LOG_BASED stream must happen before any RECORD message
+        # from that stream; the SDK normally does this as part of stream.sync(),
+        # but here we do it explicitly up front
+        for stream in streams:
+            stream._write_schema_message()
+
+        reader = SingleConnectionWALReader(
+            connection_parameters=self.connection_parameters,
+            replication_slot_name=self.config["replication_slot_name"],
+            max_run_seconds=self.config["replication_max_run_seconds"],
+            idle_exit_seconds=self.config["replication_idle_exit_seconds"],
+            streams=streams,
+            state_flush_callback=self._write_state_checkpoint,
+            logger=self.logger,
+        )
+        reader.run()
+
+        # finalize bookmarks so the final STATE message reflects post-advancement LSNs
+        for stream in streams:
+            stream.finalize_state_progress_markers()
+        self._write_state_checkpoint()
+
+    def _write_state_checkpoint(self) -> None:
+        """Emit a Singer STATE message reflecting current bookmarks.
+
+        Called on a 30s cadence by ``SingleConnectionWALReader``, using the same
+        state-writing mechanism the SDK invokes between streams in the default sync loop.
+        """
+        self._state_writer.write_state(self.state)
