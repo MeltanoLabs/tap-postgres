@@ -110,6 +110,10 @@ class SingleConnectionWALReader:
         self.records_emitted = 0
         self.records_filtered_by_lsn = 0
         self.records_unroutable = 0
+        self.records_malformed = 0
+        # per-FQN counters, useful for "is stream X actually getting any data?" debugging
+        # initialized for every registered stream so the dict is complete even if zero records
+        self.records_emitted_by_fqn: dict[str, int] = dict.fromkeys(self._streams_by_fqn, 0)
 
     def run(self) -> None:
         """Execute single-connection WAL read loop.
@@ -154,10 +158,16 @@ class SingleConnectionWALReader:
             conn.close()
 
         self._logger.info(
-            "WAL read complete: %d records emitted, %d filtered by per-stream LSN, %d unroutable",
+            "WAL read complete: %d records emitted, %d filtered by per-stream LSN, "
+            "%d unroutable, %d malformed",
             self.records_emitted,
             self.records_filtered_by_lsn,
             self.records_unroutable,
+            self.records_malformed,
+        )
+        self._logger.info(
+            "Per-stream record counts: %s",
+            {fqn: self.records_emitted_by_fqn[fqn] for fqn in self._streams_by_fqn},
         )
 
     def _run_loop(self, cursor: extras.ReplicationCursor) -> None:
@@ -222,9 +232,14 @@ class SingleConnectionWALReader:
     ) -> None:
         """Parse one WAL message and hand it to the owning stream."""
         # parse (+pre-parse text[] values) while the cursor is alive
-        payload = parse_wal_message(message.payload, cursor, self._logger)
+        payload = parse_wal_message(message.payload, cursor)
         if payload is None:
-            return  # already logged by _parse_wal_message
+            self._logger.warning(
+                "A message payload of %s could not be converted to JSON",
+                message.payload,
+            )
+            self.records_malformed += 1
+            return
 
         # non-data messages (transactions, truncates) have no schema/table
         # consume() returns None for them and we're done
@@ -258,6 +273,7 @@ class SingleConnectionWALReader:
 
         stream.emit_record(row)
         self.records_emitted += 1
+        self.records_emitted_by_fqn[fqn] += 1
 
     def _advance_slot_and_state_all(self, cursor: extras.ReplicationCursor, start_lsn: int) -> None:
         """Advance slot to the WAL tip and update every stream's bookmark.
