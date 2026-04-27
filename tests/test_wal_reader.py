@@ -125,16 +125,13 @@ class StubStream:
 
     def __init__(self, schema: str, table: str, start_lsn: int = 0) -> None:
         self.fully_qualified_name = SimpleNamespace(schema=schema, table=table)
+        self.name = f"{schema}-{table}"
         self._start_lsn = start_lsn
         self._state: dict = {}
         self.emitted: list[dict] = []
 
     def get_starting_replication_key_value(self, *, context=None):
         return self._start_lsn
-
-    def _parse_wal_message(self, payload, cursor):
-        # cursor is unused — payload is well-formed JSON in tests
-        return json.loads(payload)
 
     def consume(self, payload: dict, lsn: int) -> dict | None:
         action = payload.get("action")
@@ -547,6 +544,78 @@ def test_schema_messages_emitted_before_any_record_message():
     last_schema_idx = max(_first_schema(s_users.name), _first_schema(s_orders.name))
     first_record_idx = min(_first_record(s_users.name), _first_record(s_orders.name))
     assert last_schema_idx < first_record_idx, f"SCHEMA-before-RECORD violated; events: {events}"
+
+
+def test_write_schema_message_is_idempotent():
+    """
+    ``Stream.sync()`` and ``_sync_log_based_streams_shared`` both call this.
+    Without idempotency we'd emit duplicate SCHEMA messages for every LOG_BASED stream.
+    """
+    tap = TapPostgres(config=DUMMY_CONFIG, setup_mapper=False)
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+
+    # patch the SDK base-class method so we can count actual emissions
+    with patch("singer_sdk.sql.SQLStream._write_schema_message", autospec=True) as base_write:
+        stream._write_schema_message()
+        stream._write_schema_message()
+        stream._write_schema_message()
+
+    assert base_write.call_count == 1
+
+
+def test_malformed_payload_increments_counter():
+    """Payloads that fail JSON parsing (even after the enum-quote repair) are counted."""
+    s = StubStream("public", "users")
+    reader = _build_reader([s])
+
+    msgs = [
+        # garbage JSON, beyond the enum-quote bug repair
+        FakeReplicationMessage("{not json{", data_start=10),
+        FakeReplicationMessage(_wal_payload("public", "users", id=1), data_start=11),
+    ]
+    cursor = FakeReplicationCursor(messages=msgs, wal_end=11)
+    with patch_replication(cursor):
+        reader.run()
+
+    assert reader.records_malformed == 1
+    assert reader.records_emitted == 1
+
+
+def test_per_stream_emit_counter_tracks_routing():
+    """``records_emitted_by_fqn`` is keyed by FQN and reflects routing."""
+    s_users = StubStream("public", "users")
+    s_orders = StubStream("public", "orders")
+    s_quiet = StubStream("public", "quiet")  # registered but receives nothing
+    reader = _build_reader([s_users, s_orders, s_quiet])
+
+    msgs = [
+        FakeReplicationMessage(_wal_payload("public", "users", id=1), data_start=10),
+        FakeReplicationMessage(_wal_payload("public", "orders", id=2), data_start=11),
+        FakeReplicationMessage(_wal_payload("public", "users", id=3), data_start=12),
+    ]
+    cursor = FakeReplicationCursor(messages=msgs, wal_end=12)
+    with patch_replication(cursor):
+        reader.run()
+
+    assert reader.records_emitted_by_fqn == {
+        "public.users": 2,
+        "public.orders": 1,
+        "public.quiet": 0,
+    }
+
+
+def test_idle_exit_seconds_zero_exits_immediately_when_no_messages():
+    """``idle_exit_seconds=0`` is the explicit "exit as soon as the queue drains" knob."""
+    s = StubStream("public", "users", start_lsn=10)
+    reader = _build_reader([s], idle_exit=0)
+
+    cursor = FakeReplicationCursor(messages=[], wal_end=20)
+    with patch_replication(cursor):
+        reader.run()
+
+    # no records, no crash: advancement path still ran since wal_end > start_lsn
+    assert reader.records_emitted == 0
+    assert s.get_context_state(None)["replication_key_value"] == 20
 
 
 def test_config_flag_off_uses_legacy_per_stream_path():
