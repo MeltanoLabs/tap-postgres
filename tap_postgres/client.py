@@ -252,6 +252,9 @@ class PostgresLogBasedStream(SQLStream):
     ) -> None:
         """Initialize Postgres log-based stream."""
         self.connection_parameters = connection_parameters
+        # track whether this stream's SCHEMA message has already been emitted
+        # to avoid emitting duplicate SCHEMA messages when running via the shared WAL reader
+        self._schema_message_written = False
 
         super().__init__(tap, catalog_entry, connector)
 
@@ -449,6 +452,20 @@ class PostgresLogBasedStream(SQLStream):
 
         logical_replication_cursor.close()
         logical_replication_connection.close()
+
+    @override
+    def _write_schema_message(self) -> None:
+        """Emit a SCHEMA message at most once per stream lifetime.
+
+        ``TapPostgres._sync_log_based_streams_shared`` pre-writes schemas for every stream
+        up front (so RECORDs from siblings can't precede their own SCHEMA), and the SDK's
+        ``Stream.sync()`` calls this method again as part of the per-stream sync loop.
+        Without this guard, every LOG_BASED stream emits its SCHEMA twice.
+        """
+        if self._schema_message_written:
+            return
+        super()._write_schema_message()
+        self._schema_message_written = True
 
     def emit_record(self, record: dict, *, context: Context | None = None) -> None:
         """Emit one record as a Singer RECORD message and advance state.
