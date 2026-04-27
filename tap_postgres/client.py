@@ -314,6 +314,31 @@ class PostgresLogBasedStream(SQLStream):
 
     @override
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
+        """Iterate records for this LOG_BASED stream.
+
+        Under the single-connection model (default), the first call into get_records()
+        across any LOG_BASED stream triggers the shared WAL reader, which emits records
+        for *all* selected LOG_BASED streams via their ``emit_record()`` adapter —
+        bypassing this generator entirely. Subsequent sibling calls are no-ops.
+
+        The yield-nothing behavior is intentional: ``Stream._sync_records()`` iterates
+        whatever this returns, so an empty iterable produces zero additional record messages
+        from the SDK's per-stream loop, while leaving SCHEMA emission, metrics,
+        and state finalization intact.
+
+        Under the legacy per-stream model, falls back to the original WAL reading loop.
+        """
+        if not self._tap.config.get("log_based_single_connection", True):
+            yield from self._get_records_per_stream(context)
+            return
+
+        if not self._tap._shared_wal_run_completed:
+            self._tap._sync_log_based_streams_shared()
+            self._tap._shared_wal_run_completed = True
+
+        return
+
+    def _get_records_per_stream(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects.
 
         Runs a long-lived replication session (up to

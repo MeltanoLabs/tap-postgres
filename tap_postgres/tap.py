@@ -224,6 +224,7 @@ class TapPostgres(SQLTap):
         See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
         super().__init__(*args, **kwargs)
+        self._shared_wal_run_completed = False
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
             and self.config.get("port") is not None
@@ -765,42 +766,23 @@ class TapPostgres(SQLTap):
                 streams.append(PostgresStream(self, catalog_entry, connector=connector))
         return streams
 
-    def sync_all(self) -> None:
-        """Sync all streams, using a single WAL connection for LOG_BASED.
+    def _sync_log_based_streams_shared(self) -> None:
+        """Run the single-connection WAL reader across all selected LOG_BASED streams.
 
-        When ``log_based_single_connection`` is ``true`` (the default),
-        LOG_BASED streams are synced together via
-        ``SingleConnectionWALReader``; other streams go through the SDK's
-        normal per-stream sync path. When ``false``, every stream uses
-        the SDK path (the legacy behavior).
+        Called exactly once per tap invocation, on the first call into
+        ``PostgresLogBasedStream.get_records()`` from any LOG_BASED stream. Sibling streams'
+        ``get_records()`` calls become no-ops via the ``_shared_wal_run_completed`` flag
+        on the tap instance.
         """
-        use_single_conn = self.config.get("log_based_single_connection", True)
+        streams = [
+            s for s in self.streams.values() if isinstance(s, PostgresLogBasedStream) and s.selected
+        ]
+        if not streams:
+            return
 
-        log_based: list[PostgresLogBasedStream] = []
-        others: list[Stream] = []
-        for stream in self.streams.values():
-            if not stream.selected:
-                continue
-            if isinstance(stream, PostgresLogBasedStream) and use_single_conn:
-                log_based.append(stream)
-            else:
-                others.append(stream)
-
-        # non-LOG_BASED streams first
-        # so their state is emitted before the long-running WAL read
-        for stream in others:
-            stream.sync()
-            stream.finalize_state_progress_markers()
-
-        # LOG_BASED streams via the shared reader
-        if log_based:
-            self._sync_log_based_streams(log_based)
-
-    def _sync_log_based_streams(self, streams: list[PostgresLogBasedStream]) -> None:
-        """Run the single-connection WAL reader over the given streams."""
-        # schema emission for each LOG_BASED stream must happen before any RECORD message
-        # from that stream; the SDK normally does this as part of stream.sync(),
-        # but here we do it explicitly up front
+        # schema messages for all LOG_BASED streams must be on the wire *before*
+        # any RECORD message, since `Stream.sync()`` only writes schema for the single stream
+        # whose sync triggered; siblings would otherwise see RECORDs arrive before SCHEMA
         for stream in streams:
             stream._write_schema_message()
 
@@ -814,10 +796,6 @@ class TapPostgres(SQLTap):
             logger=self.logger,
         )
         reader.run()
-
-        # finalize bookmarks so the final STATE message reflects post-advancement LSNs
-        for stream in streams:
-            stream.finalize_state_progress_markers()
         self._write_state_checkpoint()
 
     def _write_state_checkpoint(self) -> None:
