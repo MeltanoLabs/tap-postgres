@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import datetime
 import functools
-import json
-import re
 import select
 import sys
 import typing as t
@@ -22,6 +20,8 @@ from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
 from sqlalchemy.dialects import postgresql
+
+from tap_postgres._wal_helpers import parse_wal_message
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -241,8 +241,6 @@ class PostgresLogBasedStream(SQLStream):
     replication_key = "_sdc_lsn"
     is_sorted = True
 
-    _WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
-
     connection_parameters: ConnectionParameters
 
     def __init__(
@@ -398,7 +396,7 @@ class PostgresLogBasedStream(SQLStream):
             message = logical_replication_cursor.read_message()
             if message:
                 last_data_message = datetime.datetime.now()
-                payload = self._parse_wal_message(message.payload, logical_replication_cursor)
+                payload = parse_wal_message(message.payload, logical_replication_cursor)
                 if payload is not None:
                     row = self.consume(payload, message.data_start)
                     if row:
@@ -414,6 +412,11 @@ class PostgresLogBasedStream(SQLStream):
                             last_feedback_time = datetime.datetime.now()
                         except Exception:
                             pass
+                else:
+                    self.logger.warning(
+                        "A message payload of %s could not be converted to JSON",
+                        message.payload,
+                    )
                 continue
 
             try:
@@ -597,16 +600,6 @@ class PostgresLogBasedStream(SQLStream):
             f"action type {action!r}) could not be processed."
         )
 
-    def _fix_wal2json_enum_quotes(self, payload: str) -> str:
-        """Fix malformed JSON from wal2json for PostgreSQL enum types.
-
-        wal2json outputs enum type names with unescaped quotes, e.g.:
-            "type":""EnumName""
-        This is invalid JSON. We fix it by removing the extra quotes:
-            "type":"EnumName"
-        """
-        return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
-
     def _parse_column_value(self, column: dict) -> t.Any:
         """Parse a single wal2json column dict into a Python value.
 
@@ -648,49 +641,3 @@ class PostgresLogBasedStream(SQLStream):
             connection_parameters.render_as_psycopg2_dsn(),
             connection_factory=extras.LogicalReplicationConnection,
         )
-
-    def _parse_wal_message(
-        self, raw_payload: str, cursor: extras.ReplicationCursor | None
-    ) -> dict | None:
-        """Parse raw wal2json JSON payload into a dict.
-
-        Handles known wal2json enum-quoting bug (``"type":""EnumName""``)
-        via one retry after regex repair. Returns None if the payload can't be decoded
-        even after repair, in which case the caller should log and skip.
-
-        When ``cursor`` is provided, pre-parses ``text[]`` column values into Python lists
-        using psycopg2's ``STRINGARRAY`` type caster. This must be done while the cursor
-        is still alive, since ``STRINGARRAY`` reads conn-level encoding info from it.
-        """
-        try:
-            payload = json.loads(raw_payload)
-        except json.JSONDecodeError:
-            fixed_payload = self._fix_wal2json_enum_quotes(raw_payload)
-            try:
-                payload = json.loads(fixed_payload)
-            except json.JSONDecodeError:
-                self.logger.warning(
-                    "A message payload of %s could not be converted to JSON",
-                    raw_payload,
-                )
-                return None
-
-        if cursor is not None:
-            self._pre_parse_text_arrays(payload, cursor)
-
-        return payload
-
-    @staticmethod
-    def _pre_parse_text_arrays(payload: dict, cursor: extras.ReplicationCursor) -> None:
-        """Pre-parse ``text[]`` column values in a wal2json payload, in-place.
-
-        wal2json returns ``text[]`` values as Postgres's array literal string (e.g. '{a,b,c}').
-        Converting to a Python list requires ``STRINGARRAY``, which needs a live cursor
-        for encoding context. Calling this during the WAL read (while the cursor is alive)
-        means downstream code — ``consume()``, etc. — can operate on plain Python lists
-        with no cursor dependency.
-        """
-        for key in ("columns", "identity"):
-            for column in payload.get(key, ()) or ():
-                if column.get("type") == "text[]" and column.get("value") is not None:
-                    column["value"] = psycopg2.extensions.STRINGARRAY(column["value"], cursor)

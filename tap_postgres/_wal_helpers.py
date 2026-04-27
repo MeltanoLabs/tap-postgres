@@ -1,5 +1,21 @@
 """Helper functions for LOG_BASED replication."""
 
+from __future__ import annotations
+
+import json
+import re
+import typing as t
+
+import psycopg2
+
+if t.TYPE_CHECKING:
+    from psycopg2 import extras
+
+
+# wal2json emits enum type names with unescaped double quotes, producing invalid JSON
+# like ``"type":""EnumName""`` ... strip the extra quotes via regex and reparse
+_WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
+
 
 def normalize_fqn(schema: str, table: str) -> str:
     """Generate canonical, fully-qualified name for dispatch.
@@ -50,3 +66,55 @@ def build_add_tables_option(fqn_pairs: list[tuple[str, str]]) -> str:
         f"{escape_for_add_tables(schema)}.{escape_for_add_tables(table)}"
         for schema, table in fqn_pairs
     )
+
+
+def parse_wal_message(raw_payload: str, cursor: extras.ReplicationCursor | None) -> dict | None:
+    """Parse a raw wal2json JSON payload into a Python dict.
+
+    Handles the known wal2json enum-quoting bug via one retry after regex repair.
+    Returns ``None`` if the payload can't be decoded even after repair, in which
+    case the caller should log and skip.
+
+    When ``cursor`` is provided, pre-parses ``text[]`` column values into Python
+    lists using psycopg2's ``STRINGARRAY`` type caster. This must be done while
+    the cursor is still alive, since ``STRINGARRAY`` reads connection-level
+    encoding info from it.
+    """
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError:
+        try:
+            payload = json.loads(fix_wal2json_enum_quotes(raw_payload))
+        except json.JSONDecodeError:
+            return None
+
+    if cursor is not None:
+        pre_parse_text_arrays(payload, cursor)
+
+    return payload
+
+
+def fix_wal2json_enum_quotes(payload: str) -> str:
+    """Repair the wal2json enum-quoting bug in a raw JSON payload.
+
+    wal2json outputs enum type names with unescaped double quotes (e.g. "type":""EnumName""),
+    which is invalid JSON. Normalize this to "type":"EnumName" so a second ``json.loads``
+    attempt succeeds.
+    """
+    return _WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
+
+
+def pre_parse_text_arrays(payload: dict, cursor: extras.ReplicationCursor) -> None:
+    """Pre-parse ``text[]`` column values in a wal2json payload, in place.
+
+    wal2json returns ``text[]`` values as Postgres's array literal string (e.g.
+    ``'{a,b,c}'``). Converting to a Python list requires
+    ``psycopg2.extensions.STRINGARRAY``, which needs a live cursor for encoding
+    context. Calling this during the WAL read (while the cursor is alive) means
+    downstream code — ``consume()``, etc. — can operate on plain Python lists
+    with no cursor dependency.
+    """
+    for key in ("columns", "identity"):
+        for column in payload.get(key, ()) or ():
+            if column.get("type") == "text[]" and column.get("value") is not None:
+                column["value"] = psycopg2.extensions.STRINGARRAY(column["value"], cursor)
