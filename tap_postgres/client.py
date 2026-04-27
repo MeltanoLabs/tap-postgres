@@ -422,6 +422,22 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_cursor.close()
         logical_replication_connection.close()
 
+    def emit_record(self, record: dict, *, context: Context | None = None) -> None:
+        """Emit one record as a Singer RECORD message and advance state.
+
+        This is meant to decouple the shared WAL reader ``SingleConnectionWALReader``
+        from singer-sdk's per-record internals. It does the following, in order:
+
+        1. stream map transformation (aliasing, field renames, filters)
+        2. type conformance according to ``TYPE_CONFORMANCE_LEVEL``
+        3. emission of one or more RECORD messages to stdout
+        4. advancement of stream's replication bookmark based on ``record["_sdc_lsn"]``
+
+        STATE message emission is *not* done here; that's the caller's responsibility.
+        """
+        self._write_record_message(record)
+        self._increment_stream_state(record, context=context)
+
     def _advance_slot_and_state(
         self,
         replication_cursor: extras.ReplicationCursor,
