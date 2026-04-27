@@ -537,13 +537,12 @@ class TapPostgres(SQLTap):
         th.Property(
             "log_based_single_connection",
             th.BooleanType,
-            default=True,
+            default=False,
             description=(
                 "Use a single replication connection to sync all LOG_BASED streams "
                 "in one pass over the WAL. This avoids redundant WAL scans when "
                 "multiple tables use LOG_BASED replication. Only applicable when "
-                "replication_method is LOG_BASED. Set to ``false`` to revert to the "
-                "per-stream connection model (one WAL scan per stream)."
+                "replication_method is LOG_BASED."
             ),
         ),
     ).to_dict()
