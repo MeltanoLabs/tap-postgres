@@ -15,7 +15,7 @@ from collections.abc import Callable
 import psycopg2
 from psycopg2 import extras
 
-from tap_postgres._wal_helpers import build_add_tables_option, normalize_fqn
+from tap_postgres._wal_helpers import build_add_tables_option, normalize_fqn, parse_wal_message
 
 if t.TYPE_CHECKING:
     from tap_postgres.client import PostgresLogBasedStream
@@ -92,9 +92,14 @@ class SingleConnectionWALReader:
         self._streams_by_fqn: dict[str, tuple[PostgresLogBasedStream, int]] = {}
         for stream in streams:
             fqn_obj = stream.fully_qualified_name
-            assert fqn_obj.schema is not None
+            if fqn_obj.schema is None:
+                raise ValueError(
+                    f"Stream {stream.name!r} has no schema in its fully-qualified name; "
+                    f"cannot register with the single-connection WAL reader"
+                )
             fqn = normalize_fqn(fqn_obj.schema, fqn_obj.table)
-            start_lsn = stream.get_starting_replication_key_value(context=None) or 0
+            bookmark = stream.get_starting_replication_key_value(context=None)
+            start_lsn = bookmark if bookmark is not None else 0
             if fqn in self._streams_by_fqn:
                 raise ValueError(
                     f"Duplicate fully-qualified name {fqn!r} among LOG_BASED "
@@ -217,10 +222,7 @@ class SingleConnectionWALReader:
     ) -> None:
         """Parse one WAL message and hand it to the owning stream."""
         # parse (+pre-parse text[] values) while the cursor is alive
-        # borrow the per-stream parse method so quirks like the enum-quote workaround
-        # live in one place; we need SOME stream instance to call the method on, any will do
-        any_stream = next(iter(self._streams_by_fqn.values()))[0]
-        payload = any_stream._parse_wal_message(message.payload, cursor)
+        payload = parse_wal_message(message.payload, cursor, self._logger)
         if payload is None:
             return  # already logged by _parse_wal_message
 
@@ -266,16 +268,16 @@ class SingleConnectionWALReader:
         # prefer server-reported wal_end if it's ahead of start_lsn, otherwise query the server
         flush_lsn: int | None = None
         try:
-            wal_end = getattr(cursor, "wal_end", 0) or 0
-            if wal_end > start_lsn:
+            wal_end = getattr(cursor, "wal_end", None)
+            if wal_end is not None and wal_end > start_lsn:
                 flush_lsn = wal_end
         except Exception:
             pass
 
-        if not flush_lsn or flush_lsn <= start_lsn:
+        if flush_lsn is None or flush_lsn <= start_lsn:
             flush_lsn = self._query_current_wal_lsn()
 
-        if not flush_lsn or flush_lsn <= start_lsn:
+        if flush_lsn is None or flush_lsn <= start_lsn:
             return
 
         try:
