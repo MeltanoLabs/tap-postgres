@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import datetime
 import functools
-import json
-import re
 import select
 import sys
 import typing as t
@@ -22,6 +20,8 @@ from singer_sdk.helpers._typing import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
 from sqlalchemy.dialects import postgresql
+
+from tap_postgres._wal_helpers import parse_wal_message
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -39,6 +39,13 @@ if t.TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
     from tap_postgres.connection_parameters import ConnectionParameters
+
+
+_UPSERT_ACTIONS = {"I", "U"}
+_DELETE_ACTIONS = {"D"}
+_TRUNCATE_ACTIONS = {"T"}
+_TRANSACTION_ACTIONS = {"B", "C"}
+_NUMERIC_TYPES = ("int", "numeric", "decimal", "real", "double", "float", "bigint", "smallint")
 
 
 def _now_utc() -> str:
@@ -234,8 +241,6 @@ class PostgresLogBasedStream(SQLStream):
     replication_key = "_sdc_lsn"
     is_sorted = True
 
-    _WAL2JSON_ENUM_QUOTE_RE = re.compile(r'"type":""([^"]+)""')
-
     connection_parameters: ConnectionParameters
 
     def __init__(
@@ -247,6 +252,9 @@ class PostgresLogBasedStream(SQLStream):
     ) -> None:
         """Initialize Postgres log-based stream."""
         self.connection_parameters = connection_parameters
+        # track whether this stream's SCHEMA message has already been emitted
+        # to avoid emitting duplicate SCHEMA messages when running via the shared WAL reader
+        self._schema_message_written = False
 
         super().__init__(tap, catalog_entry, connector)
 
@@ -307,17 +315,37 @@ class PostgresLogBasedStream(SQLStream):
 
     @override
     def get_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
+        """Iterate records for this LOG_BASED stream.
+
+        When using the single-connection WAL reader, the first call into get_records()
+        across any LOG_BASED stream triggers which emits records for *all* selected
+        LOG_BASED streams via their ``emit_record()`` adapter — bypassing this generator.
+        Subsequent sibling calls are no-ops.
+
+        Yielding nothing is fine, since an empty iterable produces zero additional record
+        messages from the SDK's per-stream loop, while leaving SCHEMA emission, metrics,
+        and state finalization intact.
+        """
+        if not self._tap.config.get("log_based_single_connection", True):
+            yield from self._get_records_per_stream(context)
+            return
+
+        if not self._tap._shared_wal_run_completed:
+            self._tap._sync_log_based_streams_shared()
+            self._tap._shared_wal_run_completed = True
+
+        return
+
+    def _get_records_per_stream(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
         """Return a generator of row-type dictionary objects.
 
-        Runs a long-lived replication session (up to
-        ``replication_max_run_seconds``, default 600 s) so the tap can drain
-        large WAL backlogs in a single sync.  Sends periodic flush feedback
+        Runs a long-lived replication session (up to ``replication_max_run_seconds``)
+        so the tap can drain large WAL backlogs in a single sync. Sends periodic flush feedback
         while yielding records so the slot releases retained WAL incrementally.
 
         After the loop ends -- either because no data messages arrived for
-        ``replication_idle_exit_seconds`` (default 60 s) or the time budget is
-        exhausted -- the slot is advanced to the current WAL tip to prevent
-        unbounded WAL retention.
+        ``replication_idle_exit_seconds`` or total time budget is exhausted -- the slot
+        is advanced to the current WAL tip to prevent unbounded WAL retention.
         """
         status_interval = 10
         max_run_seconds = self.config["replication_max_run_seconds"]
@@ -366,10 +394,12 @@ class PostgresLogBasedStream(SQLStream):
             message = logical_replication_cursor.read_message()
             if message:
                 last_data_message = datetime.datetime.now()
-                row = self.consume(message, logical_replication_cursor)
-                if row:
-                    records_yielded += 1
-                    yield row
+                payload = parse_wal_message(message.payload, logical_replication_cursor)
+                if payload is not None:
+                    row = self.consume(payload, message.data_start)
+                    if row:
+                        records_yielded += 1
+                        yield row
                     if (
                         datetime.datetime.now() - last_feedback_time
                     ).total_seconds() >= feedback_interval:
@@ -380,6 +410,11 @@ class PostgresLogBasedStream(SQLStream):
                             last_feedback_time = datetime.datetime.now()
                         except Exception:
                             pass
+                else:
+                    self.logger.warning(
+                        "A message payload of %s could not be converted to JSON",
+                        message.payload,
+                    )
                 continue
 
             try:
@@ -412,6 +447,33 @@ class PostgresLogBasedStream(SQLStream):
 
         logical_replication_cursor.close()
         logical_replication_connection.close()
+
+    @override
+    def _write_schema_message(self) -> None:
+        """Emit a SCHEMA message at most once per stream lifetime.
+
+        ``TapPostgres._sync_log_based_streams_shared`` pre-writes schemas for every stream
+        up front (so RECORDs from siblings can't precede their own SCHEMA), and the SDK's
+        ``Stream.sync()`` calls this method again as part of the per-stream sync loop.
+        Without this guard, every LOG_BASED stream emits its SCHEMA twice.
+        """
+        if self._schema_message_written:
+            return
+        super()._write_schema_message()
+        self._schema_message_written = True
+
+    def emit_record(self, record: dict, *, context: Context | None = None) -> None:
+        """Emit one record as a Singer RECORD message and advance state.
+
+        This is meant to decouple ``SingleConnectionWALReader`` from singer-sdk's
+        per-record internals. It does the following: stream map transformation =>
+        type conformance => emission of one or more RECORD messages to stdout =>
+        advancement of stream's replication bookmark.
+
+        STATE message emission is *not* done here; that's the caller's responsibility.
+        """
+        self._write_record_message(record)
+        self._increment_stream_state(record, context=context)
 
     def _advance_slot_and_state(
         self,
@@ -496,111 +558,78 @@ class PostgresLogBasedStream(SQLStream):
             self.logger.warning("Could not query current WAL LSN: %s", exc)
             return None
 
-    def consume(self, message, cursor: extras.ReplicationCursor) -> dict | None:
-        """Ingest WAL message."""
-        try:
-            message_payload = json.loads(message.payload)
-        except json.JSONDecodeError:
-            # wal2json outputs PostgreSQL enum types with unescaped quotes
-            # e.g., "type":""EnumName"" instead of "type":"EnumName"
-            # Try to fix this by removing the extra quotes around type values
-            fixed_payload = self._fix_wal2json_enum_quotes(message.payload)
-            try:
-                message_payload = json.loads(fixed_payload)
-            except json.JSONDecodeError:
-                self.logger.warning(
-                    "A message payload of %s could not be converted to JSON",
-                    message.payload,
-                )
-                return {}
+    def consume(self, payload: dict, lsn: int) -> dict | None:
+        """Build a Singer row dict from a parsed wal2json payload.
 
-        row = {}
-
-        upsert_actions = {"I", "U"}
-        delete_actions = {"D"}
-        truncate_actions = {"T"}
-        transaction_actions = {"B", "C"}
-
-        if message_payload["action"] in upsert_actions:
-            for column in message_payload["columns"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update({"_sdc_deleted_at": None})
-            row.update({"_sdc_lsn": message.data_start})
-        elif message_payload["action"] in delete_actions:
-            for column in message_payload["identity"]:
-                row.update({column["name"]: self._parse_column_value(column, cursor)})
-            row.update(
-                {
-                    "_sdc_deleted_at": _now_utc(),
-                    "_sdc_lsn": message.data_start,
-                }
-            )
-        elif message_payload["action"] in truncate_actions:
-            self.logger.debug(
-                (
-                    "A message payload of %s (corresponding to a truncate action) "
-                    "could not be processed."
-                ),
-                message.payload,
-            )
-        elif message_payload["action"] in transaction_actions:
-            self.logger.debug(
-                (
-                    "A message payload of %s (corresponding to a transaction beginning "
-                    "or commit) could not be processed."
-                ),
-                message.payload,
-            )
-        else:
-            raise RuntimeError(
-                (
-                    "A message payload of %s (corresponding to an unknown action type) "
-                    "could not be processed."
-                ),
-                message.payload,
-            )
-
-        return row
-
-    def _fix_wal2json_enum_quotes(self, payload: str) -> str:
-        """Fix malformed JSON from wal2json for PostgreSQL enum types.
-
-        wal2json outputs enum type names with unescaped quotes, e.g.:
-            "type":""EnumName""
-        This is invalid JSON. We fix it by removing the extra quotes:
-            "type":"EnumName"
+        Returns:
+            A dict suitable for emission as a RECORD, or None for non-data messages
+            (truncate, transaction begin/commit, unrecognized actions that were logged)
         """
-        return self._WAL2JSON_ENUM_QUOTE_RE.sub(r'"type":"\1"', payload)
+        action = payload["action"]
 
-    def _parse_column_value(self, column, cursor: extras.ReplicationCursor) -> t.Any:
-        # When using log based replication, the wal2json output for columns of
-        # array types returns a string encoded in sql format, e.g. '{a,b}'
-        # https://github.com/eulerto/wal2json/issues/221#issuecomment-1025143441
-        if column["type"] == "text[]":
-            value = column.get("value")
-            if value is None:
-                return None
-            return psycopg2.extensions.STRINGARRAY(value, cursor)
+        if action in _UPSERT_ACTIONS:
+            row = {
+                column["name"]: self._parse_column_value(column) for column in payload["columns"]
+            }
+            row["_sdc_deleted_at"] = None
+            row["_sdc_lsn"] = lsn
+            return row
 
-        # Handle null values explicitly.
-        # wal2json represents nulls as JSON null, which becomes None in Python.
+        if action in _DELETE_ACTIONS:
+            row = {
+                column["name"]: self._parse_column_value(column) for column in payload["identity"]
+            }
+            row["_sdc_deleted_at"] = _now_utc()
+            row["_sdc_lsn"] = lsn
+            return row
+
+        if action in _TRUNCATE_ACTIONS:
+            self.logger.debug(
+                "A message payload of %s (corresponding to a truncate action) "
+                "could not be processed.",
+                payload,
+            )
+            return None
+
+        if action in _TRANSACTION_ACTIONS:
+            self.logger.debug(
+                "A message payload of %s (corresponding to a transaction begin "
+                "or commit) could not be processed.",
+                payload,
+            )
+            return None
+
+        raise RuntimeError(
+            f"A message payload of {payload!r} (corresponding to an unknown "
+            f"action type {action!r}) could not be processed."
+        )
+
+    def _parse_column_value(self, column: dict) -> t.Any:
+        """Parse a single wal2json column dict into a Python value.
+
+        Handles nullability, numeric-empty-string, and ``text[]``. A string value here
+        is a programming error, but we handle it gracefully with a last-resort parse.
+        """
         value = column.get("value")
         if value is None:
             return None
 
-        # For numeric types, check if empty string should be treated as null.
         column_type = column.get("type", "")
-        numeric_types = [
-            "int",
-            "numeric",
-            "decimal",
-            "real",
-            "double",
-            "float",
-            "bigint",
-            "smallint",
-        ]
-        if value == "" and any(numeric_type in column_type for numeric_type in numeric_types):
+
+        if column_type == "text[]":
+            if isinstance(value, list):
+                return value
+            # fallback, reachable only if a caller forgot to call _pre_parse_text_arrays
+            # STRINGARRAY with cursor=None works for UTF-8 connections
+            # which is the majority case
+            self.logger.warning(
+                "Encountered unparsed text[] value in _parse_column_value; falling back "
+                "to cursor-less STRINGARRAY parse. This indicates a missing call "
+                "to _pre_parse_text_arrays()."
+            )
+            return psycopg2.extensions.STRINGARRAY(value, None)
+
+        if value == "" and any(numeric_type in column_type for numeric_type in _NUMERIC_TYPES):
             return None
 
         return value
