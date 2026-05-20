@@ -52,7 +52,7 @@ class SingleConnectionWALReader:
     FEEDBACK_INTERVAL = 30  # seconds between send_feedback calls
     STATE_FLUSH_INTERVAL = 30  # seconds between STATE message emissions
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         connection_parameters: "ConnectionParameters",
@@ -125,7 +125,7 @@ class SingleConnectionWALReader:
         global_start_lsn = min(start_lsn for _, start_lsn in self._streams_by_fqn.values())
         fqn_objs = [stream.fully_qualified_name for stream, _ in self._streams_by_fqn.values()]
         add_tables = build_add_tables_option(
-            [(fqn_obj.schema, fqn_obj.table) for fqn_obj in fqn_objs]
+            [(t.cast("str", fqn_obj.schema), fqn_obj.table) for fqn_obj in fqn_objs]
         )
         self._logger.info(
             "Starting single-connection WAL read for %d stream(s) from LSN %d",

@@ -39,6 +39,7 @@ if t.TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
     from tap_postgres.connection_parameters import ConnectionParameters
+    from tap_postgres.tap import TapPostgres
 
 
 _UPSERT_ACTIONS = {"I", "U"}
@@ -330,13 +331,14 @@ class PostgresLogBasedStream(SQLStream):
             yield from self._get_records_per_stream(context)
             return
 
-        if not self._tap._shared_wal_run_completed:
-            self._tap._sync_log_based_streams_shared()
-            self._tap._shared_wal_run_completed = True
+        tap = t.cast("TapPostgres", self._tap)
+        if not tap._shared_wal_run_completed:
+            tap._sync_log_based_streams_shared()
+            tap._shared_wal_run_completed = True
 
         return
 
-    def _get_records_per_stream(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
+    def _get_records_per_stream(self, context: Context | None) -> Iterable[dict[str, t.Any]]:  # noqa: PLR0915
         """Return a generator of row-type dictionary objects.
 
         Runs a long-lived replication session (up to ``replication_max_run_seconds``)
