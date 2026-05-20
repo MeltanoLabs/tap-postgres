@@ -18,7 +18,7 @@ import psycopg2
 import sqlalchemy as sa
 import sqlalchemy.types
 from psycopg2 import extras
-from singer_sdk.helpers._typing import TypeConformanceLevel
+from singer_sdk.helpers.conform import TypeConformanceLevel
 from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
 from sqlalchemy.dialects import postgresql
