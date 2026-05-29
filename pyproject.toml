@@ -136,8 +136,6 @@ convention = "google"
 addopts = [
   "--durations=10",
   "-ra",
-  "--strict-config",
-  "--strict-markers",
 ]
 filterwarnings = [
   "error",
@@ -145,8 +143,8 @@ filterwarnings = [
 ]
 log_level = "INFO"
 minversion = "9"
+strict = true
 testpaths = ["tests"]
-xfail_strict = true
 
 [tool.uv]
 required-version = ">=0.10"
