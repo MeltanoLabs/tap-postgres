@@ -6,6 +6,7 @@ listing every LOG_BASED stream's table, and dispatches each incoming wal2json me
 to the owning stream's ``emit_record()`` method for immediate emission as a Singer RECORD.
 """
 
+import contextlib
 import logging
 import select
 import time
@@ -283,12 +284,10 @@ class SingleConnectionWALReader:
         """
         # prefer server-reported wal_end if it's ahead of start_lsn, otherwise query the server
         flush_lsn: int | None = None
-        try:
+        with contextlib.suppress(Exception):
             wal_end = getattr(cursor, "wal_end", None)
             if wal_end is not None and wal_end > start_lsn:
                 flush_lsn = wal_end
-        except Exception:
-            pass
 
         if flush_lsn is None or flush_lsn <= start_lsn:
             flush_lsn = self._query_current_wal_lsn()
