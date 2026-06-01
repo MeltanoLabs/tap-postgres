@@ -327,7 +327,7 @@ class PostgresLogBasedStream(SQLStream):
         messages from the SDK's per-stream loop, while leaving SCHEMA emission, metrics,
         and state finalization intact.
         """
-        if not self._tap.config.get("log_based_single_connection", True):
+        if not self._tap.config["log_based_single_connection"]:
             yield from self._get_records_per_stream(context)
             return
 
@@ -601,10 +601,13 @@ class PostgresLogBasedStream(SQLStream):
             )
             return None
 
-        raise RuntimeError(
-            f"A message payload of {payload!r} (corresponding to an unknown "
-            f"action type {action!r}) could not be processed."
+        self.logger.error(
+            "A message payload of %s (corresponding to an unknown action type %s) "
+            "could not be processed.",
+            payload,
+            action,
         )
+        return None
 
     def _parse_column_value(self, column: dict) -> t.Any:
         """Parse a single wal2json column dict into a Python value.

@@ -255,7 +255,7 @@ class SingleConnectionWALReader:
             # messages for registered tables... count it and move on; a non-zero counter
             # in logs is a signal to investigate (e.g. a normalize_fqn format mismatch)
             self.records_unroutable += 1
-            self._logger.debug("Received message for unregistered table %s; dropping", fqn)
+            self._logger.warning("Received message for unregistered table %s; dropping", fqn)
             return
 
         stream, stream_start_lsn = routed
