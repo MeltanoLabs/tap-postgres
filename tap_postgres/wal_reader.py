@@ -6,9 +6,9 @@ listing every LOG_BASED stream's table, and dispatches each incoming wal2json me
 to the owning stream's ``emit_record()`` method for immediate emission as a Singer RECORD.
 """
 
-import datetime
 import logging
 import select
+import time
 import typing as t
 from collections.abc import Callable
 
@@ -172,16 +172,16 @@ class SingleConnectionWALReader:
 
     def _run_loop(self, cursor: extras.ReplicationCursor) -> None:
         """Inner read / dispatch / periodic-flush loop."""
-        run_start = datetime.datetime.now()
+        run_start = time.monotonic()
         last_data_message = run_start
         last_feedback = run_start
         last_state_flush = run_start
         max_lsn_seen = 0
 
         while True:
-            now = datetime.datetime.now()
+            now = time.monotonic()
             # total time budget check
-            if (now - run_start).total_seconds() > self._max_run_seconds:
+            if now - run_start > self._max_run_seconds:
                 self._logger.info(
                     "Reached max run time of %d seconds (%d records emitted)",
                     self._max_run_seconds,
@@ -190,12 +190,12 @@ class SingleConnectionWALReader:
                 break
 
             # periodic STATE emission
-            if (now - last_state_flush).total_seconds() >= self.STATE_FLUSH_INTERVAL:
+            if now - last_state_flush >= self.STATE_FLUSH_INTERVAL:
                 self._state_flush_callback()
                 last_state_flush = now
 
             # periodic replication-slot feedback
-            if max_lsn_seen > 0 and (now - last_feedback).total_seconds() >= self.FEEDBACK_INTERVAL:
+            if max_lsn_seen > 0 and now - last_feedback >= self.FEEDBACK_INTERVAL:
                 try:
                     cursor.send_feedback(flush_lsn=max_lsn_seen)
                     last_feedback = now
@@ -205,7 +205,7 @@ class SingleConnectionWALReader:
             # read the next WAL message
             message = cursor.read_message()
             if message is not None:
-                last_data_message = datetime.datetime.now()
+                last_data_message = time.monotonic()
                 self._dispatch(cursor, message)
                 max_lsn_seen = max(max_lsn_seen, message.data_start)
                 continue
@@ -217,13 +217,13 @@ class SingleConnectionWALReader:
                 ready = [cursor]
 
             if not ready:
-                data_idle = (datetime.datetime.now() - last_data_message).total_seconds()
+                data_idle = time.monotonic() - last_data_message
                 if data_idle >= self._idle_exit_seconds:
                     self._logger.info(
                         "No data for %.0f s, ending WAL read (%d records emitted in %.0f s)",
                         data_idle,
                         self.records_emitted,
-                        (datetime.datetime.now() - run_start).total_seconds(),
+                        time.monotonic() - run_start,
                     )
                     break
 
