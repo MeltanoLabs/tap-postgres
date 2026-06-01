@@ -7,6 +7,7 @@ in ``consume()`` and the recovery paths in ``parse_wal_message``.
 from __future__ import annotations
 
 import datetime
+import logging
 
 import pytest
 import sqlalchemy as sa
@@ -118,9 +119,13 @@ def test_consume_non_data_actions_return_none(stream, action):
     assert stream.consume({"action": action}, lsn=1) is None
 
 
-def test_consume_unknown_action_raises(stream):
-    with pytest.raises(RuntimeError, match="unknown action"):
-        stream.consume({"action": "X", "columns": []}, lsn=1)
+def test_consume_unknown_action_raises(stream, caplog):
+    stream.consume({"action": "X", "columns": []}, lsn=1)
+
+    assert any(
+        record[1] == logging.ERROR and "unknown action" in record[2]
+        for record in caplog.record_tuples
+    )
 
 
 @pytest.mark.parametrize(
