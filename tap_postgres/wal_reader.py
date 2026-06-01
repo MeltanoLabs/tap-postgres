@@ -16,7 +16,12 @@ from collections.abc import Callable
 import psycopg2
 from psycopg2 import extras
 
-from tap_postgres._wal_helpers import build_add_tables_option, normalize_fqn, parse_wal_message
+from tap_postgres._wal_helpers import (
+    build_add_tables_option,
+    normalize_fqn,
+    parse_wal_message,
+    query_current_wal_lsn,
+)
 
 if t.TYPE_CHECKING:
     from tap_postgres.client import PostgresLogBasedStream
@@ -323,21 +328,6 @@ class SingleConnectionWALReader:
 
     def _query_current_wal_lsn(self) -> int | None:
         """Query ``pg_current_wal_flush_lsn()`` on a non-replication conn."""
-        try:
-            conn = psycopg2.connect(
-                self._connection_parameters.render_as_psycopg2_dsn(),
-            )
-            try:
-                conn.autocommit = True
-                with conn.cursor() as cur:
-                    cur.execute("SELECT pg_current_wal_flush_lsn()")
-                    row = cur.fetchone()
-                    if row is None:
-                        return None
-                    hi, lo = row[0].split("/")
-                    return (int(hi, 16) << 32) + int(lo, 16)
-            finally:
-                conn.close()
-        except Exception as exc:
-            self._logger.warning("Could not query current WAL LSN: %s", exc)
-            return None
+        return query_current_wal_lsn(
+            self._connection_parameters.render_as_psycopg2_dsn(), self._logger
+        )

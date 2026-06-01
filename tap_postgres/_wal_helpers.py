@@ -9,6 +9,8 @@ import typing as t
 import psycopg2
 
 if t.TYPE_CHECKING:
+    import logging
+
     from psycopg2 import extras
 
 
@@ -109,3 +111,28 @@ def pre_parse_text_arrays(payload: dict, cursor: extras.ReplicationCursor) -> No
         for column in payload.get(key, ()) or ():
             if column.get("type") == "text[]" and column.get("value") is not None:
                 column["value"] = psycopg2.extensions.STRINGARRAY(column["value"], cursor)
+
+
+def query_current_wal_lsn(dsn: str, logger: logging.Logger) -> int | None:
+    """Query ``pg_current_wal_flush_lsn()`` on a non-replication connection."""
+    try:
+        conn = psycopg2.connect(dsn)
+        try:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_current_wal_flush_lsn()")
+                row = cur.fetchone()
+                if row is None:
+                    return None
+                return _lsn_str_to_int(row[0])
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("Could not query current WAL LSN: %s", exc)
+        return None
+
+
+def _lsn_str_to_int(lsn_str: str) -> int:
+    """Convert a Postgres LSN string (e.g. '6/4A3B2C10') to an int."""
+    hi, lo = lsn_str.split("/")
+    return (int(hi, 16) << 32) + int(lo, 16)

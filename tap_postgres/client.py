@@ -21,7 +21,7 @@ from singer_sdk.sql import SQLConnector, SQLStream
 from singer_sdk.sql.connector import SQLToJSONSchema
 from sqlalchemy.dialects import postgresql
 
-from tap_postgres._wal_helpers import parse_wal_message
+from tap_postgres._wal_helpers import parse_wal_message, query_current_wal_lsn
 
 if sys.version_info >= (3, 12):
     from typing import override
@@ -540,25 +540,9 @@ class PostgresLogBasedStream(SQLStream):
 
     def _query_current_wal_lsn(self) -> int | None:
         """Query pg_current_wal_flush_lsn() and return the result as an int."""
-        try:
-            conn = psycopg2.connect(
-                self.connection_parameters.render_as_psycopg2_dsn(),
-            )
-            try:
-                conn.autocommit = True
-                with conn.cursor() as cur:
-                    cur.execute("SELECT pg_current_wal_flush_lsn()")
-                    row = cur.fetchone()
-                    if row is None:
-                        return None
-                    lsn_str = row[0]  # e.g. '6/4A3B2C10'
-                    hi, lo = lsn_str.split("/")
-                    return (int(hi, 16) << 32) + int(lo, 16)
-            finally:
-                conn.close()
-        except Exception as exc:
-            self.logger.warning("Could not query current WAL LSN: %s", exc)
-            return None
+        return query_current_wal_lsn(
+            self.connection_parameters.render_as_psycopg2_dsn(), self.logger
+        )
 
     def consume(self, payload: dict, lsn: int) -> dict | None:
         """Build a Singer row dict from a parsed wal2json payload.
