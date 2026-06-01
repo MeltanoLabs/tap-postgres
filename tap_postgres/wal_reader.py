@@ -129,9 +129,14 @@ class SingleConnectionWALReader:
         replication slot to the current WAL tip and updates streams' bookmarks to that tip.
         """
         global_start_lsn = min(start_lsn for _, start_lsn in self._streams_by_fqn.values())
-        fqn_objs = [stream.fully_qualified_name for stream, _ in self._streams_by_fqn.values()]
         add_tables = build_add_tables_option(
-            [(t.cast("str", fqn_obj.schema), fqn_obj.table) for fqn_obj in fqn_objs]
+            [
+                (
+                    t.cast("str", stream.fully_qualified_name.schema),
+                    stream.fully_qualified_name.table,
+                )
+                for stream, _ in self._streams_by_fqn.values()
+            ]
         )
         self._logger.info(
             "Starting single-connection WAL read for %d stream(s) from LSN %d",
