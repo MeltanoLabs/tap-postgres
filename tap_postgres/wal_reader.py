@@ -126,7 +126,9 @@ class SingleConnectionWALReader:
 
         This is synchronous and blocks until either: no data message has arrived
         for ``idle_exit_seconds`` OR ``max_run_seconds`` has elapsed. On exit, advances
-        replication slot to the current WAL tip and updates streams' bookmarks to that tip.
+        the replication slot and streams' bookmarks. On idle exit (backlog drained),
+        the target is the current WAL tip; on ``max_run_seconds`` exit the target is
+        the max LSN actually dispatched, so unread backlog messages aren't skipped over.
         """
         global_start_lsn = min(start_lsn for _, start_lsn in self._streams_by_fqn.values())
         add_tables = build_add_tables_option(
@@ -162,8 +164,16 @@ class SingleConnectionWALReader:
                     "add-tables": add_tables,
                 },
             )
-            self._run_loop(cursor)
-            self._advance_slot_and_state_all(cursor, global_start_lsn)
+            max_lsn_seen, caught_up = self._run_loop(cursor)
+            # how far is it safe to release WAL and advance bookmarks?
+            # if "caught up": all matching records up to the tip have been drained,
+            # so advance to the server tip and release WAL to prevent unbounded retention
+            # if not "caught up": unread matching records may sit between max_lsn_seen
+            # and the WAL tip, so cap at max_lsn_seen to avoid skipping them on next run
+            advance_to_lsn = (
+                self._current_wal_tip(cursor, global_start_lsn) if caught_up else max_lsn_seen
+            )
+            self._advance_slot_and_state_all(cursor, global_start_lsn, advance_to_lsn)
         finally:
             cursor.close()
             conn.close()
@@ -181,8 +191,16 @@ class SingleConnectionWALReader:
             {fqn: self.records_emitted_by_fqn[fqn] for fqn in self._streams_by_fqn},
         )
 
-    def _run_loop(self, cursor: extras.ReplicationCursor) -> None:
-        """Inner read / dispatch / periodic-flush loop."""
+    def _run_loop(self, cursor: extras.ReplicationCursor) -> tuple[int, bool]:
+        """Inner read / dispatch / periodic-flush loop.
+
+        Returns:
+            (max_lsn_seen, caught_up), where ``max_lsn_seen`` is the highest WAL LSN
+            actually read and dispatched -- over *all* messages, before per-stream
+            filtering -- and ``caught_up`` is True iff the run loop exited because
+            the stream went idle (backlog drained) and False if it exited because
+            ``max_run_seconds`` budget was hit with WAL possibly still unread.
+        """
         run_start = time.monotonic()
         last_data_message = run_start
         last_feedback = run_start
@@ -198,7 +216,7 @@ class SingleConnectionWALReader:
                     self._max_run_seconds,
                     self.records_emitted,
                 )
-                break
+                return (max_lsn_seen, False)  # timeout exit: backlog may remain unread
 
             # periodic STATE emission
             if now - last_state_flush >= self.STATE_FLUSH_INTERVAL:
@@ -236,7 +254,7 @@ class SingleConnectionWALReader:
                         self.records_emitted,
                         time.monotonic() - run_start,
                     )
-                    break
+                    return (max_lsn_seen, True)  # idle exit: backlog drained
 
     def _dispatch(
         self, cursor: extras.ReplicationCursor, message: extras.ReplicationMessage
@@ -286,22 +304,16 @@ class SingleConnectionWALReader:
         self.records_emitted += 1
         self.records_emitted_by_fqn[fqn] += 1
 
-    def _advance_slot_and_state_all(self, cursor: extras.ReplicationCursor, start_lsn: int) -> None:
-        """Advance slot to the WAL tip and update every stream's bookmark.
+    def _advance_slot_and_state_all(
+        self, cursor: extras.ReplicationCursor, start_lsn: int, flush_lsn: int | None
+    ) -> None:
+        """Advance the slot and every stream's bookmark to ``flush_lsn``.
 
-        Mirrors ``PostgresLogBasedStream._advance_slot_and_state`` but applies resulting LSN
-        to every registered stream.
+        ``flush_lsn`` is the already-resolved safe target chosen by ``run()``, which is
+        the WAL tip on idle exit or the max LSN actually dispatched. Mirrors
+        ``PostgresLogBasedStream._advance_slot_and_state`` but applies the result
+        to every registered stream. A no-op if ``flush_lsn`` is not ahead of ``start_lsn``.
         """
-        # prefer server-reported wal_end if it's ahead of start_lsn, otherwise query the server
-        flush_lsn: int | None = None
-        with contextlib.suppress(Exception):
-            wal_end = getattr(cursor, "wal_end", None)
-            if wal_end is not None and wal_end > start_lsn:
-                flush_lsn = wal_end
-
-        if flush_lsn is None or flush_lsn <= start_lsn:
-            flush_lsn = self._query_current_wal_lsn()
-
         if flush_lsn is None or flush_lsn <= start_lsn:
             return
 
@@ -330,6 +342,20 @@ class SingleConnectionWALReader:
 
         # one final STATE emission so the next run picks up the advance
         self._state_flush_callback()
+
+    def _current_wal_tip(self, cursor: extras.ReplicationCursor, start_lsn: int) -> int | None:
+        """Best estimate of the server's current WAL flush position.
+
+        Prefers ``wal_end`` reported on the replication cursor, falls back to querying
+        ``pg_current_wal_flush_lsn()`` on a regular connection. Returns None if neither
+        yields a position ahead of ``start_lsn``. Only safe to advance to
+        when the read loop has caught up.
+        """
+        with contextlib.suppress(Exception):
+            wal_end = getattr(cursor, "wal_end", None)
+            if wal_end is not None and wal_end > start_lsn:
+                return wal_end
+        return self._query_current_wal_lsn()
 
     def _query_current_wal_lsn(self) -> int | None:
         """Query ``pg_current_wal_flush_lsn()`` on a non-replication conn."""

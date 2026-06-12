@@ -427,12 +427,9 @@ def test_idle_exit_advances_slot_and_state_for_all_streams():
     assert advanced_to in cursor.feedback_lsns
 
 
-def test_max_run_time_exit_advances_slot_and_state():
-    """Same advancement path runs when ``max_run_seconds`` is exceeded.
-
-    With ``max_run_seconds = -1``, the very first iteration's time check is always true,
-    so the loop breaks before any reads -- exercising the max-run exit path deterministically.
-    """
+def test_timeout_exit_no_advance_past_unread_backlog():
+    """On a max_run_seconds exit having read nothing, the bookmark must not jump to WAL tip:
+    max_lsn_seen = 0, so there's no advance and no false slot release."""
     s = StubStream("public", "users", start_lsn=10)
     reader = _build_reader([s], max_run=-1, idle_exit=10_000)
 
@@ -440,7 +437,9 @@ def test_max_run_time_exit_advances_slot_and_state():
     with patch_replication(cursor):
         reader.run()
 
-    assert s.get_context_state(None)["replication_key_value"] == 777
+    # timeout exit, nothing read => no advance to the 777 tip
+    assert "replication_key_value" not in s.get_context_state(None)
+    assert 777 not in cursor.feedback_lsns
 
 
 def test_emit_record_writes_record_message_and_advances_state():
