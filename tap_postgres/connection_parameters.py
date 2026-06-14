@@ -71,7 +71,7 @@ class ConnectionParameters:
             port=int(config["port"]),
             database=config["database"],
             user=config["user"],
-            password=config["password"],
+            password=config.get("password") or "",
             options=_build_options_from_tap_config(config),
         )
 
