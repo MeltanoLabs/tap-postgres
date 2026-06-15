@@ -17,6 +17,7 @@ from types import MappingProxyType
 import boto3
 import psycopg2
 import sqlalchemy as sa
+import sqlalchemy.event
 import sqlalchemy.types
 from psycopg2 import extras
 from singer_sdk.helpers.conform import TypeConformanceLevel
