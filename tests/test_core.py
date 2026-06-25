@@ -119,10 +119,11 @@ class TestTapPostgres(TapPostgresTest):  # ty:ignore[unsupported-base]
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
     @pytest.fixture(scope="class")
-    def resource(self):
-        setup_test_table(self.table_name, self.sqlalchemy_url)
+    @classmethod
+    def resource(cls):
+        setup_test_table(cls.table_name, cls.sqlalchemy_url)
         yield
-        teardown_test_table(self.table_name, self.sqlalchemy_url)
+        teardown_test_table(cls.table_name, cls.sqlalchemy_url)
 
 
 class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801  # ty:ignore[unsupported-base]
@@ -130,10 +131,11 @@ class TestTapPostgres_NOSQLALCHMY(TapPostgresTestNOSQLALCHEMY):  # noqa: N801  #
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
     @pytest.fixture(scope="class")
-    def resource(self):
-        setup_test_table(self.table_name, self.sqlalchemy_url)
+    @classmethod
+    def resource(cls):
+        setup_test_table(cls.table_name, cls.sqlalchemy_url)
         yield
-        teardown_test_table(self.table_name, self.sqlalchemy_url)
+        teardown_test_table(cls.table_name, cls.sqlalchemy_url)
 
 
 class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):  # ty:ignore[unsupported-base]
@@ -141,10 +143,11 @@ class TestTapPostgresSelectedColumnsOnly(TapPostgresTestSelectedColumnsOnly):  #
     sqlalchemy_url = SAMPLE_CONFIG["sqlalchemy_url"]
 
     @pytest.fixture(scope="class")
-    def resource(self):
-        setup_test_table(self.table_name, self.sqlalchemy_url)
+    @classmethod
+    def resource(cls):
+        setup_test_table(cls.table_name, cls.sqlalchemy_url)
         yield
-        teardown_test_table(self.table_name, self.sqlalchemy_url)
+        teardown_test_table(cls.table_name, cls.sqlalchemy_url)
 
 
 def test_temporal_datatypes():
