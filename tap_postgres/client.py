@@ -14,8 +14,10 @@ import sys
 import typing as t
 from types import MappingProxyType
 
+import boto3
 import psycopg2
 import sqlalchemy as sa
+import sqlalchemy.event
 import sqlalchemy.types
 from psycopg2 import extras
 from singer_sdk.helpers.conform import TypeConformanceLevel
@@ -183,6 +185,41 @@ class PostgresConnector(SQLConnector):
         if "filter_schemas" in self.config and len(self.config["filter_schemas"]) != 0:
             return self.config["filter_schemas"]
         return super().get_schema_names(engine, inspected)
+
+    def create_engine(self) -> sa.Engine:
+        """Create a SQLAlchemy engine with dynamic RDS IAM authentication support."""
+        engine = super().create_engine()
+
+        # If IAM authentication is enabled, hook into the do_connect event
+        if self.config.get("aws_iam_auth"):
+
+            @sa.event.listens_for(engine, "do_connect")
+            def provide_token(dialect, conn_rec, cargs, cparams):
+                self.provide_token(dialect, conn_rec, cargs, cparams)
+
+        return engine
+
+    def provide_token(self, dialect, conn_rec, cargs, cparams):
+        """Inject a fresh RDS IAM authentication token into connection parameters."""
+        host = cparams.get("host")
+        port = cparams.get("port", 5432)
+        user = cparams.get("user")
+
+        # Get AWS credentials region and profile from tap configuration
+        region = self.config.get("aws_region")
+        profile = self.config.get("aws_profile")
+
+        # Initialize AWS session and RDS client
+        session = boto3.Session(profile_name=profile) if profile else boto3.Session()
+        rds_client = session.client("rds", region_name=region)
+
+        # Dynamically generate a fresh token
+        token = rds_client.generate_db_auth_token(
+            DBHostname=host, Port=int(port), DBUsername=user, Region=region
+        )
+
+        # Overwrite the password with the generated token
+        cparams["password"] = token
 
 
 class PostgresStream(SQLStream):

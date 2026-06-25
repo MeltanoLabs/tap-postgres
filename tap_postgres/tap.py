@@ -227,10 +227,10 @@ class TapPostgres(SQLTap):
             self.config.get("host") is not None
             and self.config.get("port") is not None
             and self.config.get("user") is not None
-            and self.config.get("password") is not None
+            and (self.config.get("password") is not None or self.config.get("aws_iam_auth") is True)
         ), (
             "Need either the sqlalchemy_url to be set or host, port, user,"
-            + " and password to be set"
+            + " and password (or aws_iam_auth) to be set"
         )
 
         # If sqlalchemy_url is not being used and ssl_enable is on, ssl_mode must have
@@ -531,6 +531,22 @@ class TapPostgres(SQLTap):
                 "Replication method to use if there is not a catalog entry to override "
                 "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
             ),
+        ),
+        th.Property(
+            "aws_iam_auth",
+            th.BooleanType,
+            default=False,
+            description=("Whether to use AWS IAM database authentication."),
+        ),
+        th.Property(
+            "aws_region",
+            th.StringType,
+            description=("The AWS region where the RDS instance is located."),
+        ),
+        th.Property(
+            "aws_profile",
+            th.StringType,
+            description=("Optional AWS CLI profile name to use for credential resolution."),
         ),
     ).to_dict()
 
