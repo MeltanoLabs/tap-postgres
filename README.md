@@ -261,6 +261,19 @@ Log-based replication will modify the schemas output by the tap. Specifically, a
 
 Note that changing what streams are selected after already beginning log-based replication can have unexpected consequences. To ensure consistent output, it is best to keep selected streams the same across invocations of the tap.
 
+#### Adding a new stream to an existing LOG_BASED set
+
+When a stream has no prior bookmark (i.e. it is new to log-based replication), the tap starts reading the replication slot from LSN 0 — the oldest WAL position the slot still retains. This means the tap will walk through all retained WAL for every registered table before reaching the current tip, which can be very slow if the slot has accumulated a large backlog.
+
+Other CDC tools (e.g. [Debezium](https://debezium.io/blog/2021/10/07/incremental-snapshots/), [Airbyte](https://docs.airbyte.com/platform/understanding-airbyte/cdc#adding-new-schemascolumns)) handle this by taking an initial snapshot of the new table at a known LSN and then starting WAL streaming from that point. This tap does not implement that pattern.
+
+The recommended workaround is:
+
+1. Sync the new table once using `FULL_TABLE` or `INCREMENTAL` replication to establish its baseline state.
+2. Switch that stream's replication method to `LOG_BASED` for subsequent syncs.
+
+This ensures the new stream has a valid starting LSN bookmark and does not force the other streams to re-read old WAL.
+
 Note also that using log-based replication will cause the replication key for all streams to be set to "_sdc_lsn", which is the Postgres LSN for the record in question.
 
 ### How to Set Up Log-Based Replication

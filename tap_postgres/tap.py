@@ -25,6 +25,7 @@ from tap_postgres.client import (
     PostgresStream,
 )
 from tap_postgres.connection_parameters import ConnectionParameters
+from tap_postgres.wal_reader import SingleConnectionWALReader
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -223,6 +224,7 @@ class TapPostgres(SQLTap):
         See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
         super().__init__(*args, **kwargs)
+        self._shared_wal_run_completed = False
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
             and self.config.get("port") is not None
@@ -532,6 +534,17 @@ class TapPostgres(SQLTap):
                 "this choice. One of `FULL_TABLE`, `INCREMENTAL`, or `LOG_BASED`."
             ),
         ),
+        th.Property(
+            "log_based_single_connection",
+            th.BooleanType,
+            default=False,
+            description=(
+                "Use a single replication connection to sync all LOG_BASED streams "
+                "in one pass over the WAL. This avoids redundant WAL scans when "
+                "multiple tables use LOG_BASED replication. Only applicable when "
+                "replication_method is LOG_BASED."
+            ),
+        ),
     ).to_dict()
 
     @cached_property
@@ -751,3 +764,42 @@ class TapPostgres(SQLTap):
             else:
                 streams.append(PostgresStream(self, catalog_entry, connector=connector))
         return streams
+
+    def _sync_log_based_streams_shared(self) -> None:
+        """Run the single-connection WAL reader across all selected LOG_BASED streams.
+
+        Called once per tap invocation, on first call into ``PostgresLogBasedStream.get_records()``
+        from any LOG_BASED stream. Sibling streams' ``get_records()`` calls become no-ops
+        via the ``_shared_wal_run_completed`` flag on the tap instance.
+        """
+        streams = [
+            s for s in self.streams.values() if isinstance(s, PostgresLogBasedStream) and s.selected
+        ]
+        if not streams:
+            return
+
+        # schema messages for all LOG_BASED streams must be on the wire *before*
+        # any RECORD message, since `Stream.sync()`` only writes schema for the single stream
+        # whose sync triggered; siblings would otherwise see RECORDs arrive before SCHEMA
+        for stream in streams:
+            stream._write_schema_message()
+
+        reader = SingleConnectionWALReader(
+            connection_parameters=self.connection_parameters,
+            replication_slot_name=self.config["replication_slot_name"],
+            max_run_seconds=self.config["replication_max_run_seconds"],
+            idle_exit_seconds=self.config["replication_idle_exit_seconds"],
+            streams=streams,
+            state_flush_callback=self._write_state_checkpoint,
+            logger=self.logger,
+        )
+        reader.run()
+        self._write_state_checkpoint()
+
+    def _write_state_checkpoint(self) -> None:
+        """Emit a Singer STATE message reflecting current bookmarks.
+
+        Called on a 30s cadence by ``SingleConnectionWALReader``, using the same
+        state-writing mechanism the SDK invokes between streams in the default sync loop.
+        """
+        self._state_writer.write_state(self.state)
