@@ -296,7 +296,7 @@ class PostgresLogBasedStream(SQLStream):
             return
 
         state_dict = self.get_context_state(context)
-        new_value = latest_record.get(self.replication_key)  # ty:ignore[invalid-argument-type]
+        new_value = latest_record.get(self.replication_key)
         if new_value is None:
             return
 
