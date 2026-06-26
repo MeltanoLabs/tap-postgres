@@ -545,6 +545,18 @@ class TapPostgres(SQLTap):
                 "replication_method is LOG_BASED."
             ),
         ),
+        th.Property(
+            "auto_bootstrap_log_based",
+            th.BooleanType,
+            default=False,
+            description=(
+                "If True, LOG_BASED streams without a prior LSN bookmark are automatically "
+                "bootstrapped via a FULL_TABLE sync before WAL streaming begins, "
+                "with the current WAL flush LSN seeded as the stream's starting bookmark. "
+                "If False (default), the WAL reader starts from the earliest entry (LSN=0). "
+                "Only applies when log_based_single_connection=True."
+            ),
+        ),
     ).to_dict()
 
     @cached_property
