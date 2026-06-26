@@ -825,6 +825,9 @@ class TapPostgres(SQLTap):
             state_dict = stream.get_context_state(None)
             state_dict["replication_key"] = stream.replication_key
             state_dict["replication_key_value"] = snapshot_lsn
+            # add bookmarked lsn as ephemeral "starting" marker the WAL reader accesses
+            # via get_starting_replication_key_value() to decide where to sync from
+            stream._write_starting_replication_value(context=None)
 
         self._write_state_checkpoint()
 
