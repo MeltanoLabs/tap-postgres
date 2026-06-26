@@ -450,6 +450,29 @@ class PostgresLogBasedStream(SQLStream):
         logical_replication_cursor.close()
         logical_replication_connection.close()
 
+    def _get_bootstrap_records(self, context: Context | None) -> Iterable[dict[str, t.Any]]:
+        """Yield all current rows for an initial FULL_TABLE bootstrap sync.
+
+        Selects only real database columns -- strips synthetic "_sdc_*" names that appear
+        in the LOG_BASED schema but don't exist in the database. Adds ``_sdc_lsn=None``
+        and ``_sdc_deleted_at=None`` so every record conforms to the stream's declared schema.
+        Respects ``stream_options.custom_where_clauses`` if configured.
+        """
+        selected_cols = [
+            col for col in self.get_selected_schema()["properties"] if not col.startswith("_sdc_")
+        ]
+        table = self.connector.get_table(self.fully_qualified_name, column_names=selected_cols)
+        stream_options = self.config.get("stream_options", {}).get(self.name, {})
+        query = table.select()
+        if clauses := stream_options.get("custom_where_clauses"):
+            query = query.where(*(sa.text(clause.strip()) for clause in clauses))
+        with self.connector._connect() as conn:
+            for row in conn.execute(query).mappings():
+                record = dict(row)
+                record["_sdc_deleted_at"] = None
+                record["_sdc_lsn"] = None
+                yield record
+
     @override
     def _write_schema_message(self) -> None:
         """Emit a SCHEMA message at most once per stream lifetime.
