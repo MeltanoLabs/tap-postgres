@@ -714,12 +714,15 @@ def test_bootstrap_stream_bookmarking_or_not():
     assert new.get_context_state(None) == {
         "replication_key": "_sdc_lsn",
         "replication_key_value": 5000,
+        "starting_replication_value": 5000,
     }
     # the seeded LSN must be visible to the WAL reader, which reads the starting marker
     assert new.get_starting_replication_key_value(context=None) == 5000
     existing._write_schema_message.assert_not_called()
     existing.emit_record.assert_not_called()
     assert existing.get_context_state(None)["replication_key_value"] == 1234
+    # existing's own bookmark must also reach the WAL reader
+    assert existing.get_starting_replication_key_value(context=None) == 1234
     tap._write_state_checkpoint.assert_called_once()
 
 

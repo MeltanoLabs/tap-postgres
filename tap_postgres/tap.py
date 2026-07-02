@@ -792,41 +792,45 @@ class TapPostgres(SQLTap):
         bootstrap_streams = [
             stream
             for stream in streams
-            if stream.get_starting_replication_key_value(context=None) is None
+            if stream.get_context_state(context=None).get("replication_key_value") is None
         ]
-        if not bootstrap_streams:
-            return
+        if bootstrap_streams:
+            snapshot_lsn = query_current_wal_lsn(
+                self.connection_parameters.render_as_psycopg2_dsn(), self.logger
+            )
+            if snapshot_lsn is None:
+                self.logger.warning(
+                    "couldn't query current WAL LSN; %d stream(s) will start from LSN=0",
+                    len(bootstrap_streams),
+                )
+            else:
+                for stream in bootstrap_streams:
+                    self.logger.info(
+                        "bootstrapping %s stream; WAL will resume from LSN %d",
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    stream._write_schema_message()  # idempotent no-op in regular usage
+                    num_records = 0
+                    for record in stream._get_bootstrap_records(context=None):
+                        stream.emit_record(record)
+                        num_records += 1
+                    self.logger.info(
+                        "emitted %d record(s) for %s stream; setting LSN bookmark to %d",
+                        num_records,
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    state_dict = stream.get_context_state(None)
+                    state_dict["replication_key"] = stream.replication_key
+                    state_dict["replication_key_value"] = snapshot_lsn
 
-        snapshot_lsn = query_current_wal_lsn(
-            self.connection_parameters.render_as_psycopg2_dsn(), self.logger
-        )
-        if snapshot_lsn is None:
-            self.logger.warning(
-                "couldn't query current WAL LSN; %d stream(s) will start WAL replay from LSN=0",
-                len(bootstrap_streams),
-            )
-            return
-
-        for stream in bootstrap_streams:
-            self.logger.info(
-                "bootstrapping %s stream; WAL will resume from LSN %d", stream.name, snapshot_lsn
-            )
-            stream._write_schema_message()  # should be idempotent no-op in regular usage
-            num_records = 0
-            for record in stream._get_bootstrap_records(context=None):
-                stream.emit_record(record)
-                num_records += 1
-            self.logger.info(
-                "emitted %d record(s) for %s stream; setting LSN bookmark to %d",
-                num_records,
-                stream.name,
-                snapshot_lsn,
-            )
-            state_dict = stream.get_context_state(None)
-            state_dict["replication_key"] = stream.replication_key
-            state_dict["replication_key_value"] = snapshot_lsn
-            # add bookmarked lsn as ephemeral "starting" marker the WAL reader accesses
-            # via get_starting_replication_key_value() to decide where to sync from
+        # set *all* LOG_BASED streams' ephemeral "starting" replication key values
+        # since SingleConnectionWALReader reads it via get_starting_replication_key_value()
+        # for each stream's start_lsn; streams with an existing bookmark need this to be set
+        # which normally only happens inside a stream's own Stream.sync()
+        # which hasn't run yet for the streams that didn't trigger this shared sync
+        for stream in streams:
             stream._write_starting_replication_value(context=None)
 
         self._write_state_checkpoint()
