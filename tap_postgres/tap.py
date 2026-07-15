@@ -784,6 +784,15 @@ class TapPostgres(SQLTap):
         for stream in streams:
             stream._write_schema_message()
 
+        # SingleConnectionWALReader reads each stream's start LSN via
+        # get_starting_replication_key_value(), which only returns a value once the
+        # ephemeral "starting" marker has been written. That normally happens inside a
+        # stream's own Stream.sync(), which never runs here since this shared reader
+        # replaces it - so it must be done explicitly, or every stream falls back to
+        # LSN=0 and the reader re-walks the entire retained WAL on every run.
+        for stream in streams:
+            stream._write_starting_replication_value(context=None)
+
         reader = SingleConnectionWALReader(
             connection_parameters=self.connection_parameters,
             replication_slot_name=self.config["replication_slot_name"],

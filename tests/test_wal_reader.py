@@ -617,6 +617,37 @@ def test_idle_exit_seconds_zero_exits_immediately_when_no_messages():
     assert s.get_context_state(None)["replication_key_value"] == 20
 
 
+def test_shared_sync_resumes_from_persisted_bookmark_not_zero():
+    """A stream with a persisted LSN bookmark must not restart from LSN=0.
+
+    Regression test:
+
+    ``_sync_log_based_streams_shared`` must write each stream's ephemeral "starting"
+    replication marker before constructing the reader, since ``Stream.sync()``
+    (which normally does this) never runs on this path. Without it,
+    ``get_starting_replication_key_value()`` always returns None, forcing every
+    stream (even ones with an existing bookmark) to start from LSN=0 and re-walk the
+    entire retained WAL on every run.
+    """
+    config = {**DUMMY_CONFIG, "replication_idle_exit_seconds": 0}
+    tap = TapPostgres(config=config, setup_mapper=False)
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    state = stream.get_context_state(None)
+    state["replication_key"] = "_sdc_lsn"
+    state["replication_key_value"] = 5000
+
+    tap._streams = {stream.name: stream}
+    tap.connection_parameters = ConnectionParameters.from_tap_config(config)
+    tap._write_state_checkpoint = MagicMock()
+    stream._write_schema_message = MagicMock()
+
+    cursor = FakeReplicationCursor(messages=[], wal_end=9999)
+    with patch_replication(cursor):
+        tap._sync_log_based_streams_shared()
+
+    assert cursor.start_options["start_lsn"] == 5000
+
+
 def test_config_flag_off_uses_legacy_per_stream_path():
     """``log_based_single_connection=false`` falls through to the legacy generator.
 
