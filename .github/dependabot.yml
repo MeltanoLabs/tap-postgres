@@ -8,9 +8,7 @@ updates:
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
-      interval: weekly
-      timezone: "America/New_York"
-      time: "07:23"
+      interval: monthly
     versioning-strategy: increase-if-necessary
     groups:
       development-dependencies:
@@ -24,9 +22,7 @@ updates:
   - package-ecosystem: "pip"
     directory: "/.github/workflows"
     schedule:
-      interval: weekly
-      timezone: "America/New_York"
-      time: "07:23"
+      interval: quarterly
     groups:
       ci:
         patterns:
@@ -36,9 +32,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: weekly
-      timezone: "America/New_York"
-      time: "07:23"
+      interval: quarterly
     groups:
       actions:
         patterns:
