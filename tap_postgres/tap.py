@@ -19,6 +19,7 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
 from singer_sdk.sql import SQLStream, SQLTap
 
+from tap_postgres._wal_helpers import query_current_wal_lsn
 from tap_postgres.client import (
     PostgresConnector,
     PostgresLogBasedStream,
@@ -545,6 +546,18 @@ class TapPostgres(SQLTap):
                 "replication_method is LOG_BASED."
             ),
         ),
+        th.Property(
+            "auto_bootstrap_log_based",
+            th.BooleanType,
+            default=False,
+            description=(
+                "If True, LOG_BASED streams without a prior LSN bookmark are automatically "
+                "bootstrapped via a FULL_TABLE sync before WAL streaming begins, "
+                "with the current WAL flush LSN seeded as the stream's starting bookmark. "
+                "If False (default), the WAL reader starts from the earliest entry (LSN=0). "
+                "Only applies when log_based_single_connection=True."
+            ),
+        ),
     ).to_dict()
 
     @cached_property
@@ -765,6 +778,63 @@ class TapPostgres(SQLTap):
                 streams.append(PostgresStream(self, catalog_entry, connector=connector))
         return streams
 
+    def _bootstrap_log_based_streams(self, streams: list[PostgresLogBasedStream]) -> None:
+        """FULL_TABLE-sync any LOG_BASED streams that have no prior LSN bookmark.
+
+        Gets the current WAL flush LSN *before* syncing so the WAL reader resumes from a point
+        guaranteed not to miss changes that arrive while syncing. A stream with zero rows
+        is still seeded with the LSN bookmark, so it begins WAL streaming from the sync point
+        rather than LSN=0.
+
+        Must be called *after* schemas have been written for all streams -- see:
+        ``_sync_log_based_streams_shared``.
+        """
+        bootstrap_streams = [
+            stream
+            for stream in streams
+            if stream.get_context_state(context=None).get("replication_key_value") is None
+        ]
+        if bootstrap_streams:
+            snapshot_lsn = query_current_wal_lsn(
+                self.connection_parameters.render_as_psycopg2_dsn(), self.logger
+            )
+            if snapshot_lsn is None:
+                self.logger.warning(
+                    "couldn't query current WAL LSN; %d stream(s) will start from LSN=0",
+                    len(bootstrap_streams),
+                )
+            else:
+                for stream in bootstrap_streams:
+                    self.logger.info(
+                        "bootstrapping %s stream; WAL will resume from LSN %d",
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    stream._write_schema_message()  # idempotent no-op in regular usage
+                    num_records = 0
+                    for record in stream._get_bootstrap_records(context=None):
+                        stream.emit_record(record)
+                        num_records += 1
+                    self.logger.info(
+                        "emitted %d record(s) for %s stream; setting LSN bookmark to %d",
+                        num_records,
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    state_dict = stream.get_context_state(None)
+                    state_dict["replication_key"] = stream.replication_key
+                    state_dict["replication_key_value"] = snapshot_lsn
+
+        # set *all* LOG_BASED streams' ephemeral "starting" replication key values
+        # since SingleConnectionWALReader reads it via get_starting_replication_key_value()
+        # for each stream's start_lsn; streams with an existing bookmark need this to be set
+        # which normally only happens inside a stream's own Stream.sync()
+        # which hasn't run yet for the streams that didn't trigger this shared sync
+        for stream in streams:
+            stream._write_starting_replication_value(context=None)
+
+        self._write_state_checkpoint()
+
     def _sync_log_based_streams_shared(self) -> None:
         """Run the single-connection WAL reader across all selected LOG_BASED streams.
 
@@ -783,6 +853,9 @@ class TapPostgres(SQLTap):
         # whose sync triggered; siblings would otherwise see RECORDs arrive before SCHEMA
         for stream in streams:
             stream._write_schema_message()
+
+        if self.config["auto_bootstrap_log_based"]:
+            self._bootstrap_log_based_streams(streams)
 
         reader = SingleConnectionWALReader(
             connection_parameters=self.connection_parameters,

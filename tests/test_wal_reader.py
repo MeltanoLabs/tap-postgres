@@ -33,6 +33,12 @@ DUMMY_CONFIG = {
     "database": "postgres",
 }
 
+_BOOTSTRAP_CONFIG = {
+    **DUMMY_CONFIG,
+    "log_based_single_connection": True,
+    "auto_bootstrap_log_based": True,
+}
+
 
 class FakeReplicationMessage:
     """Stand-in for ``psycopg2.extras.ReplicationMessage``."""
@@ -640,3 +646,124 @@ def test_config_flag_off_uses_legacy_per_stream_path():
     p_legacy.assert_called_once()
     p_shared.assert_not_called()
     p_reader_cls.assert_not_called()
+
+
+# bootstrapping tests
+
+
+def _bootstrap_tap(config=_BOOTSTRAP_CONFIG) -> TapPostgres:
+    """A tap wired for the shared WAL path, with state-checkpoint stdout suppressed."""
+    tap = TapPostgres(config=config, setup_mapper=False)
+    tap.connection_parameters = ConnectionParameters.from_tap_config(config)
+    tap._write_state_checkpoint = MagicMock()
+    return tap
+
+
+def _set_bookmark(stream: PostgresLogBasedStream, lsn: int) -> None:
+    state = stream.get_context_state(None)
+    state["replication_key"] = "_sdc_lsn"
+    state["replication_key_value"] = lsn
+
+
+def test_get_bootstrap_records_sdc_col_handling():
+    """Only real columns SELECT'd; every row gets null _sdc_lsn/_sdc_deleted_at."""
+    tap = TapPostgres(config=DUMMY_CONFIG, setup_mapper=False)
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    # injects _sdc_* fields to fake catalog
+    stream.get_selected_schema = MagicMock(
+        return_value={"properties": {"id": {}, "_sdc_lsn": {}, "_sdc_deleted_at": {}}}
+    )
+
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value.mappings.return_value = [{"id": 42}]
+    with (
+        patch.object(stream.connector, "get_table") as mock_get_table,
+        patch.object(stream.connector, "_connect") as mock_connect,
+    ):
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        records = list(stream._get_bootstrap_records(context=None))
+
+    assert mock_get_table.call_args.kwargs["column_names"] == ["id"]
+    assert records == [{"id": 42, "_sdc_deleted_at": None, "_sdc_lsn": None}]
+
+
+def test_bootstrap_stream_bookmarking_or_not():
+    """New stream snapshotted and seeded to snapshot_lsn; existing stream left as-is."""
+    tap = _bootstrap_tap()
+    new = _build_log_based_stream(tap, schema_name="public", table_name="new_table")
+    existing = _build_log_based_stream(tap, schema_name="public", table_name="old_table")
+    _set_bookmark(existing, 1234)
+
+    for s in (new, existing):
+        s._write_schema_message = MagicMock()
+        s.emit_record = MagicMock()
+    new._get_bootstrap_records = MagicMock(
+        return_value=iter(
+            [
+                {"id": 1, "_sdc_lsn": None, "_sdc_deleted_at": None},
+                {"id": 2, "_sdc_lsn": None, "_sdc_deleted_at": None},
+            ]
+        )
+    )
+
+    with patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000):
+        tap._bootstrap_log_based_streams([new, existing])
+
+    new._write_schema_message.assert_called_once()
+    assert new.emit_record.call_count == 2
+    assert new.get_context_state(None) == {
+        "replication_key": "_sdc_lsn",
+        "replication_key_value": 5000,
+        "starting_replication_value": 5000,
+    }
+    # the seeded LSN must be visible to the WAL reader, which reads the starting marker
+    assert new.get_starting_replication_key_value(context=None) == 5000
+    existing._write_schema_message.assert_not_called()
+    existing.emit_record.assert_not_called()
+    assert existing.get_context_state(None)["replication_key_value"] == 1234
+    # existing's own bookmark must also reach the WAL reader
+    assert existing.get_starting_replication_key_value(context=None) == 1234
+    tap._write_state_checkpoint.assert_called_once()
+
+
+def test_bootstrap_seeds_lsn_for_empty_tablse():
+    """Zero-row stream still seeded, so WAL streaming starts from snapshot_lsn and not 0."""
+    tap = _bootstrap_tap()
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    stream._write_schema_message = MagicMock()
+    stream.emit_record = MagicMock()
+    stream._get_bootstrap_records = MagicMock(return_value=iter([]))
+
+    with patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000):
+        tap._bootstrap_log_based_streams([stream])
+
+    stream.emit_record.assert_not_called()
+    assert stream.get_context_state(None)["replication_key_value"] == 5000
+
+
+@pytest.mark.parametrize(
+    ["enabled", "expected_start_lsn"],
+    [(False, 0), (True, 7777)],
+)
+def test_shared_sync_starts_wal_reader_from_seeded_lsn(enabled, expected_start_lsn):
+    """Flag gates bootstrap: if enabled, the reader starts from seeded LSN; otherwise, LSN=0."""
+    config = {
+        **DUMMY_CONFIG,
+        "replication_idle_exit_seconds": 0,
+        "log_based_single_connection": True,
+        "auto_bootstrap_log_based": enabled,
+    }
+    tap = _bootstrap_tap(config)
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    tap._streams = {stream.name: stream}
+    stream._write_schema_message = MagicMock()
+    stream._get_bootstrap_records = MagicMock(return_value=iter([]))
+
+    cursor = FakeReplicationCursor(messages=[], wal_end=9999)
+    with (
+        patch("tap_postgres.tap.query_current_wal_lsn", return_value=7777),
+        patch_replication(cursor),
+    ):
+        tap._sync_log_based_streams_shared()
+
+    assert cursor.start_options["start_lsn"] == expected_start_lsn
