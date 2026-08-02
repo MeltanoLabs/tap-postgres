@@ -19,12 +19,14 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
 from singer_sdk.sql import SQLStream, SQLTap
 
+from tap_postgres._wal_helpers import query_current_wal_lsn
 from tap_postgres.client import (
     PostgresConnector,
     PostgresLogBasedStream,
     PostgresStream,
 )
 from tap_postgres.connection_parameters import ConnectionParameters
+from tap_postgres.wal_reader import SingleConnectionWALReader
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -223,6 +225,7 @@ class TapPostgres(SQLTap):
         See https://github.com/MeltanoLabs/tap-postgres/issues/141
         """
         super().__init__(*args, **kwargs)
+        self._shared_wal_run_completed = False
         assert (self.config.get("sqlalchemy_url") is not None) or (
             self.config.get("host") is not None
             and self.config.get("port") is not None
@@ -548,6 +551,29 @@ class TapPostgres(SQLTap):
             th.StringType,
             description=("Optional AWS CLI profile name to use for credential resolution."),
         ),
+        th.Property(
+            "log_based_single_connection",
+            th.BooleanType,
+            default=False,
+            description=(
+                "Use a single replication connection to sync all LOG_BASED streams "
+                "in one pass over the WAL. This avoids redundant WAL scans when "
+                "multiple tables use LOG_BASED replication. Only applicable when "
+                "replication_method is LOG_BASED."
+            ),
+        ),
+        th.Property(
+            "auto_bootstrap_log_based",
+            th.BooleanType,
+            default=False,
+            description=(
+                "If True, LOG_BASED streams without a prior LSN bookmark are automatically "
+                "bootstrapped via a FULL_TABLE sync before WAL streaming begins, "
+                "with the current WAL flush LSN seeded as the stream's starting bookmark. "
+                "If False (default), the WAL reader starts from the earliest entry (LSN=0). "
+                "Only applies when log_based_single_connection=True."
+            ),
+        ),
     ).to_dict()
 
     @cached_property
@@ -767,3 +793,112 @@ class TapPostgres(SQLTap):
             else:
                 streams.append(PostgresStream(self, catalog_entry, connector=connector))
         return streams
+
+    def _bootstrap_log_based_streams(self, streams: list[PostgresLogBasedStream]) -> None:
+        """FULL_TABLE-sync any LOG_BASED streams that have no prior LSN bookmark.
+
+        Gets the current WAL flush LSN *before* syncing so the WAL reader resumes from a point
+        guaranteed not to miss changes that arrive while syncing. A stream with zero rows
+        is still seeded with the LSN bookmark, so it begins WAL streaming from the sync point
+        rather than LSN=0.
+
+        Must be called *after* schemas have been written for all streams -- see:
+        ``_sync_log_based_streams_shared``.
+        """
+        bootstrap_streams = [
+            stream
+            for stream in streams
+            if stream.get_context_state(context=None).get("replication_key_value") is None
+        ]
+        if bootstrap_streams:
+            snapshot_lsn = query_current_wal_lsn(
+                self.connection_parameters.render_as_psycopg2_dsn(), self.logger
+            )
+            if snapshot_lsn is None:
+                self.logger.warning(
+                    "couldn't query current WAL LSN; %d stream(s) will start from LSN=0",
+                    len(bootstrap_streams),
+                )
+            else:
+                for stream in bootstrap_streams:
+                    self.logger.info(
+                        "bootstrapping %s stream; WAL will resume from LSN %d",
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    stream._write_schema_message()  # idempotent no-op in regular usage
+                    num_records = 0
+                    for record in stream._get_bootstrap_records(context=None):
+                        stream.emit_record(record)
+                        num_records += 1
+                    self.logger.info(
+                        "emitted %d record(s) for %s stream; setting LSN bookmark to %d",
+                        num_records,
+                        stream.name,
+                        snapshot_lsn,
+                    )
+                    state_dict = stream.get_context_state(None)
+                    state_dict["replication_key"] = stream.replication_key
+                    state_dict["replication_key_value"] = snapshot_lsn
+
+        # set *all* LOG_BASED streams' ephemeral "starting" replication key values
+        # since SingleConnectionWALReader reads it via get_starting_replication_key_value()
+        # for each stream's start_lsn; streams with an existing bookmark need this to be set
+        # which normally only happens inside a stream's own Stream.sync()
+        # which hasn't run yet for the streams that didn't trigger this shared sync
+        for stream in streams:
+            stream._write_starting_replication_value(context=None)
+
+        self._write_state_checkpoint()
+
+    def _sync_log_based_streams_shared(self) -> None:
+        """Run the single-connection WAL reader across all selected LOG_BASED streams.
+
+        Called once per tap invocation, on first call into ``PostgresLogBasedStream.get_records()``
+        from any LOG_BASED stream. Sibling streams' ``get_records()`` calls become no-ops
+        via the ``_shared_wal_run_completed`` flag on the tap instance.
+        """
+        streams = [
+            s for s in self.streams.values() if isinstance(s, PostgresLogBasedStream) and s.selected
+        ]
+        if not streams:
+            return
+
+        # schema messages for all LOG_BASED streams must be on the wire *before*
+        # any RECORD message, since `Stream.sync()`` only writes schema for the single stream
+        # whose sync triggered; siblings would otherwise see RECORDs arrive before SCHEMA
+        for stream in streams:
+            stream._write_schema_message()
+
+        if self.config["auto_bootstrap_log_based"]:
+            self._bootstrap_log_based_streams(streams)
+        else:
+            # SingleConnectionWALReader reads each stream's start LSN via
+            # get_starting_replication_key_value(), which only returns a value once the
+            # ephemeral "starting" marker has been written. That normally happens inside a
+            # stream's own Stream.sync(), which never runs here since this shared reader
+            # replaces it - so it must be done explicitly, or every stream falls back to
+            # LSN=0 and the reader re-walks the entire retained WAL on every run.
+            # (When bootstrapping runs, it already does this for all streams.)
+            for stream in streams:
+                stream._write_starting_replication_value(context=None)
+
+        reader = SingleConnectionWALReader(
+            connection_parameters=self.connection_parameters,
+            replication_slot_name=self.config["replication_slot_name"],
+            max_run_seconds=self.config["replication_max_run_seconds"],
+            idle_exit_seconds=self.config["replication_idle_exit_seconds"],
+            streams=streams,
+            state_flush_callback=self._write_state_checkpoint,
+            logger=self.logger,
+        )
+        reader.run()
+        self._write_state_checkpoint()
+
+    def _write_state_checkpoint(self) -> None:
+        """Emit a Singer STATE message reflecting current bookmarks.
+
+        Called on a 30s cadence by ``SingleConnectionWALReader``, using the same
+        state-writing mechanism the SDK invokes between streams in the default sync loop.
+        """
+        self._state_writer.write_state(self.state)
