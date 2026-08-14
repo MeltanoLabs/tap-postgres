@@ -1,7 +1,7 @@
-ARG POSTGRES_VERSION=17
+ARG POSTGRES_VERSION=18
 FROM postgres:${POSTGRES_VERSION}-bookworm
 
-ARG POSTGRES_VERSION=17
+ARG POSTGRES_VERSION=18
 
 # Install prerequisites and configure PostgreSQL for wal2json
 RUN apt-get update && apt-mark hold locales && \
@@ -15,3 +15,8 @@ RUN echo "Setting up PostgreSQL ${POSTGRES_VERSION} with wal2json" && \
     apt-get install -y postgresql-server-dev-${POSTGRES_VERSION} && \
     export PATH=/usr/lib/postgresql/${POSTGRES_VERSION}/bin:$PATH && \
     apt-get install -y postgresql-${POSTGRES_VERSION}-wal2json
+
+# output_plugin_libraries allowlists logical decoding plugins; it was
+# backported to the latest minor release of every major version we test, so
+# bake it into the conf template initdb uses regardless of major version.
+RUN echo "output_plugin_libraries = 'pgoutput, test_decoding, wal2json'" >> /usr/share/postgresql/${POSTGRES_VERSION}/postgresql.conf.sample

@@ -21,7 +21,7 @@ services:
       - inner
 
   postgres_no_ssl:
-    image: postgres:${POSTGRES_VERSION:-17}
+    image: postgres:${POSTGRES_VERSION:-18}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -30,7 +30,7 @@ services:
       - "5432:5432"
 
   postgresdb:
-    image: postgres:${POSTGRES_VERSION:-17}
+    image: postgres:${POSTGRES_VERSION:-18}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -40,7 +40,7 @@ services:
         ipv4_address: 10.5.0.5
 
   postgres_ssl:
-    image: postgres:${POSTGRES_VERSION:-17}
+    image: postgres:${POSTGRES_VERSION:-18}
     command: >
       postgres
       -c ssl=on
@@ -67,7 +67,7 @@ services:
     build:
       context: .
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-17}
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-18}
     command: >
       postgres
       -c wal_level=logical
@@ -86,7 +86,7 @@ services:
     build:
       context: .
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-17}
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-18}
     command: >
       postgres
       -c ssl=on
