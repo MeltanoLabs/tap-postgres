@@ -29,8 +29,8 @@ classifiers = [
 ]
 dependencies = [
     "paramiko>=4",
-    "psycopg2-binary==2.9.12",
-    "sqlalchemy==2.0.51",
+    "psycopg2-binary==2.9.13",
+    "sqlalchemy==2.0.54",
     "singer-sdk[faker,sql]~=0.54.0",
     "typing-extensions>=4.15.0 ; python_full_version < '3.12'",
 ]
