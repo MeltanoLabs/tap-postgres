@@ -5,7 +5,7 @@ This includes PostgresStream and PostgresConnector.
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import functools
 import select
 import sys
@@ -51,7 +51,7 @@ _NUMERIC_TYPES = ("int", "numeric", "decimal", "real", "double", "float", "bigin
 
 def _now_utc() -> str:
     """Return the current UTC time as a string."""
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class PostgresSQLToJSONSchema(SQLToJSONSchema):
@@ -143,7 +143,7 @@ class PostgresConnector(SQLConnector):
         """
         # Dates in postgres don't all convert to python datetime objects, so we
         # need to register a custom type caster to convert these to a string
-        # See https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date # noqa: E501
+        # See https://www.psycopg.org/psycopg3/docs/advanced/adapt.html#example-handling-infinity-date
         # For more information
         if config is not None and config["dates_as_string"] is True:
             string_dates = psycopg2.extensions.new_type(
@@ -377,13 +377,13 @@ class PostgresLogBasedStream(SQLStream):
             },
         )
 
-        run_start = datetime.datetime.now()
+        run_start = dt.datetime.now()
         last_data_message = run_start
         last_feedback_time = run_start
         records_yielded = 0
 
         while True:
-            now = datetime.datetime.now()
+            now = dt.datetime.now()
             elapsed = (now - run_start).total_seconds()
             if elapsed > max_run_seconds:
                 self.logger.info(
@@ -395,7 +395,7 @@ class PostgresLogBasedStream(SQLStream):
 
             message = logical_replication_cursor.read_message()
             if message:
-                last_data_message = datetime.datetime.now()
+                last_data_message = dt.datetime.now()
                 payload = parse_wal_message(message.payload, logical_replication_cursor)
                 if payload is not None:
                     row = self.consume(payload, message.data_start)
@@ -403,13 +403,13 @@ class PostgresLogBasedStream(SQLStream):
                         records_yielded += 1
                         yield row
                     if (
-                        datetime.datetime.now() - last_feedback_time
+                        dt.datetime.now() - last_feedback_time
                     ).total_seconds() >= feedback_interval:
                         try:
                             logical_replication_cursor.send_feedback(
                                 flush_lsn=message.data_start,
                             )
-                            last_feedback_time = datetime.datetime.now()
+                            last_feedback_time = dt.datetime.now()
                         except Exception:
                             pass
                 else:
@@ -430,7 +430,7 @@ class PostgresLogBasedStream(SQLStream):
                 ready = [logical_replication_cursor]
 
             if not ready:
-                data_idle = (datetime.datetime.now() - last_data_message).total_seconds()
+                data_idle = (dt.datetime.now() - last_data_message).total_seconds()
                 if data_idle >= idle_exit_seconds:
                     self.logger.info(
                         "No data messages for %.0f seconds, ending sync "

@@ -6,7 +6,7 @@ in ``consume()`` and the recovery paths in ``parse_wal_message``.
 
 from __future__ import annotations
 
-import datetime
+import datetime as dt
 import logging
 
 import pytest
@@ -106,7 +106,7 @@ def test_consume_delete_uses_identity_and_sets_deleted_at(stream):
     deleted_at = row["_sdc_deleted_at"]
     assert isinstance(deleted_at, str)
     # normalize trailing "Z" for PY3.10; handled automatically in PY 3.11+
-    _ = datetime.datetime.fromisoformat(deleted_at.replace("Z", "+00:00"))
+    _ = dt.datetime.fromisoformat(deleted_at.replace("Z", "+00:00"))
 
 
 @pytest.mark.parametrize(

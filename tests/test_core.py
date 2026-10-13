@@ -1,5 +1,5 @@
 import copy
-import datetime
+import datetime as dt
 import decimal
 import json
 from pathlib import Path
@@ -30,12 +30,12 @@ from tests.test_selected_columns_only import (
 )
 
 SAMPLE_CONFIG = {
-    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
+    "start_date": dt.datetime(2022, 11, 1).isoformat(),
     "sqlalchemy_url": DB_SQLALCHEMY_URL,
 }
 
 NO_SQLALCHEMY_CONFIG = {
-    "start_date": datetime.datetime(2022, 11, 1).isoformat(),
+    "start_date": dt.datetime(2022, 11, 1).isoformat(),
     "host": "localhost",
     "port": 5432,
     "user": "postgres",
@@ -58,8 +58,8 @@ def setup_test_table(table_name, sqlalchemy_url):
     engine = sa.create_engine(sqlalchemy_url, future=True)
     fake = Faker()
 
-    date1 = datetime.date(2022, 11, 1)
-    date2 = datetime.date(2022, 11, 30)
+    date1 = dt.date(2022, 11, 1)
+    date2 = dt.date(2022, 11, 30)
     metadata_obj = sa.MetaData()
     test_replication_key_table = sa.Table(
         table_name,
