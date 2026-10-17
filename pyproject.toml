@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
+    "boto3>=1.26.0",
     "paramiko>=4",
     "psycopg2-binary==2.9.13",
     "sqlalchemy==2.0.51",
@@ -82,6 +83,12 @@ exclude = "tests"
 python_version = "3.13"
 warn_unused_configs = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+  "boto3.*",
+]
+ignore_missing_imports = true
 
 [build-system]
 requires = [
