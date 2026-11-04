@@ -18,6 +18,7 @@ import pytest
 import sqlalchemy as sa
 from singer_sdk.singerlib import CatalogEntry, MetadataMapping, Schema
 
+from tap_postgres._wal_helpers import ReplicationSlotError
 from tap_postgres.client import PostgresConnector, PostgresLogBasedStream
 from tap_postgres.connection_parameters import ConnectionParameters
 from tap_postgres.tap import TapPostgres
@@ -737,7 +738,10 @@ def test_bootstrap_stream_bookmarking_or_not():
         )
     )
 
-    with patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000):
+    with (
+        patch("tap_postgres.tap.check_replication_slot"),
+        patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000),
+    ):
         tap._bootstrap_log_based_streams([new, existing])
 
     new._write_schema_message.assert_called_once()
@@ -765,7 +769,10 @@ def test_bootstrap_seeds_lsn_for_empty_tablse():
     stream.emit_record = MagicMock()
     stream._get_bootstrap_records = MagicMock(return_value=iter([]))
 
-    with patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000):
+    with (
+        patch("tap_postgres.tap.check_replication_slot"),
+        patch("tap_postgres.tap.query_current_wal_lsn", return_value=5000),
+    ):
         tap._bootstrap_log_based_streams([stream])
 
     stream.emit_record.assert_not_called()
@@ -792,9 +799,107 @@ def test_shared_sync_starts_wal_reader_from_seeded_lsn(enabled, expected_start_l
 
     cursor = FakeReplicationCursor(messages=[], wal_end=9999)
     with (
+        patch("tap_postgres.tap.check_replication_slot"),
         patch("tap_postgres.tap.query_current_wal_lsn", return_value=7777),
         patch_replication(cursor),
     ):
         tap._sync_log_based_streams_shared()
 
     assert cursor.start_options["start_lsn"] == expected_start_lsn
+
+
+def test_bootstrap_checks_slot_before_snapshot():
+    """The slot check runs against the configured slot/database, before the LSN query."""
+    tap = _bootstrap_tap()
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    stream._write_schema_message = MagicMock()
+    stream.emit_record = MagicMock()
+    stream._get_bootstrap_records = MagicMock(return_value=iter([]))
+
+    calls: list[str] = []
+    with (
+        patch(
+            "tap_postgres.tap.check_replication_slot",
+            side_effect=lambda *a, **kw: calls.append("check"),
+        ) as p_check,
+        patch(
+            "tap_postgres.tap.query_current_wal_lsn",
+            side_effect=lambda *a, **kw: calls.append("lsn") or 5000,
+        ),
+    ):
+        tap._bootstrap_log_based_streams([stream])
+
+    assert calls == ["check", "lsn"]
+    assert p_check.call_args.kwargs["slot_name"] == "tappostgres"
+    assert p_check.call_args.kwargs["database"] == "postgres"
+
+
+def test_bootstrap_aborts_before_any_output_when_slot_unusable():
+    """An unusable slot fails the run before any record or state is written (#808).
+
+    Otherwise the snapshot LSN would be checkpointed, and a slot created afterwards
+    would start at its own creation point, silently skipping changes in between.
+    """
+    tap = _bootstrap_tap()
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    stream._write_schema_message = MagicMock()
+    stream.emit_record = MagicMock()
+    stream._get_bootstrap_records = MagicMock(
+        return_value=iter([{"id": 1, "_sdc_lsn": None, "_sdc_deleted_at": None}])
+    )
+
+    with (
+        patch(
+            "tap_postgres.tap.check_replication_slot",
+            side_effect=ReplicationSlotError("Replication slot 'tappostgres' does not exist."),
+        ),
+        patch("tap_postgres.tap.query_current_wal_lsn") as p_lsn,
+        pytest.raises(ReplicationSlotError, match="does not exist"),
+    ):
+        tap._bootstrap_log_based_streams([stream])
+
+    p_lsn.assert_not_called()
+    stream._get_bootstrap_records.assert_not_called()
+    stream.emit_record.assert_not_called()
+    tap._write_state_checkpoint.assert_not_called()
+    assert stream.get_context_state(None).get("replication_key_value") is None
+
+
+def test_bootstrap_skips_slot_check_when_nothing_to_bootstrap():
+    """Streams that already have a bookmark don't trigger the slot check."""
+    tap = _bootstrap_tap()
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    _set_bookmark(stream, 1234)
+
+    with (
+        patch("tap_postgres.tap.check_replication_slot") as p_check,
+        patch("tap_postgres.tap.query_current_wal_lsn") as p_lsn,
+    ):
+        tap._bootstrap_log_based_streams([stream])
+
+    p_check.assert_not_called()
+    p_lsn.assert_not_called()
+
+
+def test_shared_sync_does_not_start_replication_when_slot_unusable():
+    """End to end through the shared path: no reader connection is opened."""
+    tap = _bootstrap_tap({**_BOOTSTRAP_CONFIG, "replication_idle_exit_seconds": 0})
+    stream = _build_log_based_stream(tap, schema_name="public", table_name="users")
+    tap._streams = {stream.name: stream}
+    stream._write_schema_message = MagicMock()
+    stream._get_bootstrap_records = MagicMock(return_value=iter([]))
+
+    cursor = FakeReplicationCursor(messages=[], wal_end=9999)
+    with (
+        patch(
+            "tap_postgres.tap.check_replication_slot",
+            side_effect=ReplicationSlotError("invalidated"),
+        ),
+        patch("tap_postgres.tap.query_current_wal_lsn", return_value=7777),
+        patch_replication(cursor) as (p_connect, _),
+        pytest.raises(ReplicationSlotError),
+    ):
+        tap._sync_log_based_streams_shared()
+
+    p_connect.assert_not_called()
+    assert cursor.start_options is None

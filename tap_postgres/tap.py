@@ -19,7 +19,7 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 from singer_sdk.singerlib import Catalog, Metadata, Schema
 from singer_sdk.sql import SQLStream, SQLTap
 
-from tap_postgres._wal_helpers import query_current_wal_lsn
+from tap_postgres._wal_helpers import check_replication_slot, query_current_wal_lsn
 from tap_postgres.client import (
     PostgresConnector,
     PostgresLogBasedStream,
@@ -795,9 +795,17 @@ class TapPostgres(SQLTap):
             if stream.get_context_state(context=None).get("replication_key_value") is None
         ]
         if bootstrap_streams:
-            snapshot_lsn = query_current_wal_lsn(
-                self.connection_parameters.render_as_psycopg2_dsn(), self.logger
+            dsn = self.connection_parameters.render_as_psycopg2_dsn()
+            # check the slot *before* snapshotting: a missing or unusable slot would
+            # otherwise only surface after the (possibly hours-long) FULL_TABLE sync,
+            # with the snapshot LSN already checkpointed to state
+            check_replication_slot(
+                dsn,
+                slot_name=self.config["replication_slot_name"],
+                database=self.connection_parameters.database,
+                logger=self.logger,
             )
+            snapshot_lsn = query_current_wal_lsn(dsn, self.logger)
             if snapshot_lsn is None:
                 self.logger.warning(
                     "couldn't query current WAL LSN; %d stream(s) will start from LSN=0",

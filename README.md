@@ -265,9 +265,11 @@ Note that changing what streams are selected after already beginning log-based r
 
 When a stream has no prior bookmark (i.e. it is new to log-based replication), the tap starts reading the replication slot from LSN 0 — the oldest WAL position the slot still retains. This means the tap will walk through all retained WAL for every registered table before reaching the current tip, which can be very slow if the slot has accumulated a large backlog.
 
-Other CDC tools (e.g. [Debezium](https://debezium.io/blog/2021/10/07/incremental-snapshots/), [Airbyte](https://docs.airbyte.com/platform/understanding-airbyte/cdc#adding-new-schemascolumns)) handle this by taking an initial snapshot of the new table at a known LSN and then starting WAL streaming from that point. This tap does not implement that pattern.
+Other CDC tools (e.g. [Debezium](https://debezium.io/blog/2021/10/07/incremental-snapshots/), [Airbyte](https://docs.airbyte.com/platform/understanding-airbyte/cdc#adding-new-schemascolumns)) handle this by taking an initial snapshot of the new table at a known LSN and then starting WAL streaming from that point. With `log_based_single_connection` and `auto_bootstrap_log_based` both enabled, this tap does the same: streams without a bookmark get a `FULL_TABLE` snapshot, and WAL streaming resumes from the flush LSN taken just before it.
 
-The recommended workaround is:
+Before snapshotting, the tap checks that the `replication_slot_name` slot exists, is a logical `wal2json` slot for the configured database, and has not been invalidated (e.g. `wal_status = 'lost'` after exceeding `max_slot_wal_keep_size`). If not, it fails before emitting any records or state. The slot has to exist before the snapshot: a slot created afterwards starts at its own creation point, so changes made in between would never be streamed.
+
+Without auto bootstrap, the recommended workaround is:
 
 1. Sync the new table once using `FULL_TABLE` or `INCREMENTAL` replication to establish its baseline state.
 2. Switch that stream's replication method to `LOG_BASED` for subsequent syncs.
