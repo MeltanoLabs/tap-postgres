@@ -132,6 +132,108 @@ def query_current_wal_lsn(dsn: str, logger: logging.Logger) -> int | None:
         return None
 
 
+class ReplicationSlotError(Exception):
+    """The configured replication slot can't be used for LOG_BASED streaming."""
+
+
+_REPLICATION_SLOT_QUERY = "SELECT * FROM pg_replication_slots WHERE slot_name = %s"
+
+
+def check_replication_slot(
+    dsn: str,
+    slot_name: str,
+    database: str,
+    logger: logging.Logger,
+) -> None:
+    """Fail fast if ``slot_name`` can't serve a wal2json stream for ``database``.
+
+    Meant to run before a LOG_BASED bootstrap: a FULL_TABLE snapshot of a large table can
+    take hours, and its LSN bookmark is only safe if the slot already exists and retains
+    WAL from before the snapshot. A slot created after the snapshot starts at its own
+    creation point, so changes made in between would be silently skipped.
+
+    Reads ``pg_replication_slots`` with ``SELECT *`` so it works across server versions;
+    ``wal_status`` (13+), ``conflicting`` (16+) and ``invalidation_reason`` (17+) are
+    checked only when present. If the check itself can't run (e.g. a transient connection
+    error), it logs a warning and returns, leaving the existing behavior unchanged.
+
+    Raises:
+        ReplicationSlotError: if the slot is missing, physical, uses a plugin other than
+            wal2json, belongs to another database, or has been invalidated.
+    """
+    try:
+        conn = psycopg2.connect(dsn)
+        try:
+            conn.autocommit = True
+            with conn.cursor() as cur:
+                cur.execute(_REPLICATION_SLOT_QUERY, (slot_name,))
+                row = cur.fetchone()
+                columns = [col[0] for col in cur.description or ()]
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.warning("Could not check replication slot %r: %s", slot_name, exc)
+        return
+
+    if row is None:
+        msg = (
+            f"Replication slot {slot_name!r} does not exist. Create it before running a "
+            f"LOG_BASED sync, e.g. SELECT * FROM pg_create_logical_replication_slot("
+            f"'{slot_name}', 'wal2json');"
+        )
+        raise ReplicationSlotError(msg)
+
+    slot = dict(zip(columns, row, strict=True))
+
+    if slot.get("slot_type") != "logical":
+        msg = (
+            f"Replication slot {slot_name!r} is a {slot.get('slot_type')} slot; "
+            "LOG_BASED replication needs a logical slot using wal2json."
+        )
+        raise ReplicationSlotError(msg)
+
+    if slot.get("plugin") != "wal2json":
+        msg = (
+            f"Replication slot {slot_name!r} uses output plugin {slot.get('plugin')!r}; "
+            "LOG_BASED replication needs a slot created with 'wal2json'."
+        )
+        raise ReplicationSlotError(msg)
+
+    if slot.get("database") != database:
+        msg = (
+            f"Replication slot {slot_name!r} belongs to database {slot.get('database')!r}, "
+            f"not {database!r}. Logical slots only decode changes for their own database."
+        )
+        raise ReplicationSlotError(msg)
+
+    reason = (
+        slot.get("invalidation_reason")
+        or ("lost" if slot.get("wal_status") == "lost" else None)
+        or ("conflicting" if slot.get("conflicting") is True else None)
+    )
+    if reason:
+        msg = (
+            f"Replication slot {slot_name!r} has been invalidated ({reason}) and can no "
+            "longer stream changes. Drop and recreate it, then re-run the bootstrap."
+        )
+        raise ReplicationSlotError(msg)
+
+    if slot.get("wal_status") == "unreserved":
+        logger.warning(
+            "Replication slot %r is about to lose required WAL (wal_status=unreserved); "
+            "it may be invalidated before streaming starts.",
+            slot_name,
+        )
+
+    if slot.get("active"):
+        logger.warning(
+            "Replication slot %r is currently in use by another process (pid %s); "
+            "streaming will fail after the bootstrap if it is still in use then.",
+            slot_name,
+            slot.get("active_pid"),
+        )
+
+
 def _lsn_str_to_int(lsn_str: str) -> int:
     """Convert a Postgres LSN string (e.g. '6/4A3B2C10') to an int."""
     hi, lo = lsn_str.split("/")
